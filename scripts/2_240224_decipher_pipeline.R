@@ -239,21 +239,14 @@ for(this_cluster in unique(decipher_seurat$cluster)){
   }
 
   #convert interaction_potential list into a matrix
-  first.flag <- TRUE
-  for(this.tf in names(all_rf_results)){
-    this.tf.results <- all_rf_results[[this.tf]]
-    if(first.flag){
-      interaction_weights <- this.tf.results
-      first.flag <- FALSE
-    }else {
-      interaction_weights <- rbind(interaction_weights,this.tf.results)
-    }
-  }
+  #used to be called interaction_weights
+  all_rf_results_matrix <- convertListOfMatricesToMatrix(all_rf_results)
+
   #stuff for visualization
   lr_markers_this_cluster <- FindMarkers(decipher_seurat_this_cluster,
                                          ident.1 = "case",
                                          ident.2 = "control",
-                                         feature = unique(c(interaction_weights$ligand,interaction_weights$receptor)),
+                                         feature = unique(c(all_rf_results_matrix$ligand,all_rf_results_matrix$receptor)),
                                          logfc.threshold = 0,
                                          min.pct = 0,
                                          only.pos = FALSE)
@@ -264,75 +257,21 @@ for(this_cluster in unique(decipher_seurat$cluster)){
                                          logfc.threshold = 0.58,
                                          only.pos = FALSE)
 
+  de_markers_this_cluster$gene <- rownames(de_markers_this_cluster)
 
   ##enrichr ----
   #enrichr on transcription factors
-  de_markers_this_cluster$gene <- rownames(de_markers_this_cluster)
-
-  all_pos <- de_markers_this_cluster %>%
-    filter(avg_log2FC > 0) %>%
-    slice_max(avg_log2FC,n=300)%>%
-    select(gene)
-
-  all_neg <- de_markers_this_cluster %>%
-    filter(avg_log2FC < 0) %>%
-    slice_min(avg_log2FC,n=300)%>%
-    select(gene)
-
-
-  all_pos <- all_pos$gene
-  all_neg <- all_neg$gene
-  all_pos_neg <- c(all_pos,all_neg)
-
-  my_gene_sets <- list()
-  for(this_regulon in significant_regulon_deltas_this_cluster$name){
-    all_genes <- regulon_this_cluster$target[regulon_this_cluster$source == this_regulon]
-    my_gene_sets[[this_regulon]] <- all_genes
-  }
-  my_gene_sets[["all_pos"]] <- all_pos
-  my_gene_sets[["all_neg"]] <- all_neg
-  my_gene_sets[["all_pos_neg"]] <- all_pos_neg
-
-  gene_set_results <- list()
-  for(this_gene_set in names(my_gene_sets)){
-    dbs_results <- list()
-    for(this_dbs_name in names(enrichr_database)){
-      term_results <- list()
-      this_dbs <- enrichr_database[[this_dbs_name]]
-      for(this_term in names(this_dbs)){
-        term_results[[this_term]] <- calculateEnrichmentStatistics(this_dbs[[this_term]],my_gene_sets[[this_gene_set]],20000)
-      }
-      dbs_results[[this_dbs_name]] <- term_results
-    }
-    gene_set_results[[this_gene_set]] <- dbs_results
-  }
-
-  regulon_results_df <- list()
-  dbs_results_df <- list()
-  for(this_regulon in names(gene_set_results)){
-    for(this_dbs_name in names(enrichr_database)){
-      dbs_results_df[[this_dbs_name]]  <- do.call(rbind.data.frame, gene_set_results[[this_regulon]][[this_dbs_name]])
-      dbs_results_df[[this_dbs_name]]$database  <- rep(this_dbs_name,nrow(dbs_results_df[[this_dbs_name]]))
-      dbs_results_df[[this_dbs_name]]$p_value_adjusted  <- p.adjust(dbs_results_df[[this_dbs_name]]$p_value, method = "BH", n = length(dbs_results_df[[this_dbs_name]]$p_value))
-      dbs_results_df[[this_dbs_name]]$Term <- rownames(dbs_results_df[[this_dbs_name]])
-    }
-    regulon_results_df[[this_regulon]] <- do.call(rbind.data.frame, dbs_results_df)
-  }
+  regulon_results_df <- enrichResults(de_markers_this_cluster,significant_regulon_deltas_this_cluster,regulon_this_cluster,enrichr_database)
 
   enrichr_results_by_cluster[[this_cluster]] <- regulon_results_df
-
-  #save all intermediate data
   regulon_grns_by_cluster[[this_cluster]] <- regulon_this_cluster
   regulon_scores_by_cluster[[this_cluster]] <- regulon_scores_this_cluster
   regulon_deltas_by_cluster[[this_cluster]] <- regulon_deltas_this_cluster
-  #TODO: uncomment :)
   interaction_potential_by_clusters[[this_cluster]] <- interaction_potentials_matrix_this_cluster
-  decipher_scores_by_regulon_and_cluster[[this_cluster]] <- interaction_weights
+  decipher_scores_by_regulon_and_cluster[[this_cluster]] <- all_rf_results_matrix
   lr_markers_by_cluster[[this_cluster]] <- lr_markers_this_cluster
   de_markers_by_cluster[[this_cluster]] <- de_markers_this_cluster
   significant_regulons_by_cluster[[this_cluster]] <- significant_regulon_deltas_this_cluster
-
-
   }
 
 decipher_scores_by_regulon_and_cluster <- lapply(decipher_scores_by_regulon_and_cluster,FUN = "listOfDFsRenameColumn",original_name = "weighted.spearman.cont",new_name = "decipher_score")

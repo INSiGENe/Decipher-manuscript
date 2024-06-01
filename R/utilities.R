@@ -400,3 +400,38 @@ loadCytosigLigands <- function(reference_filepath,species){
   return(cytosig_ligands)
 }
 
+
+
+
+#' Convert a List of Matrices to a Single Matrix
+#'
+#' This function concatenates a list of matrices into a single matrix by binding them row-wise.
+#' It iterates through each matrix in the list, starting with the first matrix, and subsequently
+#' binds each following matrix to the result of the previous concatenations. This is useful for
+#' combining data from similar matrices stored in a list into a single matrix structure.
+#'
+#' @param listOfMatrices A list where each element is a matrix of potentially varying number
+#'        of rows but the same number of columns.
+#'
+#' @return A single matrix composed of all matrices from the list combined row-wise. The
+#'         function assumes that all matrices in the list have the same number of columns.
+#'
+#' @examples
+#' # Assuming 'mat_list' is a list containing several matrices:
+#' combined_matrix <- convertListOfMatricesToMatrix(mat_list)
+#'
+#' @export
+convertListOfMatricesToMatrix <- function(listOfMatrices){
+  first.flag <- TRUE
+  for(this_list_name in names(listOfMatrices)){
+    this_list_matrix <- listOfMatrices[[this_list_name]]
+    if(first.flag){
+      result_matrix <- this_list_matrix
+      first.flag <- FALSE
+    }else {
+      result_matrix <- rbind(result_matrix,this_list_matrix)
+    }
+  }
+
+  return(result_matrix)
+}
