@@ -53,8 +53,6 @@ dir.create(output_importances_filepath,recursive=TRUE)
 flag.normalize.non.log <- FALSE
 max_n_cells <- 600
 param_default_enricher_g_size <- 300
-param_min_n_cells <- 100
-param_max_n_cells <- 600
 param_n_sample_regulons <- 20
 
 ##output objects initialize ----
@@ -150,25 +148,20 @@ expressed_ligands <- getFilteredLigands(
   L.set,
   param_min_ligand_expr_in_cluster = 0.1)
 
-ind_case <- which(decipher_seurat$condition == "case")
-data_decipher_seurat_case <- decipher_seurat@assays$RNA@data[,ind_case]
-data_decipher_seurat_control <- decipher_seurat@assays$RNA@data[,-ind_case]
 
 #DECIPHER analysis-----
 for(this_cluster in unique(decipher_seurat$cluster)){
 
   #main object
   decipher_seurat_this_cluster <- subset(decipher_seurat,subset = cluster == this_cluster)
-  base_n_cells <- min(table(decipher_seurat_this_cluster$condition))
-  if(base_n_cells < param_min_n_cells){
-    next
-  }
-  if(base_n_cells > param_max_n_cells){
-    base_n_cells <- param_max_n_cells
-  }
-
+  #be careful with
   Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
-  decipher_seurat_this_cluster_downsampled <- subset(decipher_seurat_this_cluster, downsample = base_n_cells)
+  #I call downsampled for the interaction matrix, but normal for regulon scores,
+  #should just use the normal one and control max meta cells above in the meta cell component
+  decipher_seurat_this_cluster_downsampled <- downsampleSeuratByCondition(
+    decipher_seurat_this_cluster,
+    param_max_n_cells = 600)
+
   data_this_cluster_downsampled <- decipher_seurat_this_cluster_downsampled@assays$RNA@data
 
   if(flag.normalize.non.log){
@@ -185,14 +178,15 @@ for(this_cluster in unique(decipher_seurat$cluster)){
   L_set_relevant_features <- L.set %>%
     filter(receptor %in% expressed_receptors_this_clusters & ligand %in% expressed_ligands)
 
+  #data_this_cluster_downsampled_receptors <- data_this_cluster_downsampled[which(rownames(data_this_cluster_downsampled) %in% selected_receptors),]
+  data_this_cluster_downsampled_receptors <- data_this_cluster_downsampled[which(rownames(data_this_cluster_downsampled) %in% unique(L_set_relevant_features$receptor)),]
+
   #get regulon
   regulon_this_cluster <- getRegulon(output_filepath,this_cluster)
   regulon_this_cluster_capped <- capRegulon(regulon_this_cluster,n_top = 40)
   regulon_this_cluster_capped <- addRandomGRNs(decipher_seurat_this_cluster,regulon_this_cluster_capped)
   #regulon_this_cluster_capped_2 <- capRegulon_2(regulon_this_cluster,n_top = 40)
 
-  #data_this_cluster_downsampled_receptors <- data_this_cluster_downsampled[which(rownames(data_this_cluster_downsampled) %in% selected_receptors),]
-  data_this_cluster_downsampled_receptors <- data_this_cluster_downsampled[which(rownames(data_this_cluster_downsampled) %in% unique(L_set_relevant_features$receptor)),]
   ##PAGODA -----
   #silence this function
   regulon_scores_this_cluster <- getRegulonScores(
@@ -218,50 +212,27 @@ for(this_cluster in unique(decipher_seurat$cluster)){
   )
 
   ## calculate Interaction Potential Matrix ----
-  interaction_potentials <- list()
+  interaction_potentials_matrix_this_cluster <- getInteractionPotentialsMatrixThisCluster(
+    seurat_obj = decipher_seurat,
+    seurat_obj_this_cluster_ds = decipher_seurat_this_cluster_downsampled,
+    selected_lr_pairs = L_set_relevant_features
+  )
+
+  #this cannot be moved from this location
+  interaction_deltas <- calculateInteractionDeltas(interaction_potentials_matrix_this_cluster,decipher_seurat_lr)
+  interaction_deltas_by_cluster[[this_cluster]] <- interaction_deltas
+
+
+
+  #subset interaction potential matrix to those interactions that have changed between conditions
+  interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_this_cluster[rownames(interaction_deltas),]
+  ## subset interaction_potential matrix by correlation clusters for cluster-based RF ----
+
   interaction_mapping_table <-  getInteractionMappingTable(
     receptorMatrix = data_this_cluster_downsampled_receptors,
     ligandSet = L_set_relevant_features
-    )
-
-  #case and control
-  condition_vector <- decipher_seurat_this_cluster_downsampled$condition
-  unique_ligands <- unique(L_set_relevant_features$ligand)
-  #ligand_means is a data frame with a case and a control column
-  ligand_means <- data.frame(
-    case = Matrix::rowMeans(data_decipher_seurat_case[unique_ligands,]),
-    control = Matrix::rowMeans(data_decipher_seurat_control[unique_ligands,]),
-    row.names = unique_ligands
   )
 
-  interaction_potentials_matrix_this_cluster <- calculateInteractionMatrix(
-    receptorMatrix = data_this_cluster_downsampled_receptors,
-    conditionVector = condition_vector,
-    ligandMeans = ligand_means,
-    LRSet = L_set_relevant_features
-  )
-
-  #remove zeros
-  ind_no_information <- which(rowSums(interaction_potentials_matrix_this_cluster) == 0)
-  if(length(ind_no_information) > 0){
-    interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_this_cluster[-ind_no_information,]
-  }
-
-  calculateInteractionDeltas <- function(interaction_potentials_matrix_this_cluster,decipher_seurat_lr){
-    new_seurat <- Seurat::CreateSeuratObject(counts = interaction_potentials_matrix_this_cluster,meta.data = decipher_seurat_lr@meta.data[colnames(interaction_potentials_matrix_this_cluster),])
-    Idents(new_seurat) <- new_seurat$condition
-    interaction_deltas <- FindMarkers(new_seurat,ident.1 = "case",logfc.threshold = 0.1)
-    interaction_deltas <- interaction_deltas %>%
-      filter(p_val_adj < 0.01)
-    interaction_deltas$name = rownames(interaction_deltas)
-    return(interaction_deltas)
-  }
-  #this cannot be moved from this location
-  interaction_deltas_by_cluster[[this_cluster]] <- calculateInteractionDeltas(interaction_potentials_matrix_this_cluster,decipher_seurat_lr)
-
-
-  interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_this_cluster[rownames(interaction_deltas),]
-  ## subset interaction_potential matrix by correlation clusters for cluster-based RF ----
   #split matrix into interactions comprised of receptors with a unique ligand (one-to-one), and interactions of receptors with multiple ligands (many-to-one)
   one_to_one_interactions <- intersect(getOneToOneInteractions(interaction_mapping_table),rownames(interaction_potentials_matrix_this_cluster))
   many_to_one_interactions <- intersect(getManyToOneInteractions(interaction_mapping_table),rownames(interaction_potentials_matrix_this_cluster))
@@ -414,6 +385,7 @@ for(this_cluster in unique(decipher_seurat$cluster)){
     }
     regulon_results_df[[this_regulon]] <- do.call(rbind.data.frame, dbs_results_df)
   }
+
   enrichr_results_by_cluster[[this_cluster]] <- regulon_results_df
 
   #save all intermediate data

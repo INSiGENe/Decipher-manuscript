@@ -343,3 +343,70 @@ calculateInteractionDeltas <- function(interaction_potentials_matrix_this_cluste
   interaction_deltas$name = rownames(interaction_deltas)
   return(interaction_deltas)
 }
+
+
+#' Compute Interaction Potentials Matrix for a Specific Cluster
+#'
+#' This function calculates the interaction potentials between ligands and receptors
+#' within a specific cluster. It separates the case and control conditions in the
+#' main Seurat object, computes the mean expression of selected ligands for both
+#' conditions, and then uses these means along with the expression of receptors
+#' in a downsampled cluster-specific Seurat object to compute an interaction
+#' potentials matrix.
+#'
+#' @param seurat_obj A Seurat object containing the full dataset.
+#' @param seurat_obj_this_cluster_ds A downsampled Seurat object for the specific cluster.
+#' @param selected_lr_pairs A dataframe specifying ligand-receptor pairs to consider,
+#'        which must have columns 'ligand' and 'receptor'.
+#'
+#' @return An interaction potentials matrix where rows represent receptors and
+#'         columns correspond to interaction potentials derived from case-control comparisons
+#'         for the ligands.
+#'
+#' @examples
+#' # Assuming 'full_seurat' is the full Seurat object, 'cluster_seurat_ds' is the downsampled Seurat object for a cluster,
+#' # and 'lr_pairs' is a dataframe of selected ligand-receptor pairs:
+#' interaction_matrix <- getInteractionPotentialsMatrixThisCluster(
+#'   seurat_obj = full_seurat,
+#'   seurat_obj_this_cluster_ds = cluster_seurat_ds,
+#'   selected_lr_pairs = lr_pairs
+#' )
+#'
+#' @importFrom Matrix rowMeans
+#' @export
+getInteractionPotentialsMatrixThisCluster <- function(seurat_obj,seurat_obj_this_cluster_ds,selected_lr_pairs){
+
+  # Extract indices for case condition and data for case and control
+  ind_case <- which(seurat_obj$condition == "case")
+  data_seurat_obj_case <- seurat_obj@assays$RNA@data[,ind_case]
+  data_seurat_obj_control <- seurat_obj@assays$RNA@data[,-ind_case]
+
+  # Extract receptor data from the downsampled Seurat object for this cluster
+  data_seurat_obj_this_cluster_ds <- seurat_obj_this_cluster_ds@assays$RNA@data
+  data_seurat_obj_this_cluster_ds_receptors <- data_seurat_obj_this_cluster_ds[which(rownames(data_seurat_obj_this_cluster_ds) %in% unique(selected_lr_pairs$receptor)),]
+
+  # Compute mean expression levels of ligands in case and control
+  unique_ligands <- unique(selected_lr_pairs$ligand)
+  ligand_means <- data.frame(
+    case = Matrix::rowMeans(data_seurat_obj_case[unique_ligands,]),
+    control = Matrix::rowMeans(data_seurat_obj_control[unique_ligands,]),
+    row.names = unique_ligands
+  )
+
+  # Calculate interaction matrix
+  interaction_potentials_matrix_this_cluster <- calculateInteractionMatrix(
+    receptorMatrix = data_seurat_obj_this_cluster_ds_receptors,
+    conditionVector =  seurat_obj_this_cluster_ds$condition,
+    ligandMeans = ligand_means,
+    LRSet = selected_lr_pairs
+  )
+
+  # Remove rows with no interaction information
+  ind_no_information <- which(rowSums(interaction_potentials_matrix_this_cluster) == 0)
+  if(length(ind_no_information) > 0){
+    interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_this_cluster[-ind_no_information,]
+  }
+
+  return(interaction_potentials_matrix_this_cluster)
+}
+

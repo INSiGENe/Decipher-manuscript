@@ -267,5 +267,34 @@ readParameters <- function(filePath) {
   return(parameters)
 }
 
+#' Downsample a Seurat Object by Condition
+#'
+#' This function downsamples a Seurat object to equalize the number of cells across conditions
+#' up to a specified maximum number. It finds the minimum cell count across all conditions
+#' or uses the provided maximum cell count limit, whichever is smaller, and then subsets the
+#' Seurat object to this number of cells for each condition.
+#'
+#' @param seurat_object A Seurat object containing single-cell RNA-seq data with condition labels.
+#' @param param_max_n_cells The maximum number of cells to retain per condition.
+#'
+#' @return A Seurat object that has been downsampled such that each condition contains an equal
+#'         number of cells, not exceeding the specified maximum.
+#'
+#' @examples
+#' # Assuming 'seurat' is a Seurat object with varying numbers of cells per condition:
+#' downsampled_seurat <- downsampleSeuratByCondition(seurat, param_max_n_cells = 100)
+#'
+#' @importFrom Seurat Idents subset
+#' @export
+downsampleSeuratByCondition <- function(seurat_object,param_max_n_cells){
+  base_n_cells <- min(table(seurat_object$condition))
+  if(base_n_cells > param_max_n_cells){
+    base_n_cells <- param_max_n_cells
+  }
+
+  Idents(seurat_object) <- seurat_object@meta.data$condition
+  seurat_object_downsampled <- subset(seurat_object, downsample = base_n_cells)
+  return(seurat_object_downsampled)
+}
 
 
