@@ -62,9 +62,6 @@ saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.r
 #   writeH5AD(sce.object, file.path("pre_processing/h5ad_by_cluster",paste(this_cluster,".h5ad",sep="")),X_name = "counts")
 # }
 
-#load main data ----
-seurat_oi <- readRDS(file.path(pre_processing_filepath,"seurat_object_oi.rds"))
-
 #load reference data ----
 L.set <- loadLSet(reference_filepath,species)
 enrichr_database <- loadEnrichrDatabase(reference_filepath,species)
@@ -94,7 +91,7 @@ seurat_oi <- subset(seurat_oi,subset = cluster %in% clusters_passing_CpC_filter)
 ##############
 decipher_seurat <- metaCellModule(
   seurat_object = seurat_oi,
-  min_meta_cells = param_min_n_cells
+  min_meta_cells = 100
 )
 
 saveRDS(decipher_seurat,file.path(output_data_filepath,"pseudobulk_seurat.rds"))
@@ -105,7 +102,7 @@ saveRDS(decipher_seurat,file.path(output_data_filepath,"pseudobulk_seurat.rds"))
 decipher_seurat_lr <- subset(decipher_seurat,features = unique(c(L.set$ligand,L.set$receptor)))
 
 feature_statistics <- getFeatureStatistics(
-  features=all_ligand_receptors,
+  features=unique(c(L.set$ligand,L.set$receptor)),
   seuratObj=decipher_seurat)
 
 expressed_ligands <- getFilteredLigands(
@@ -120,7 +117,7 @@ for(this_cluster in unique(decipher_seurat$cluster)){
   #main object
   decipher_seurat_this_cluster <- subset(decipher_seurat,subset = cluster == this_cluster)
   #be careful with
-  Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
+  SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
   #I call downsampled for the interaction matrix, but normal for regulon scores,
   #should just use the normal one and control max meta cells above in the meta cell component
   decipher_seurat_this_cluster_downsampled <- downsampleSeuratByCondition(
@@ -166,7 +163,7 @@ for(this_cluster in unique(decipher_seurat$cluster)){
   significant_regulon_deltas_this_cluster <- getSignificantRegulons(regulon_deltas_this_cluster)
 
   #### find target genes for each top differentially expressed regulons and calculate diff expr. ----
-  Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster$condition
+  SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster$condition
   #wait but this needs to align to my GRN right?
   significant_regulon_markers_by_cluster[[this_cluster]] <- getDifferentiallyExpressedTargetsForRegulons(
     seuratObj = decipher_seurat_this_cluster,
@@ -210,7 +207,7 @@ for(this_cluster in unique(decipher_seurat$cluster)){
 
     tf.merged <- regulon_scores_this_cluster[this.tf,colnames(interaction_potentials_matrix_clusters)]
 
-    rf <- randomForest(
+    rf <- randomForest::randomForest(
       x = t(interaction_potentials_matrix_clusters),
       y=tf.merged,
       ntree = 100,

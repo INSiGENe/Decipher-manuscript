@@ -592,8 +592,8 @@ metaCellModule <- function(seurat_object,min_meta_cells){
 
   seurat_pseudo_bulk <- Seurat::NormalizeData(seurat_pseudo_bulk,normalization.method="RC",scale.factor = 100000)
 
-  DefaultAssay(seurat_pseudo_bulk) <- "RNA"
-  Idents(seurat_pseudo_bulk) <- seurat_pseudo_bulk@meta.data$cluster
+  SeuratObject::DefaultAssay(seurat_pseudo_bulk) <- "RNA"
+  SeuratObject::Idents(seurat_pseudo_bulk) <- seurat_pseudo_bulk@meta.data$cluster
 
   return(seurat_pseudo_bulk)
 }

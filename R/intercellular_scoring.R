@@ -335,7 +335,7 @@ getRepresentativeInteractionsForMTOClusters <- function(mtoInteractionsClusters,
 #' @export
 calculateInteractionDeltas <- function(interaction_potentials_matrix_this_cluster,decipher_seurat_lr){
   new_seurat <- Seurat::CreateSeuratObject(counts = interaction_potentials_matrix_this_cluster,meta.data = decipher_seurat_lr@meta.data[colnames(interaction_potentials_matrix_this_cluster),])
-  Idents(new_seurat) <- new_seurat$condition
+  SeuratObject::Idents(new_seurat) <- new_seurat$condition
   # Perform differential expression analysis to find markers between specified conditions
   interaction_deltas <- FindMarkers(new_seurat,ident.1 = "case",logfc.threshold = 0.1)
   interaction_deltas <- interaction_deltas %>%
@@ -408,5 +408,70 @@ getInteractionPotentialsMatrixThisCluster <- function(seurat_obj,seurat_obj_this
   }
 
   return(interaction_potentials_matrix_this_cluster)
+}
+
+
+#' Generate Interaction Potential Matrix for Representative Interactions
+#'
+#' This function analyzes interaction potentials for a specific cluster and categorizes
+#' interactions between receptors and ligands into one-to-one and many-to-one types.
+#' It then identifies representative interactions for the many-to-one category based on
+#' clustering of interaction potentials. This helps in reducing complexity and focusing
+#' on representative interaction dynamics within the cluster.
+#'
+#' @param data_this_cluster_downsampled_receptors Matrix of receptor expression data
+#'        for a downsampled cluster.
+#' @param selected_lr_pairs Data frame of selected ligand-receptor pairs.
+#' @param interaction_potentials_matrix_this_cluster Matrix of interaction potentials for the cluster.
+#' @param cytosig_ligands Vector of prioritized benchmarking ligands used to determine
+#'        representative interactions in many-to-one clusters.
+#'
+#' @return A matrix that combines the interaction potentials for one-to-one interactions
+#'         and representative interactions for many-to-one clusters.
+#'
+#' @examples
+#' # Assuming the required matrices and data frames are predefined:
+#' interaction_matrix <- getInteractionPotentialMatrixForRepresentativeInteractions(
+#'   data_this_cluster_downsampled_receptors = receptor_data,
+#'   selected_lr_pairs = lr_pairs,
+#'   interaction_potentials_matrix_this_cluster = interaction_matrix,
+#'   cytosig_ligands = benchmarking_ligands
+#' )
+#'
+#' @export
+getInteractionPotentialMatrixForRepresentativeInteractions <- function(data_this_cluster_downsampled_receptors,selected_lr_pairs,interaction_potentials_matrix_this_cluster,cytosig_ligands){
+
+  interaction_mapping_table <-  getInteractionMappingTable(
+    receptorMatrix = data_this_cluster_downsampled_receptors,
+    ligandSet = selected_lr_pairs
+  )
+
+  #split matrix into interactions comprised of receptors with a unique ligand (one-to-one), and interactions of receptors with multiple ligands (many-to-one)
+  one_to_one_interactions <- intersect(getOneToOneInteractions(interaction_mapping_table),rownames(interaction_potentials_matrix_this_cluster))
+  many_to_one_interactions <- intersect(getManyToOneInteractions(interaction_mapping_table),rownames(interaction_potentials_matrix_this_cluster))
+
+  interaction_potentials_matrix_this_cluster_oto <- interaction_potentials_matrix_this_cluster[one_to_one_interactions,]
+  interaction_potentials_matrix_this_cluster_mto <- interaction_potentials_matrix_this_cluster[many_to_one_interactions,]
+
+
+  ## correlation clusters for many-to-one interactions ----
+  mto_interactions_clusters <- getCorrelationClusters(
+    interactionPotentialsMatrixMTO = interaction_potentials_matrix_this_cluster_mto,
+    interactionMappingTable = interaction_mapping_table,
+    pctMTOReceptors = 1.15,
+    correlationMethod = "spearman",
+    clusteringMethod = "complete")
+
+  ## representative interaction for each cluster ----
+  representative_interactions_mto <- getRepresentativeInteractionsForMTOClusters(
+    mtoInteractionsClusters = mto_interactions_clusters,
+    interactionMappingTable = interaction_mapping_table,
+    prioritizedBenchmarkingLigands = cytosig_ligands
+  )
+
+  ## cluster-based matrix from random forest -----
+  interaction_potentials_matrix_this_cluster_mto_representative <- interaction_potentials_matrix_this_cluster[representative_interactions_mto$interaction,]
+  interaction_potentials_matrix_clusters <- rbind(interaction_potentials_matrix_this_cluster_oto,interaction_potentials_matrix_this_cluster_mto_representative)
+
 }
 

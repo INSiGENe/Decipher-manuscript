@@ -11,7 +11,7 @@
 #' @param targetCt Target count.
 #' @return A list containing markers for each regulon.
 getDifferentiallyExpressedTargetsForRegulons <- function(seuratObj, regulonNames, logFcThreshold, grnDf, targetCt) {
-  Idents(seuratObj) <- seuratObj$condition
+  SeuratObject::Idents(seuratObj) <- seuratObj$condition
 
   regulonWithDiffTargets <- list()
 

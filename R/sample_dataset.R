@@ -38,7 +38,7 @@ generateSampleSeuratFromExperimentHub <- function(min_cells_per_cluster_conditio
   kang.seurat[["RNA"]] <- kang.seurat[["originalexp"]]
 
   # Set the default assay to "RNA" for downstream analysis
-  DefaultAssay(kang.seurat) <- "RNA"
+  SeuratObject::DefaultAssay(kang.seurat) <- "RNA"
 
   # remove 'originalexp' assay
   kang.seurat[["originalexp"]] <- NULL
