@@ -3,24 +3,6 @@
 #load decipher package -----
 library(devtools)
 load_all()
-#libraries ----
-library(randomForest) #4.7-1.1
-library(ggbeeswarm) #0.7.2
-library(pagoda2) #1.0.10
-library(Seurat) #4.3.0.1
-library(enrichR) #3.2
-library(BMS) #0.3.5
-library(babelgene) #22.9
-#library(magrittr) #2.0.3
-#library(tibble) #3.2.1
-#library(stringr) #1.5.0
-#library(Matrix) #1.6-0
-#library(SeuratObject) #4.1.3
-#library(tidyr) #1.3.0
-
-#the libraries below are to create a sample analysis
-library(basilisk) #1.11.2
-library(zellkonverter) #1.9.0
 
 #global options ----
 set.seed(123)
@@ -219,11 +201,20 @@ for(this_cluster in unique(decipher_seurat$cluster)){
   ## run random forest on each regulon -----
   all_rf_results <- list()
   for(this.tf in significant_regulon_deltas_this_cluster$name){
+
     ind.this.tf <- which(significant_regulon_deltas_this_cluster$name == this.tf)
+
     val.this.tf <- significant_regulon_deltas_this_cluster$deltaPagoda[ind.this.tf]
+
     print(paste("calculating forest for",this.tf))
+
     tf.merged <- regulon_scores_this_cluster[this.tf,colnames(interaction_potentials_matrix_clusters)]
-    rf <- randomForest(x = t(interaction_potentials_matrix_clusters),y=tf.merged, ntree = 100,importance=T)
+
+    rf <- randomForest(
+      x = t(interaction_potentials_matrix_clusters),
+      y=tf.merged,
+      ntree = 100,
+      importance=T)
 
     imp.df <- extractDecipherResults(
       random_forest_results = rf,
@@ -259,8 +250,6 @@ for(this_cluster in unique(decipher_seurat$cluster)){
 
   de_markers_this_cluster$gene <- rownames(de_markers_this_cluster)
 
-  ##enrichr ----
-  #enrichr on transcription factors
   regulon_results_df <- enrichResults(de_markers_this_cluster,significant_regulon_deltas_this_cluster,regulon_this_cluster,enrichr_database)
 
   enrichr_results_by_cluster[[this_cluster]] <- regulon_results_df
