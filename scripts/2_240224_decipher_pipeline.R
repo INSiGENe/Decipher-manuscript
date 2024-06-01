@@ -51,13 +51,10 @@ dir.create(output_importances_filepath,recursive=TRUE)
 
 #Parameters: analysis ----
 flag.normalize.non.log <- FALSE
-flag.co.grn <- TRUE
 max_n_cells <- 600
 param_default_enricher_g_size <- 300
-param_min_ligand_expr_in_cluster <- 0.1
 param_min_n_cells <- 100
 param_max_n_cells <- 600
-param_min_receptor_expr_in_cluster <- 0.1
 param_n_sample_regulons <- 20
 
 ##output objects initialize ----
@@ -144,51 +141,33 @@ saveRDS(decipher_seurat,file.path(output_data_filepath,"pseudobulk_seurat.rds"))
 ##############
 decipher_seurat_lr <- subset(decipher_seurat,features = unique(c(L.set$ligand,L.set$receptor)))
 
-#OUTPUT:
 feature_statistics <- getFeatureStatistics(
   features=all_ligand_receptors,
   seuratObj=decipher_seurat)
 
-
-expressed_ligands <- getFilteredLigands(decipher_seurat,L.set,param_min_ligand_expr_in_cluster)
+expressed_ligands <- getFilteredLigands(
+  decipher_seurat,
+  L.set,
+  param_min_ligand_expr_in_cluster = 0.1)
 
 ind_case <- which(decipher_seurat$condition == "case")
 data_decipher_seurat_case <- decipher_seurat@assays$RNA@data[,ind_case]
 data_decipher_seurat_control <- decipher_seurat@assays$RNA@data[,-ind_case]
 
-#run DECIPHER pipeline-----
-all_clusters <- unique(decipher_seurat$cluster)
-
-for(this_cluster in all_clusters){
-  print(paste("calculating scores for",this_cluster))
-  this_cluster.rds <- paste(this_cluster,"rds",sep=".")
-  this_cluster.csv <- paste(this_cluster,"csv",sep=".")
-
-  ###reference objects ----
-  # interactions
-  selected_receptors <- getFilteredReceptorsForCluster(decipher_seurat,L.set,param_min_receptor_expr_in_cluster,this_cluster)
+#DECIPHER analysis-----
+for(this_cluster in unique(decipher_seurat$cluster)){
+  #used to be called selected_receptors
+  expressed_receptors_this_clusters <- getFilteredReceptorsForCluster(
+    decipher_seurat,
+    L.set,
+    param_min_receptor_expr_in_cluster = 0.1,
+    this_cluster)
 
   L_set_relevant_features <- L.set %>%
-    filter(receptor %in% selected_receptors & ligand %in% expressed_ligands)
+    filter(receptor %in% expressed_receptors_this_clusters & ligand %in% expressed_ligands)
 
-  # regulons
-  if(!file.exists(file.path(output_filepath,"../celloracle/data/GRN",this_cluster.csv))){
-    warning("no cell oracle grn found for this cluster")
-    next
-  }
 
-  regulon_this_cluster <- read.csv(file.path(output_filepath,"../celloracle/data/GRN",this_cluster.csv))
-  regulon_this_cluster <- regulon_this_cluster[,-1]
-
-  if(flag.co.grn){
-    #trim GRN using CellOracle results
-    regulon_this_cluster = trimGRN(
-      grn_df = regulon_this_cluster,
-      pValue = 0.01,
-      topEdges = 20000,
-      minTargets = 20)
-  }
-
+  regulon_this_cluster <- getRegulon(output_filepath,this_cluster)
   regulon_this_cluster_capped <- capRegulon(regulon_this_cluster,n_top = 40)
   #regulon_this_cluster_capped_2 <- capRegulon_2(regulon_this_cluster,n_top = 40)
 
@@ -473,12 +452,13 @@ decipher_scores_by_cluster <- addListNameToDFElements(decipher_scores_by_cluster
 
 #save DECIPHER ----
 saveRDS(regulon_scores_by_cluster,file.path(output_data_filepath,"regulon_scores_by_cluster.rds"))
-saveRDS(decipher_scores_by_regulon_and_cluster,file.path(output_data_filepath,"decipher_scores_by_regulon_and_cluster.rds"))
-saveRDS(interaction_potential_by_clusters,file.path(output_data_filepath,"interaction_potential_by_clusters.rds"))
+saveRDS(regulon_grns_by_cluster,file.path(output_data_filepath,"regulon_grns_by_cluster.rds"))
 saveRDS(regulon_deltas_by_cluster,file.path(output_data_filepath,"regulon_deltas_by_cluster.rds"))
 saveRDS(significant_regulons_by_cluster,file.path(output_data_filepath,"significant_regulons_by_cluster.rds"))
 saveRDS(significant_regulon_markers_by_cluster,file.path(output_data_filepath,"significant_regulon_markers_by_cluster.rds"))
-saveRDS(regulon_grns_by_cluster,file.path(output_data_filepath,"regulon_grns_by_cluster.rds"))
+
+saveRDS(decipher_scores_by_regulon_and_cluster,file.path(output_data_filepath,"decipher_scores_by_regulon_and_cluster.rds"))
+saveRDS(interaction_potential_by_clusters,file.path(output_data_filepath,"interaction_potential_by_clusters.rds"))
 saveRDS(lr_markers_by_cluster,file.path(output_data_filepath,"lr_markers_by_cluster.rds"))
 saveRDS(de_markers_by_cluster,file.path(output_data_filepath,"de_markers_by_cluster.rds"))
 saveRDS(enrichr_results_by_cluster,file.path(output_data_filepath,"enrichr_results_by_cluster.rds"))

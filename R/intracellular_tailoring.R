@@ -121,6 +121,54 @@ capRegulon_2 <- function(this_grn, n_top = 100) {
   return(result)
 }
 
+#' Retrieve and Optionally Trim Gene Regulatory Network (GRN) for a Specific Cluster
+#'
+#' This function loads a gene regulatory network (GRN) from a CSV file specific to a given cluster.
+#' It optionally trims the GRN based on thresholds specified for p-values, the number of top edges,
+#' and the minimum number of targets, using the CellOracle toolkit if enabled.
+#'
+#' @param output_filepath The base directory where the CellOracle data and GRN files are stored.
+#' @param this_cluster The name of the cluster for which the GRN is to be retrieved.
+#' @param flag.co.grn Logical flag indicating whether to trim the GRN using CellOracle criteria.
+#'        If TRUE, the GRN is trimmed according to specified parameters.
+#'
+#' @return A data frame representing the GRN for the specified cluster. If no GRN file is found,
+#'         a warning is issued and the function returns `NULL`.
+#'
+#' @examples
+#' # Assuming the necessary files are in 'path/to/output', and you're interested in 'Cluster_1':
+#' regulon_data <- getRegulon(
+#'   output_filepath = "path/to/output",
+#'   this_cluster = "Cluster_1",
+#'   flag.co.grn = TRUE
+#' )
+#'
+#' @importFrom utils read.csv
+#' @export
+getRegulon <- function(output_filepath,this_cluster,flag.co.grn=TRUE){
+
+regulon_filepath <- file.path(output_filepath,"cellOracle/data/GRN",paste(this_cluster,"csv",sep="."))
+# check if regulon exists
+if(!file.exists(regulon_filepath)){
+  warning("no cell oracle grn found for this cluster")
+  next
+}
+
+regulon_this_cluster <- read.csv(regulon_filepath)
+regulon_this_cluster <- regulon_this_cluster[,-1]
+
+if(flag.co.grn){
+  #trim GRN using CellOracle results
+  regulon_this_cluster <- trimGRN(
+    grn_df = regulon_this_cluster,
+    pValue = 0.01,
+    topEdges = 20000,
+    minTargets = 20)
+}
+
+return(regulon_this_cluster)
+}
+
 
 
 
