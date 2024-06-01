@@ -51,9 +51,6 @@ dir.create(output_importances_filepath,recursive=TRUE)
 
 #Parameters: analysis ----
 flag.normalize.non.log <- FALSE
-max_n_cells <- 600
-param_default_enricher_g_size <- 300
-param_n_sample_regulons <- 20
 
 ##output objects initialize ----
 ligand_scores_result <- list()
@@ -87,25 +84,11 @@ saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.r
 seurat_oi <- readRDS(file.path(pre_processing_filepath,"seurat_object_oi.rds"))
 
 #load reference data ----
-L.set <- getForrestLRDatabase(file.path(reference_filepath,"connectomedb_forrest_lrc2p.csv"))
-L.set <- L.set %>% mutate(interaction = paste(ligand,receptor,sep="-"),
-                          lr = interaction) %>% unique()
-
-cytosig_ligands <- readRDS(file.path(reference_filepath,"cytosig_ligands_human.rds"))
-
-if(species == "human"){
-  enrichr_database <- readRDS(file.path(reference_filepath,"enrichr_database_human.rds"))
-} else if (species == "mouse"){
-  #TODO: check if database in enrichr_database_mouse.rds or enrichr_database_mouse_custom.rds
-  enrichr_database <- readRDS(file.path(reference_filepath,"enrichr_database_mouse.rds"))
-  cytosig_ligands <- convertHumanSymbolsToMouse(cytosig_ligands)
-  L.set <- convertLsetToMouse(L.set)
-} else {
-  stop("Decipher currently only supports human and mouse species.")
-}
+L.set <- loadLSet(reference_filepath,species)
+enrichr_database <- loadEnrichrDatabase(reference_filepath,species)
+cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
 
 #data pre-processing ----
-#define case and control
 case_condition <- condition_oi
 control_condition <- condition_reference
 
@@ -362,11 +345,8 @@ saveRDS(regulon_grns_by_cluster,file.path(output_data_filepath,"regulon_grns_by_
 saveRDS(regulon_deltas_by_cluster,file.path(output_data_filepath,"regulon_deltas_by_cluster.rds"))
 saveRDS(significant_regulons_by_cluster,file.path(output_data_filepath,"significant_regulons_by_cluster.rds"))
 saveRDS(significant_regulon_markers_by_cluster,file.path(output_data_filepath,"significant_regulon_markers_by_cluster.rds"))
-
 saveRDS(interaction_potential_by_clusters,file.path(output_data_filepath,"interaction_potential_by_clusters.rds"))
 saveRDS(interaction_deltas_by_cluster,file.path(output_data_filepath,"interaction_deltas_by_cluster.rds"))
-
-
 saveRDS(decipher_scores_by_regulon_and_cluster,file.path(output_data_filepath,"decipher_scores_by_regulon_and_cluster.rds"))
 saveRDS(lr_markers_by_cluster,file.path(output_data_filepath,"lr_markers_by_cluster.rds"))
 saveRDS(de_markers_by_cluster,file.path(output_data_filepath,"de_markers_by_cluster.rds"))

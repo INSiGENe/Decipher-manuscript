@@ -297,4 +297,106 @@ downsampleSeuratByCondition <- function(seurat_object,param_max_n_cells){
   return(seurat_object_downsampled)
 }
 
+#' Load Ligand-Receptor Set from Reference Database
+#'
+#' This function loads a ligand-receptor interaction set from a specified CSV file within a given directory.
+#' It formats the dataset to include unique ligand-receptor pairs and, if specified, converts the set
+#' for use with mouse data. The function supports customization for different species, currently handling
+#' conversion specific to mouse.
+#'
+#' @param reference_filepath The file path to the directory containing the ligand-receptor CSV file.
+#' @param species A string indicating the species of the dataset, currently supports "mouse" for
+#'        species-specific conversion.
+#'
+#' @return A dataframe of the ligand-receptor set, potentially converted for mouse, including a new
+#'         column 'interaction' that concatenates ligand and receptor names.
+#'
+#' @examples
+#' # Load a ligand-receptor set for mouse from a specified directory:
+#' L.set <- loadLSet("/path/to/directory", "mouse")
+#'
+#' # Load a ligand-receptor set without species conversion:
+#' L.set <- loadLSet("/path/to/directory", "human")
+#'
+#' @importFrom dplyr mutate unique
+#' @importFrom stats setNames
+#' @export
+loadLSet <- function(reference_filepath,species){
+  # Load the ligand-receptor database from a CSV file
+  L.set <- getForrestLRDatabase(file.path(reference_filepath,"connectomedb_forrest_lrc2p.csv"))
+
+  # Format the data to include an 'interaction' column combining ligand and receptor
+  L.set <- L.set %>% mutate(interaction = paste(ligand,receptor,sep="-"),
+                            lr = interaction) %>% unique()
+
+  # If the dataset is for mouse, convert it accordingly
+  if(species == "mouse"){
+    L.set <- convertLsetToMouse(L.set)
+  }
+
+  return(L.set)
+}
+
+#' Load Enrichr Database Based on Species
+#'
+#' This function loads an Enrichr database from a specified path depending on the species indicated.
+#' Currently, it supports loading pre-saved RDS files for human and mouse species. The function
+#' handles species-specific database files, loading the appropriate database based on the species
+#' parameter.
+#'
+#' @param reference_filepath The directory path where the Enrichr database RDS files are stored.
+#' @param species A string specifying the species, which determines the database file to load.
+#'        Valid options are "human" and "mouse".
+#'
+#' @return The loaded Enrichr database as an R object, from the RDS file specific to the given species.
+#'
+#' @examples
+#' # Load the Enrichr database for human:
+#' enrichr_db_human <- loadEnrichrDatabase("/path/to/databases", "human")
+#'
+#' # Load the Enrichr database for mouse:
+#' enrichr_db_mouse <- loadEnrichrDatabase("/path/to/databases", "mouse")
+#'
+#' @importFrom utils readRDS
+#' @export
+loadEnrichrDatabase <- function(reference_filepath,species){
+  if(species == "human"){
+    enrichr_database <- readRDS(file.path(reference_filepath,"enrichr_database_human.rds"))
+  } else if (species == "mouse"){
+    #TODO: check if database in enrichr_database_mouse.rds or enrichr_database_mouse_custom.rds
+    enrichr_database <- readRDS(file.path(reference_filepath,"enrichr_database_mouse.rds"))
+  }
+  return(enrichr_database)
+}
+
+#' Load Cytosig Ligands and Convert for Species if Necessary
+#'
+#' This function loads a set of cytotoxic signaling (Cytosig) ligands from a pre-saved RDS file.
+#' Initially, it assumes the ligands are formatted for human. If the species specified is "mouse",
+#' it converts the ligand symbols from human to mouse using a conversion function. This function is
+#' designed to be adaptable for use with mouse data by converting human gene symbols to mouse.
+#'
+#' @param reference_filepath The directory path where the Cytosig ligands RDS file is stored.
+#' @param species A string specifying the species, which affects whether a conversion is performed.
+#'        The function currently converts the data if "mouse" is specified.
+#'
+#' @return A data frame or list of Cytosig ligands, potentially converted to mouse gene symbols if
+#'         specified by the species parameter.
+#'
+#' @examples
+#' # Load Cytosig ligands for human (no conversion):
+#' ligands_human <- loadCytosigLigands("/path/to/data", "human")
+#'
+#' # Load and convert Cytosig ligands for mouse:
+#' ligands_mouse <- loadCytosigLigands("/path/to/data", "mouse")
+#'
+#' @importFrom utils readRDS
+#' @export
+loadCytosigLigands <- function(reference_filepath,species){
+  cytosig_ligands <- readRDS(file.path(reference_filepath,"cytosig_ligands_human.rds"))
+  if(species == "mouse"){
+    cytosig_ligands <- convertHumanSymbolsToMouse(cytosig_ligands)
+  }
+  return(cytosig_ligands)
+}
 
