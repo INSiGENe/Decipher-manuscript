@@ -205,3 +205,96 @@ plotQC_UpC <- function(seuratObject,outputPath = "data/figures"){
   print(p)
   dev.off()
 }
+
+#' Filter Ligands Based on Expression Threshold in Clusters
+#'
+#' This function extracts ligands that are expressed above a specified threshold in one or more
+#' clusters from a Seurat object. It integrates information about ligands and receptors from
+#' a given dataset, computes feature statistics for these molecules, and filters out those ligands
+#' that meet the expression criteria.
+#'
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data.
+#' @param L.set A dataframe containing columns `ligand` and `receptor`, which lists
+#'        the ligands and their corresponding receptors.
+#' @param param_min_ligand_expr_in_cluster The minimum fraction of cells (expressed as a decimal)
+#'        within any cluster that must express the ligand for it to be considered expressed.
+#'
+#' @return A vector of ligands that are expressed above the specified threshold across clusters.
+#'
+#' @examples
+#' # Assuming 'decipher_seurat' is a Seurat object and 'L.set' is a dataframe
+#' # with ligand and receptor information:
+#' expressed_ligands <- getFilteredLigands(
+#'   decipher_seurat = seurat_object,
+#'   L.set = ligand_receptor_set,
+#'   param_min_ligand_expr_in_cluster = 0.1
+#' )
+#'
+#' @importFrom dplyr filter pull
+#' @export
+getFilteredLigands <- function(decipher_seurat,L.set,param_min_ligand_expr_in_cluster){
+
+  receptors <- unique(L.set$receptor)
+  ligands <- unique(L.set$ligand)
+  all_ligand_receptors <- unique(c(ligands,receptors))
+
+  feature_statistics <- getFeatureStatistics(
+    features=all_ligand_receptors,
+    seuratObj=decipher_seurat)
+
+  expressed_ligands <- feature_statistics %>%
+    dplyr::filter(feature %in% ligands & frac.cells.w.counts > param_min_ligand_expr_in_cluster) %>%
+    dplyr::pull(feature) %>%
+    unique()
+
+  return(expressed_ligands)
+}
+
+
+#' Filter Receptors Based on Expression Threshold within a Specific Cluster
+#'
+#' This function filters out receptors based on their expression levels within a specific cluster
+#' of a Seurat object. It uses a dataset that contains information about both ligands and receptors,
+#' calculates feature statistics for these molecules across the dataset, and returns receptors
+#' that are expressed above a specified threshold in a specified cluster.
+#'
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data.
+#' @param L.set A dataframe containing columns `ligand` and `receptor`, which lists
+#'        the ligands and their corresponding receptors.
+#' @param param_min_receptor_expr_in_cluster The minimum fraction of cells (expressed as a decimal)
+#'        within the specified cluster that must express the receptor for it to be considered expressed.
+#' @param this_cluster The cluster within the Seurat object for which receptors are being filtered.
+#'
+#' @return A vector of receptors that are expressed above the specified threshold within the given cluster.
+#'
+#' @examples
+#' # Assuming 'decipher_seurat' is a Seurat object and 'L.set' is a dataframe
+#' # with ligand and receptor information:
+#' filtered_receptors <- getFilteredReceptorsForCluster(
+#'   decipher_seurat = seurat_object,
+#'   L.set = ligand_receptor_set,
+#'   param_min_receptor_expr_in_cluster = 0.1,
+#'   this_cluster = "Cluster_1"
+#' )
+#'
+#' @importFrom dplyr filter pull
+#' @export
+getFilteredReceptorsForCluster <- function(decipher_seurat,L.set,param_min_receptor_expr_in_cluster,this_cluster){
+
+  receptors <- unique(L.set$receptor)
+  ligands <- unique(L.set$ligand)
+  all_ligand_receptors <- unique(c(ligands,receptors))
+
+  feature_statistics <- getFeatureStatistics(
+    features=all_ligand_receptors,
+    seuratObj=decipher_seurat)
+
+  expressed_receptor <- feature_statistics %>%
+    dplyr::filter(cluster == this_cluster) %>%
+    dplyr::filter(frac.cells.w.counts > param_min_receptor_expr_in_cluster) %>%
+    dplyr::pull(feature) %>%
+    unique()
+
+  return(expressed_receptor)
+
+}

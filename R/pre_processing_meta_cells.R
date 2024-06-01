@@ -479,7 +479,7 @@ KeepClustersWithMtNCellsPerCondition <- function(seurat_object,N){
   # Identify clusters that have any condition with fewer than N cells
   insufficient_clusters <- metadata %>%
     group_by(cluster, condition) %>%
-    summarize(cell_count = n(), .groups = 'drop') %>%
+    summarize(cell_count = dplyr::n(), .groups = 'drop') %>%
     group_by(cluster) %>%
     filter(any(cell_count < N)) %>%
     pull(cluster) %>%
@@ -489,10 +489,112 @@ KeepClustersWithMtNCellsPerCondition <- function(seurat_object,N){
     filter(!cluster %in% insufficient_clusters) %>%
     pull(cell)
 
-  seurat_object@meta.data$cell <- NULL
-
   seurat_object <- subset(seurat_object,cells = cells_to_keep)
 
   return(seurat_object)
+}
+
+
+#' Calculate Suggested Number of Metacell Neighbours
+#'
+#' This function estimates the suggested number of metacell neighbours for a Seurat object. It
+#' iteratively calculates the median UMI counts per cluster and condition, adjusting the counts
+#' to find a minimum k (number of neighbours) such that when divided by k, the count for each
+#' cluster-condition combination remains above a specified minimum threshold. The process involves
+#' filtering out cluster-condition combinations that fall below this threshold until a stable k is found.
+#'
+#' @param seurat_object A Seurat object containing single-cell RNA-seq data.
+#' @param param_min_n_cells The minimum number of cells required per cluster-condition combination
+#' after adjustment for the median UMI count.
+#'
+#' @return An integer representing the suggested number of neighbours (k) to ensure that all
+#' cluster-condition combinations have a sufficient number of cells based on UMI count criteria.
+#'
+#' @examples
+#' # Assuming 'seurat_object' is already created and initialized with necessary data
+#' min_k <- calculate_suggested_number_of_metacell_neighbours(seurat_object, 50)
+#'
+#' @importFrom dplyr group_by summarize
+#' @importFrom stringr str_sub
+#' @export
+calculate_suggested_number_of_metacell_neighbours <- function(seurat_object,param_min_n_cells){
+  UpC <- colSums(seurat_object@assays$RNA@counts)
+  UpCdf <- data.frame(
+    cell = colnames(seurat_object),
+    cluster = stringr::str_sub(seurat_object@meta.data$cluster, start = 1, end = 20),
+    UpC = UpC,
+    condition = seurat_object@meta.data$condition
+  )
+
+  flag <- FALSE
+  this_df <- UpCdf
+  while(flag == FALSE){
+    median_values <- this_df  %>%
+      group_by(cluster, condition) %>%
+      summarize(
+        median_UpC = median(UpC, na.rm = TRUE),
+        count = dplyr::n())
+
+    min_k <- ceiling(10000/min(median_values$median_UpC))
+
+    median_values$adjusted_counts <- floor(median_values$count/min_k)
+    if(min(median_values$adjusted_counts) < param_min_n_cells){
+      ind_remove <- which(median_values$adjusted_counts < param_min_n_cells)
+      clusters_to_remove <- unique(median_values$cluster[ind_remove])
+      this_df <- this_df[-which(this_df$cluster %in% clusters_to_remove),]
+    } else {
+      #why do I remove one from here? because it includes the meta cell itself
+      min_k <- min_k-1
+      flag <- TRUE
+
+    }
+
+  }
+
+  # UMI of all groups is above 10,000 (as per PISCES and cite)
+  # Calculate the median UpC value by cluster and condition
+  return(min_k)
+}
+
+#' Meta Cell Module Processing
+#'
+#' This function orchestrates several steps to process a Seurat object through meta cell analysis.
+#' It calculates the suggested number of meta cell neighbours based on a minimum meta cell threshold,
+#' generates meta cell matrices, creates a pseudo-bulk Seurat object from these matrices, and
+#' normalizes the data. The normalization is done using a 'RC' method with a specific scale factor.
+#'
+#' @param seurat_object A Seurat object containing single-cell RNA-seq data.
+#' @param min_meta_cells The minimum number of meta cells required for processing.
+#'
+#' @return A Seurat object that has been transformed into a pseudo-bulk format and normalized.
+#'
+#' @examples
+#' # Assuming 'seurat_object' is a Seurat object prepared for meta cell analysis
+#' result_seurat <- metaCellModule(seurat_object, 50)
+#'
+#' @importFrom Seurat NormalizeData
+#' @export
+metaCellModule <- function(seurat_object,min_meta_cells){
+  suggested_number_of_metacell_neighbours <- calculate_suggested_number_of_metacell_neighbours(seurat_object,min_meta_cells)
+
+  MetaCellMatrices <- generateMetaCellMatrices(
+    seuratObj = seurat_object,
+    paramMaxScCells = 1200*(suggested_number_of_metacell_neighbours+1),
+    paramK = suggested_number_of_metacell_neighbours,
+    paramMinMetaCells = min_meta_cells)
+
+  seurat_pseudo_bulk <- generatePseudoBulkSeurat(
+    pseudobulkList = MetaCellMatrices)
+
+  #plotQC_UpC(seurat_pseudo_bulk,output_figures_filepath)
+  rm(MetaCellMatrices)
+
+
+  seurat_pseudo_bulk <- Seurat::NormalizeData(seurat_pseudo_bulk,normalization.method="RC",scale.factor = 100000)
+
+  DefaultAssay(seurat_pseudo_bulk) <- "RNA"
+  Idents(seurat_pseudo_bulk) <- seurat_pseudo_bulk@meta.data$cluster
+
+  return(seurat_pseudo_bulk)
 }
 

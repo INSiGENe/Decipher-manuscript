@@ -17,12 +17,13 @@
 #' @importFrom Seurat NormalizeData
 #' @importFrom SeuratObject as.Seurat DefaultAssay
 #' @importFrom dplyr filter
+#' @importFrom AnnotationHub query
 #' @export
 generateSampleSeuratFromExperimentHub <- function(min_cells_per_cluster_condition){
   # Load the ExperimentHub library and create an ExperimentHub object
   eh <- ExperimentHub()
   # Search for datasets related to "Kang" in the ExperimentHub
-  query(eh, "Kang")
+  AnnotationHub::query(eh, "Kang")
   # Retrieve the specific dataset with ID "EH2259"
   sce <- eh[["EH2259"]]
 
@@ -57,8 +58,9 @@ generateSampleSeuratFromExperimentHub <- function(min_cells_per_cluster_conditio
   #dataset specific meta data terms being formatted for Decipher analysis
   kang.seurat$condition <- kang.seurat$stim
   kang.seurat$cluster <- kang.seurat$cell
+  kang.seurat$original_cluster <- kang.seurat$cluster
+  kang.seurat$cell <- NULL
   kang.seurat$cluster <- cleanSymbols(kang.seurat$cluster)
-
   kang.seurat <- KeepClustersWithMtNCellsPerCondition(kang.seurat,N = min_cells_per_cluster_condition)
   return(kang.seurat)
 }

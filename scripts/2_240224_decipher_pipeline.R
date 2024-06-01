@@ -4,8 +4,6 @@
 library(devtools)
 load_all()
 #libraries ----
-library(dplyr) #1.1.2
-library(ggplot2) #3.4.2
 library(randomForest) #4.7-1.1
 library(ggbeeswarm) #0.7.2
 library(pagoda2) #1.0.10
@@ -21,83 +19,11 @@ library(babelgene) #22.9
 #library(tidyr) #1.3.0
 
 #the libraries below are to create a sample analysis
-library(tidyr) #1.3.0
-library(stringr) #1.5.0
 library(basilisk) #1.11.2
 library(zellkonverter) #1.9.0
 
 #global options ----
 set.seed(123)
-
-#user defined functions ----
-#to add to package
-#meta cell module
-metaCellModule <- function(seurat_object,min_meta_cells){
-  suggested_number_of_metacell_neighbours <- calculate_suggested_number_of_metacell_neighbours(seurat_object,min_meta_cells)
-
-  MetaCellMatrices <- generateMetaCellMatrices(
-    seuratObj = seurat_object,
-    paramMaxScCells = 1200*(suggested_number_of_metacell_neighbours+1),
-    paramK = suggested_number_of_metacell_neighbours,
-    paramMinMetaCells = min_meta_cells)
-
-  parameter_record <- data.frame(
-    "k" = k_parameter,
-    "min_meta_cells" = min_meta_cells
-  )
-  write.csv(parameter_record,file.path(output_data_filepath,"parameter_record.csv"))
-
-  seurat_pseudo_bulk <- generatePseudoBulkSeurat(
-    pseudobulkList = MetaCellMatrices)
-
-  #plotQC_UpC(seurat_pseudo_bulk,output_figures_filepath)
-  rm(MetaCellMatrices)
-
-
-  seurat_pseudo_bulk <- Seurat::NormalizeData(seurat_pseudo_bulk,normalization.method="RC",scale.factor = 100000)
-  return(seurat_pseudo_bulk)
-}
-#ok so let's pick this parameter automatically
-calculate_suggested_number_of_metacell_neighbours <- function(seurat_object,param_min_n_cells){
-  UpC <- colSums(seurat_oi@assays$RNA@counts)
-  UpCdf <- data.frame(
-    cell = colnames(seurat_oi),
-    cluster = stringr::str_sub(seurat_oi@meta.data$cluster, start = 1, end = 20),
-    UpC = UpC,
-    condition = seurat_oi@meta.data$condition
-  )
-
-  flag <- FALSE
-  this_df <- UpCdf
-  while(flag == FALSE){
-    median_values <- this_df  %>%
-      group_by(cluster, condition) %>%
-      summarize(
-        median_UpC = median(UpC, na.rm = TRUE),
-        count = n())
-
-    min_k <- ceiling(10000/min(median_values$median_UpC))
-
-    median_values$adjusted_counts <- floor(median_values$count/min_k)
-    if(min(median_values$adjusted_counts) < param_min_n_cells){
-      ind_remove <- which(median_values$adjusted_counts < param_min_n_cells)
-      clusters_to_remove <- unique(median_values$cluster[ind_remove])
-      this_df <- this_df[-which(this_df$cluster %in% clusters_to_remove),]
-    } else {
-      #why do I remove one from here? because it includes the meta cell itself
-      min_k <- min_k-1
-      flag <- TRUE
-
-    }
-
-  }
-
-  # UMI of all groups is above 10,000 (as per PISCES and cite)
-  # Calculate the median UpC value by cluster and condition
-
-  return(min_k)
-}
-
 
 #Parameters: dataset ----
 min_cells_per_cluster_condition <- 100
@@ -150,7 +76,7 @@ interaction_deltas_by_cluster <- list()
 
 #create sample dataset ----
 #including seurat object and h5ad objects
-seurat_oi <- generateSampleSeuratFromExperimentHub()
+seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition)
 ##save outputs for Decipher analysis
 saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.rds"))
 #in addition, we need to create python-compatible h5ad objects for the CO pipeline, here, I've opted against it
@@ -201,8 +127,8 @@ plotQC_CpC(CpC_data,outputPath=output_figures_filepath)
 param_min_CpC <- 100
 #PARAM: select the minimum number of cells per cluster + condition
 clusters_passing_CpC_filter <- getClustersPassingCpCFilter(CpC_data,param_min_CpC)
-
 seurat_oi <- subset(seurat_oi,subset = cluster %in% clusters_passing_CpC_filter)
+
 ##############
 ##Meta cells ----
 ##############
@@ -216,25 +142,15 @@ saveRDS(decipher_seurat,file.path(output_data_filepath,"pseudobulk_seurat.rds"))
 ##############
 #data pre-processing: main analysis ----
 ##############
-DefaultAssay(decipher_seurat) <- "RNA"
-Idents(decipher_seurat) <- decipher_seurat@meta.data$cluster
-
-receptors <- unique(L.set$receptor)
-ligands <- unique(L.set$ligand)
-all_ligand_receptors <- unique(c(ligands,receptors))
-
-#OUTPUT:
-decipher_seurat_lr <- subset(decipher_seurat,features = all_ligand_receptors)
+decipher_seurat_lr <- subset(decipher_seurat,features = unique(c(L.set$ligand,L.set$receptor)))
 
 #OUTPUT:
 feature_statistics <- getFeatureStatistics(
   features=all_ligand_receptors,
   seuratObj=decipher_seurat)
 
-expressed_ligands <- feature_statistics %>%
-  filter(feature %in% ligands & frac.cells.w.counts > param_min_ligand_expr_in_cluster) %>%
-  pull(feature) %>%
-  unique()
+
+expressed_ligands <- getFilteredLigands(decipher_seurat,L.set,param_min_ligand_expr_in_cluster)
 
 ind_case <- which(decipher_seurat$condition == "case")
 data_decipher_seurat_case <- decipher_seurat@assays$RNA@data[,ind_case]
@@ -250,11 +166,7 @@ for(this_cluster in all_clusters){
 
   ###reference objects ----
   # interactions
-  selected_receptors <- feature_statistics %>%
-    dplyr::filter(cluster == this_cluster) %>%
-    dplyr::filter(frac.cells.w.counts > param_min_receptor_expr_in_cluster) %>%
-    pull(feature) %>%
-    unique()
+  selected_receptors <- getFilteredReceptorsForCluster(decipher_seurat,L.set,param_min_receptor_expr_in_cluster,this_cluster)
 
   L_set_relevant_features <- L.set %>%
     filter(receptor %in% selected_receptors & ligand %in% expressed_ligands)
