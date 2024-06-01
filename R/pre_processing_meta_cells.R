@@ -453,3 +453,46 @@ calculateMinimumN <- function(groups, min_counts, paramPairings) {
   # Return the updated paramPairings
   return(paramPairings)
 }
+
+
+#' Remove Clusters with Insufficient Cells Per Condition
+#'
+#' This function filters out clusters from a Seurat object where any condition within a cluster
+#' has fewer than a specified number of cells, N. It processes the metadata to identify clusters
+#' that fail to meet this criterion across their conditions, and then subsets the Seurat object
+#' to exclude these clusters.
+#'
+#' @param seurat_object A Seurat object containing cell metadata with columns `cluster` and `condition`.
+#' @param N The minimum number of cells required per condition within each cluster.
+#'
+#' @return A Seurat object with only clusters that have all conditions meeting the specified cell count threshold.
+#'
+#' @examples
+#' # Assuming 's' is a Seurat object and we require at least 100 cells per condition
+#' s_filtered <- KeepClustersWithMtNCellsPerCondition(s, 100)
+#'
+#' @export
+KeepClustersWithMtNCellsPerCondition <- function(seurat_object,N){
+  # Convert row names to a column for easier manipulation
+  metadata <- seurat_object@meta.data %>%
+    tibble::rownames_to_column(var = "cell")
+  # Identify clusters that have any condition with fewer than N cells
+  insufficient_clusters <- metadata %>%
+    group_by(cluster, condition) %>%
+    summarize(cell_count = n(), .groups = 'drop') %>%
+    group_by(cluster) %>%
+    filter(any(cell_count < N)) %>%
+    pull(cluster) %>%
+    unique()
+  # Filter out cells that belong to insufficient clusters
+  cells_to_keep <- metadata %>%
+    filter(!cluster %in% insufficient_clusters) %>%
+    pull(cell)
+
+  seurat_object@meta.data$cell <- NULL
+
+  seurat_object <- subset(seurat_object,cells = cells_to_keep)
+
+  return(seurat_object)
+}
+

@@ -1,37 +1,129 @@
 #main Decipher analysis pipeline
 #Warning: please ensure that the seurat object is pre-processed as per our vignette before running
-
-
+#load decipher package -----
+library(devtools)
+load_all()
 #libraries ----
-library(dplyr)
-library(ggplot2)
-library(randomForest)
-library(ggbeeswarm)
-library(pagoda2)
-library(Seurat)
-library(enrichR)
-library(BMS)
-library(babelgene)
+library(dplyr) #1.1.2
+library(ggplot2) #3.4.2
+library(randomForest) #4.7-1.1
+library(ggbeeswarm) #0.7.2
+library(pagoda2) #1.0.10
+library(Seurat) #4.3.0.1
+library(enrichR) #3.2
+library(BMS) #0.3.5
+library(babelgene) #22.9
+#library(magrittr) #2.0.3
+#library(tibble) #3.2.1
+#library(stringr) #1.5.0
+#library(Matrix) #1.6-0
+#library(SeuratObject) #4.1.3
+#library(tidyr) #1.3.0
+
+#the libraries below are to create a sample analysis
+library(tidyr) #1.3.0
+library(stringr) #1.5.0
+library(basilisk) #1.11.2
+library(zellkonverter) #1.9.0
 
 #global options ----
 set.seed(123)
 
-#dataset parameters ----
-parameters <- readParameters("../dataset_parameters/jesse.txt")
-pre_processing_filepath <- file.path(parameters$dataset_location,"pre_processing")
-reference_filepath <- file.path("../../reference_data")
-output_filepath <- file.path(parameters$dataset_location,"decipher_Feb4")
+#user defined functions ----
+#to add to package
+#meta cell module
+metaCellModule <- function(seurat_object,min_meta_cells){
+  suggested_number_of_metacell_neighbours <- calculate_suggested_number_of_metacell_neighbours(seurat_object,min_meta_cells)
+
+  MetaCellMatrices <- generateMetaCellMatrices(
+    seuratObj = seurat_object,
+    paramMaxScCells = 1200*(suggested_number_of_metacell_neighbours+1),
+    paramK = suggested_number_of_metacell_neighbours,
+    paramMinMetaCells = min_meta_cells)
+
+  parameter_record <- data.frame(
+    "k" = k_parameter,
+    "min_meta_cells" = min_meta_cells
+  )
+  write.csv(parameter_record,file.path(output_data_filepath,"parameter_record.csv"))
+
+  seurat_pseudo_bulk <- generatePseudoBulkSeurat(
+    pseudobulkList = MetaCellMatrices)
+
+  #plotQC_UpC(seurat_pseudo_bulk,output_figures_filepath)
+  rm(MetaCellMatrices)
+
+
+  seurat_pseudo_bulk <- Seurat::NormalizeData(seurat_pseudo_bulk,normalization.method="RC",scale.factor = 100000)
+  return(seurat_pseudo_bulk)
+}
+#ok so let's pick this parameter automatically
+calculate_suggested_number_of_metacell_neighbours <- function(seurat_object,param_min_n_cells){
+  UpC <- colSums(seurat_oi@assays$RNA@counts)
+  UpCdf <- data.frame(
+    cell = colnames(seurat_oi),
+    cluster = stringr::str_sub(seurat_oi@meta.data$cluster, start = 1, end = 20),
+    UpC = UpC,
+    condition = seurat_oi@meta.data$condition
+  )
+
+  flag <- FALSE
+  this_df <- UpCdf
+  while(flag == FALSE){
+    median_values <- this_df  %>%
+      group_by(cluster, condition) %>%
+      summarize(
+        median_UpC = median(UpC, na.rm = TRUE),
+        count = n())
+
+    min_k <- ceiling(10000/min(median_values$median_UpC))
+
+    median_values$adjusted_counts <- floor(median_values$count/min_k)
+    if(min(median_values$adjusted_counts) < param_min_n_cells){
+      ind_remove <- which(median_values$adjusted_counts < param_min_n_cells)
+      clusters_to_remove <- unique(median_values$cluster[ind_remove])
+      this_df <- this_df[-which(this_df$cluster %in% clusters_to_remove),]
+    } else {
+      #why do I remove one from here? because it includes the meta cell itself
+      min_k <- min_k-1
+      flag <- TRUE
+
+    }
+
+  }
+
+  # UMI of all groups is above 10,000 (as per PISCES and cite)
+  # Calculate the median UpC value by cluster and condition
+
+  return(min_k)
+}
+
+
+#Parameters: dataset ----
+min_cells_per_cluster_condition <- 100
+species <-  "human"
+condition_oi = "ctrl"
+condition_reference = "stim"
+
+#Parameters: directories ----
+dataset_path <- "sample_analysis"
+dir.create(dataset_path)
+pre_processing_path <- file.path(dataset_path,"pre_processing")
+#this variable is duplicated, remove
+pre_processing_filepath <- pre_processing_path
+reference_filepath <- "reference_data"
+output_filepath <- dataset_path
 output_data_filepath <- file.path(output_filepath,"data")
 output_figures_filepath <- file.path(output_filepath,"figures")
 output_importances_filepath <- file.path(output_filepath,"importances")
-
 #directory set up----
+dir.create(pre_processing_path)
+dir.create(file.path(pre_processing_path,"h5ad_by_cluster"))
 dir.create(output_data_filepath,recursive=TRUE)
 dir.create(output_figures_filepath,recursive=TRUE)
 dir.create(output_importances_filepath,recursive=TRUE)
 
-
-#analysis parameters ----
+#Parameters: analysis ----
 flag.normalize.non.log <- FALSE
 flag.co.grn <- TRUE
 max_n_cells <- 600
@@ -56,17 +148,33 @@ de_markers_by_cluster <- list()
 enrichr_results_by_cluster <- list()
 interaction_deltas_by_cluster <- list()
 
-#load data ----
+#create sample dataset ----
+#including seurat object and h5ad objects
+seurat_oi <- generateSampleSeuratFromExperimentHub()
+##save outputs for Decipher analysis
+saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.rds"))
+#in addition, we need to create python-compatible h5ad objects for the CO pipeline, here, I've opted against it
+#as they are not necessary for this script
+# for(this_cluster in unique(kang.seurat$cluster)){
+#   seurat_object_oi_this_cluster <- subset(kang.seurat,subset = cluster == this_cluster)
+#   sce.object = as.SingleCellExperiment(seurat_object_oi_this_cluster)
+#   sce.object@assays@data[["logcounts"]] <- NULL
+#   writeH5AD(sce.object, file.path("pre_processing/h5ad_by_cluster",paste(this_cluster,".h5ad",sep="")),X_name = "counts")
+# }
+
+#load main data ----
+seurat_oi <- readRDS(file.path(pre_processing_filepath,"seurat_object_oi.rds"))
+
+#load reference data ----
 L.set <- getForrestLRDatabase(file.path(reference_filepath,"connectomedb_forrest_lrc2p.csv"))
 L.set <- L.set %>% mutate(interaction = paste(ligand,receptor,sep="-"),
                           lr = interaction) %>% unique()
 
 cytosig_ligands <- readRDS(file.path(reference_filepath,"cytosig_ligands_human.rds"))
 
-seurat_oi <- readRDS(file.path(pre_processing_filepath,"seurat_object_oi.rds"))
-if(parameters$species == "human"){
+if(species == "human"){
   enrichr_database <- readRDS(file.path(reference_filepath,"enrichr_database_human.rds"))
-} else if (parameters$species == "mouse"){
+} else if (species == "mouse"){
   #TODO: check if database in enrichr_database_mouse.rds or enrichr_database_mouse_custom.rds
   enrichr_database <- readRDS(file.path(reference_filepath,"enrichr_database_mouse.rds"))
   cytosig_ligands <- convertHumanSymbolsToMouse(cytosig_ligands)
@@ -77,8 +185,8 @@ if(parameters$species == "human"){
 
 #data pre-processing ----
 #define case and control
-case_condition <- parameters$condition_oi
-control_condition <- parameters$condition_reference
+case_condition <- condition_oi
+control_condition <- condition_reference
 
 #retain original condition
 seurat_oi@meta.data$orig.condition <- seurat_oi@meta.data$condition
@@ -88,42 +196,22 @@ seurat_oi <- mapConditionsInSeurat(seurat_oi,"condition",case_condition,control_
 ##############
 ##QC ----
 ##############
-#cells per cluster
 CpC_data <- generateQCDataByClusterAndCondition(seurat_oi,max(stringr::str_length(unique(seurat_oi$cluster))))
 plotQC_CpC(CpC_data,outputPath=output_figures_filepath)
 param_min_CpC <- 100
 #PARAM: select the minimum number of cells per cluster + condition
 clusters_passing_CpC_filter <- getClustersPassingCpCFilter(CpC_data,param_min_CpC)
-seurat_oi <- subset(seurat_oi,subset = cluster %in% clusters_passing_CpC_filter)
-#umis per cluster
-plotQC_UpC(seuratObject = seurat_oi,outputPath = output_figures_filepath)
 
+seurat_oi <- subset(seurat_oi,subset = cluster %in% clusters_passing_CpC_filter)
 ##############
 ##Meta cells ----
 ##############
-k_parameter <- 6
-MetaCellMatrices <- generateMetaCellMatrices(
-    seuratObj = seurat_oi,
-    paramMaxScCells = 1200*(k_parameter+1),
-    paramK = k_parameter,
-    paramMinMetaCells = param_min_n_cells)
-
-parameter_record <- data.frame(
-  "k" = k_parameter,
-  "min_meta_cells" = param_min_n_cells
+decipher_seurat <- metaCellModule(
+  seurat_object = seurat_oi,
+  min_meta_cells = param_min_n_cells
 )
-write.csv(parameter_record,file.path(output_data_filepath,"parameter_record.csv"))
 
-seurat_pseudo_bulk <- generatePseudoBulkSeurat(
-  pseudobulkList = MetaCellMatrices)
-
-plotQC_UpC(seurat_pseudo_bulk,output_figures_filepath)
-saveRDS(seurat_pseudo_bulk,file.path(output_data_filepath,"pseudobulk_seurat.rds"))
-
-rm(MetaCellMatrices)
-
-decipher_seurat <- Seurat::NormalizeData(seurat_pseudo_bulk,normalization.method="RC",scale.factor = 100000)
-rm(seurat_pseudo_bulk)
+saveRDS(decipher_seurat,file.path(output_data_filepath,"pseudobulk_seurat.rds"))
 
 ##############
 #data pre-processing: main analysis ----
