@@ -222,46 +222,16 @@ for(this_cluster in unique(decipher_seurat$cluster)){
   interaction_deltas <- calculateInteractionDeltas(interaction_potentials_matrix_this_cluster,decipher_seurat_lr)
   interaction_deltas_by_cluster[[this_cluster]] <- interaction_deltas
 
-
-
   #subset interaction potential matrix to those interactions that have changed between conditions
   interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_this_cluster[rownames(interaction_deltas),]
+
   ## subset interaction_potential matrix by correlation clusters for cluster-based RF ----
-
-  interaction_mapping_table <-  getInteractionMappingTable(
-    receptorMatrix = data_this_cluster_downsampled_receptors,
-    ligandSet = L_set_relevant_features
+  interaction_potentials_matrix_clusters <- getInteractionPotentialMatrixForRepresentativeInteractions(
+    data_this_cluster_downsampled_receptors,
+    selected_lr_pairs = L_set_relevant_features,
+    interaction_potentials_matrix_this_cluster,
+    cytosig_ligands
   )
-
-  #split matrix into interactions comprised of receptors with a unique ligand (one-to-one), and interactions of receptors with multiple ligands (many-to-one)
-  one_to_one_interactions <- intersect(getOneToOneInteractions(interaction_mapping_table),rownames(interaction_potentials_matrix_this_cluster))
-  many_to_one_interactions <- intersect(getManyToOneInteractions(interaction_mapping_table),rownames(interaction_potentials_matrix_this_cluster))
-
-  interaction_potentials_matrix_this_cluster_oto <- interaction_potentials_matrix_this_cluster[one_to_one_interactions,]
-  interaction_potentials_matrix_this_cluster_mto <- interaction_potentials_matrix_this_cluster[many_to_one_interactions,]
-
-
-  ## correlation clusters for many-to-one interactions ----
-  mto_interactions_clusters <- getCorrelationClusters(
-    interactionPotentialsMatrixMTO = interaction_potentials_matrix_this_cluster_mto,
-    interactionMappingTable = interaction_mapping_table,
-    pctMTOReceptors = 1.15,
-    correlationMethod = "spearman",
-    clusteringMethod = "complete")
-
-  ## representative interaction for each cluster ----
-  representative_interactions_mto <- getRepresentativeInteractionsForMTOClusters(
-    mtoInteractionsClusters = mto_interactions_clusters,
-    interactionMappingTable = interaction_mapping_table,
-    prioritizedBenchmarkingLigands = cytosig_ligands
-  )
-
-  ## cluster-based matrix from random forest -----
-  interaction_potentials_matrix_this_cluster_mto_representative <- interaction_potentials_matrix_this_cluster[representative_interactions_mto$interaction,]
-  interaction_potentials_matrix_clusters <- rbind(interaction_potentials_matrix_this_cluster_oto,interaction_potentials_matrix_this_cluster_mto_representative)
-
-  #constrain analysis to differentially-expressed regulons
-  regulon_differential_expression <- significant_regulon_deltas_this_cluster
 
   ## run random forest on each regulon -----
   all_rf_results <- list()
@@ -271,35 +241,15 @@ for(this_cluster in unique(decipher_seurat$cluster)){
     print(paste("calculating forest for",this.tf))
     tf.merged <- regulon_scores_this_cluster[this.tf,colnames(interaction_potentials_matrix_clusters)]
     rf <- randomForest(x = t(interaction_potentials_matrix_clusters),y=tf.merged, ntree = 100,importance=T)
-    #print(rf)
-    imp.perm.merged <- importance(rf,type=1, scale = F)
-    #head(imp.perm.merged)
 
-    spearman.cor <- cor(t(interaction_potentials_matrix_clusters),tf.merged,method = "spearman")
-    pearson.cor <- cor(t(interaction_potentials_matrix_clusters),tf.merged,method = "pearson")
-
-    imp <- importance(rf, scale = F)
-    index_match_interaction_mapping_table <- match(rownames(imp),interaction_mapping_table$interaction)
-
-
-    imp.df <- data.frame(
-      interaction = interaction_mapping_table$interaction[index_match_interaction_mapping_table],
-      ligand =  interaction_mapping_table$ligand[index_match_interaction_mapping_table],
-      receptor =  interaction_mapping_table$receptor[index_match_interaction_mapping_table],
-      imp.perm = imp[,1],
-      perm.rank = length(imp[,1])-rank(imp[,1]),
-      imp.gini = imp[,2],
-      gini.rank = length(imp[,2])-rank(imp[,2]),
-      gene = rownames(imp),
-      regulon = this.tf,
-      regulon.val = val.this.tf,
-      pearson.cor =  pearson.cor,
-      spearman.cor = spearman.cor,
-      possible.spearman.cont = spearman.cor*val.this.tf,
-      weighted.spearman.cont = imp[,1]*sign(spearman.cor)*val.this.tf
+    imp.df <- extractDecipherResults(
+      random_forest_results = rf,
+      interaction_potentials_matrix_clusters,
+      data_this_cluster_downsampled_receptors,
+      selected_lr_pairs = L_set_relevant_features,
+      this.tf,
+      val.this.tf
     )
-
-    imp.df <- imp.df[order(imp.df$perm.rank,decreasing=FALSE),]
 
     all_rf_results[[this.tf]] <- imp.df
     #write.csv(imp.df,file.path("data/importances",file=paste(this_cluster,this.tf,"all_importances.csv",sep="_")))
