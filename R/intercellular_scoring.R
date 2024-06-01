@@ -310,3 +310,36 @@ getRepresentativeInteractionsForMTOClusters <- function(mtoInteractionsClusters,
   representativeInteractions
 }
 
+
+#' Calculate Interaction Deltas for Cluster-Specific Interaction Potentials
+#'
+#' This function creates a new Seurat object using a matrix of interaction potentials specific to a cluster.
+#' It then performs differential expression analysis to calculate interaction deltas between conditions
+#' specified in the metadata. This analysis helps identify significant interactions in terms of adjusted p-values.
+#'
+#' @param interaction_potentials_matrix_this_cluster A matrix of interaction potentials for a specific cluster.
+#' @param decipher_seurat_lr A Seurat object from which metadata will be used to annotate the newly created Seurat object.
+#'
+#' @return A data frame containing the interaction deltas, including log-fold changes, p-values,
+#'         adjusted p-values, and gene names, filtered by significance based on adjusted p-value.
+#'
+#' @examples
+#' # Assuming 'interaction_matrix' is a matrix and 'decipher_seurat' is a Seurat object:
+#' interaction_deltas <- calculateInteractionDeltas(
+#'   interaction_potentials_matrix_this_cluster = interaction_matrix,
+#'   decipher_seurat_lr = decipher_seurat
+#' )
+#'
+#' @importFrom Seurat CreateSeuratObject FindMarkers
+#' @importFrom dplyr filter
+#' @export
+calculateInteractionDeltas <- function(interaction_potentials_matrix_this_cluster,decipher_seurat_lr){
+  new_seurat <- Seurat::CreateSeuratObject(counts = interaction_potentials_matrix_this_cluster,meta.data = decipher_seurat_lr@meta.data[colnames(interaction_potentials_matrix_this_cluster),])
+  Idents(new_seurat) <- new_seurat$condition
+  # Perform differential expression analysis to find markers between specified conditions
+  interaction_deltas <- FindMarkers(new_seurat,ident.1 = "case",logfc.threshold = 0.1)
+  interaction_deltas <- interaction_deltas %>%
+    dplyr::filter(p_val_adj < 0.01)
+  interaction_deltas$name = rownames(interaction_deltas)
+  return(interaction_deltas)
+}

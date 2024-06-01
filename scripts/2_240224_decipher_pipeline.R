@@ -156,36 +156,9 @@ data_decipher_seurat_control <- decipher_seurat@assays$RNA@data[,-ind_case]
 
 #DECIPHER analysis-----
 for(this_cluster in unique(decipher_seurat$cluster)){
-  #used to be called selected_receptors
-  expressed_receptors_this_clusters <- getFilteredReceptorsForCluster(
-    decipher_seurat,
-    L.set,
-    param_min_receptor_expr_in_cluster = 0.1,
-    this_cluster)
 
-  L_set_relevant_features <- L.set %>%
-    filter(receptor %in% expressed_receptors_this_clusters & ligand %in% expressed_ligands)
-
-
-  regulon_this_cluster <- getRegulon(output_filepath,this_cluster)
-  regulon_this_cluster_capped <- capRegulon(regulon_this_cluster,n_top = 40)
-  #regulon_this_cluster_capped_2 <- capRegulon_2(regulon_this_cluster,n_top = 40)
-
-  random_grns <- generateRandomGRNsFromReference(
-    all_genes = rownames(decipher_seurat),
-    reference_grns = regulon_this_cluster_capped
-  )
-
-  regulon_this_cluster_capped <- rbind(regulon_this_cluster_capped,random_grns)
-
-
-  ### primary object ----
+  #main object
   decipher_seurat_this_cluster <- subset(decipher_seurat,subset = cluster == this_cluster)
-
-  if(flag.normalize.non.log){
-    decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster,normalization.method = "RC",scale.factor=100000)
-  }
-
   base_n_cells <- min(table(decipher_seurat_this_cluster$condition))
   if(base_n_cells < param_min_n_cells){
     next
@@ -196,10 +169,28 @@ for(this_cluster in unique(decipher_seurat$cluster)){
 
   Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
   decipher_seurat_this_cluster_downsampled <- subset(decipher_seurat_this_cluster, downsample = base_n_cells)
-
   data_this_cluster_downsampled <- decipher_seurat_this_cluster_downsampled@assays$RNA@data
 
-  #dplyr doesn't work with sparse matrix
+  if(flag.normalize.non.log){
+    decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster,normalization.method = "RC",scale.factor=100000)
+  }
+
+  #filter
+  expressed_receptors_this_clusters <- getFilteredReceptorsForCluster(
+    decipher_seurat,
+    L.set,
+    param_min_receptor_expr_in_cluster = 0.1,
+    this_cluster)
+
+  L_set_relevant_features <- L.set %>%
+    filter(receptor %in% expressed_receptors_this_clusters & ligand %in% expressed_ligands)
+
+  #get regulon
+  regulon_this_cluster <- getRegulon(output_filepath,this_cluster)
+  regulon_this_cluster_capped <- capRegulon(regulon_this_cluster,n_top = 40)
+  regulon_this_cluster_capped <- addRandomGRNs(decipher_seurat_this_cluster,regulon_this_cluster_capped)
+  #regulon_this_cluster_capped_2 <- capRegulon_2(regulon_this_cluster,n_top = 40)
+
   #data_this_cluster_downsampled_receptors <- data_this_cluster_downsampled[which(rownames(data_this_cluster_downsampled) %in% selected_receptors),]
   data_this_cluster_downsampled_receptors <- data_this_cluster_downsampled[which(rownames(data_this_cluster_downsampled) %in% unique(L_set_relevant_features$receptor)),]
   ##PAGODA -----
@@ -213,19 +204,8 @@ for(this_cluster in unique(decipher_seurat$cluster)){
     regulon_scores_this_cluster,
     decipher_seurat_this_cluster$condition)
 
-  regulon_deltas_this_cluster <- regulon_deltas_this_cluster %>%
-    mutate(class = ifelse(stringr::str_detect(name,"sample"),"random","real"))
+  significant_regulon_deltas_this_cluster <- getSignificantRegulons(regulon_deltas_this_cluster)
 
-  random.density <- density(subset(regulon_deltas_this_cluster, class == "random")$deltaPagoda, n = 2^10)
-  upper_threshold_random <- quantile(random.density,probs = 0.975,normalize = FALSE)
-  lower_threshold_random <- quantile(random.density,probs = 0.025,normalize = FALSE)
-
-  significant_regulon_deltas_this_cluster <-  regulon_deltas_this_cluster %>%
-    filter(class == "real") %>%
-    filter(deltaPagoda > upper_threshold_random | deltaPagoda < lower_threshold_random)%>%
-    arrange(deltaPagoda)
-
-  print(paste(this_cluster,"number of significant regulons:",nrow(significant_regulon_deltas_this_cluster)))
   #### find target genes for each top differentially expressed regulons and calculate diff expr. ----
   Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster$condition
   #wait but this needs to align to my GRN right?
@@ -267,13 +247,17 @@ for(this_cluster in unique(decipher_seurat$cluster)){
     interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_this_cluster[-ind_no_information,]
   }
 
-  new_seurat <- Seurat::CreateSeuratObject(counts = interaction_potentials_matrix_this_cluster,meta.data = decipher_seurat_lr@meta.data[colnames(interaction_potentials_matrix_this_cluster),])
-  Idents(new_seurat) <- new_seurat$condition
-  interaction_deltas <- FindMarkers(new_seurat,ident.1 = "case",logfc.threshold = 0.1)
-  interaction_deltas <- interaction_deltas %>%
-    filter(p_val_adj < 0.01)
-  interaction_deltas$name = rownames(interaction_deltas)
-  interaction_deltas_by_cluster[[this_cluster]] <- interaction_deltas
+  calculateInteractionDeltas <- function(interaction_potentials_matrix_this_cluster,decipher_seurat_lr){
+    new_seurat <- Seurat::CreateSeuratObject(counts = interaction_potentials_matrix_this_cluster,meta.data = decipher_seurat_lr@meta.data[colnames(interaction_potentials_matrix_this_cluster),])
+    Idents(new_seurat) <- new_seurat$condition
+    interaction_deltas <- FindMarkers(new_seurat,ident.1 = "case",logfc.threshold = 0.1)
+    interaction_deltas <- interaction_deltas %>%
+      filter(p_val_adj < 0.01)
+    interaction_deltas$name = rownames(interaction_deltas)
+    return(interaction_deltas)
+  }
+  #this cannot be moved from this location
+  interaction_deltas_by_cluster[[this_cluster]] <- calculateInteractionDeltas(interaction_potentials_matrix_this_cluster,decipher_seurat_lr)
 
 
   interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_this_cluster[rownames(interaction_deltas),]
@@ -457,8 +441,11 @@ saveRDS(regulon_deltas_by_cluster,file.path(output_data_filepath,"regulon_deltas
 saveRDS(significant_regulons_by_cluster,file.path(output_data_filepath,"significant_regulons_by_cluster.rds"))
 saveRDS(significant_regulon_markers_by_cluster,file.path(output_data_filepath,"significant_regulon_markers_by_cluster.rds"))
 
-saveRDS(decipher_scores_by_regulon_and_cluster,file.path(output_data_filepath,"decipher_scores_by_regulon_and_cluster.rds"))
 saveRDS(interaction_potential_by_clusters,file.path(output_data_filepath,"interaction_potential_by_clusters.rds"))
+saveRDS(interaction_deltas_by_cluster,file.path(output_data_filepath,"interaction_deltas_by_cluster.rds"))
+
+
+saveRDS(decipher_scores_by_regulon_and_cluster,file.path(output_data_filepath,"decipher_scores_by_regulon_and_cluster.rds"))
 saveRDS(lr_markers_by_cluster,file.path(output_data_filepath,"lr_markers_by_cluster.rds"))
 saveRDS(de_markers_by_cluster,file.path(output_data_filepath,"de_markers_by_cluster.rds"))
 saveRDS(enrichr_results_by_cluster,file.path(output_data_filepath,"enrichr_results_by_cluster.rds"))
@@ -467,5 +454,4 @@ saveRDS(decipher_seurat_lr,file.path(output_data_filepath,"decipher_seurat_lr.rd
 saveRDS(L.set,file.path(output_data_filepath,"L_set.rds"))
 saveRDS(decipher_scores_by_regulon_and_cluster, file.path(output_data_filepath,"decipher_scores_by_regulon_and_cluster.rds"))
 saveRDS(decipher_scores_by_cluster,file.path(output_data_filepath,"decipher_scores_by_cluster.rds"))
-saveRDS(interaction_deltas_by_cluster,file.path(output_data_filepath,"interaction_deltas_by_cluster.rds"))
 

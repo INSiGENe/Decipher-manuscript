@@ -171,4 +171,42 @@ return(regulon_this_cluster)
 
 
 
+#' Add Random Gene Regulatory Networks to a Cluster's GRN
+#'
+#' This function augments a gene regulatory network (GRN) for a specific cluster with random GRNs.
+#' The random GRNs are generated based on a reference GRN to simulate additional regulatory
+#' relationships. These random GRNs are combined with the original GRN to expand the dataset,
+#' which might be useful for simulation or robustness testing.
+#'
+#' @param decipher_seurat_this_cluster A Seurat object specific to a cluster, from which gene
+#'        names are extracted to generate random GRNs.
+#' @param regulon_this_cluster_capped A data frame representing the capped GRN of the cluster.
+#'        This GRN is used as the reference to generate random GRNs.
+#'
+#' @return A data frame that combines the original capped GRN with additional random GRNs.
+#'
+#' @examples
+#' # Assuming 'decipher_seurat_cluster' is a Seurat object for a specific cluster and
+#' # 'regulon_cluster_capped' is the existing GRN for that cluster:
+#' enhanced_grn <- addRandomGRNs(
+#'   decipher_seurat_this_cluster = decipher_seurat_cluster,
+#'   regulon_this_cluster_capped = regulon_cluster_capped
+#' )
+#'
+#' @importFrom stats rbind
+#' @export
+addRandomGRNs <- function(decipher_seurat_this_cluster,regulon_this_cluster_capped){
+
+  random_grns <- generateRandomGRNsFromReference(
+    all_genes = rownames(decipher_seurat_this_cluster),
+    reference_grns = regulon_this_cluster_capped
+  )
+
+  regulon_this_cluster_capped <- rbind(regulon_this_cluster_capped,random_grns)
+
+  return(regulon_this_cluster_capped)
+}
+
+
+
 

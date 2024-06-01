@@ -100,7 +100,10 @@ getRegulonDeltas <- function(regulonMatrix, classVector) {
   )
   rownames(deltaDataFrame) <- deltaDataFrame$name
 
-  deltaDataFrame
+  deltaDataFrame <- deltaDataFrame %>%
+    mutate(class = ifelse(stringr::str_detect(name,"sample"),"random","real"))
+
+  return(deltaDataFrame)
 }
 
 #' Calculate Regulon Scores Using Pagoda2
@@ -340,6 +343,40 @@ getRegulonScoresSimulator <- function(seuratObject, grn_df) {
   RMatrixSC <- processPagodaResults(pagodaObject,grnSplit)
 
   return(RMatrixSC)
+}
+
+
+#' Identify Significant Regulons Based on Delta Values
+#'
+#' This function filters regulons by identifying significant changes in their delta values compared to a random distribution.
+#' It computes the density of delta values for random regulons, then uses the 2.5th and 97.5th percentiles as thresholds
+#' to identify real regulons with delta values that are significantly higher or lower than these thresholds.
+#'
+#' @param regulon_deltas_this_cluster A data frame containing delta values for regulons,
+#'        which should include columns 'class' (indicating whether the regulon is 'real' or 'random')
+#'        and 'deltaPagoda' (the delta values to be analyzed).
+#'
+#' @return A data frame of regulons classified as 'real' that have deltaPagoda values falling outside
+#'         the upper and lower thresholds defined by the random regulons' density.
+#'
+#' @examples
+#' # Assuming 'regulon_deltas_cluster' is a data frame with the necessary structure:
+#' significant_regulons <- getSignificantRegulons(regulon_deltas_cluster)
+#'
+#' @importFrom dplyr filter arrange
+#' @importFrom stats density quantile
+#' @export
+getSignificantRegulons <- function(regulon_deltas_this_cluster){
+  random.density <- density(subset(regulon_deltas_this_cluster, class == "random")$deltaPagoda, n = 2^10)
+  upper_threshold_random <- quantile(random.density,probs = 0.975,normalize = FALSE)
+  lower_threshold_random <- quantile(random.density,probs = 0.025,normalize = FALSE)
+
+  significant_regulon_deltas_this_cluster <-  regulon_deltas_this_cluster %>%
+    filter(class == "real") %>%
+    filter(deltaPagoda > upper_threshold_random | deltaPagoda < lower_threshold_random)%>%
+    arrange(deltaPagoda)
+
+  return(significant_regulon_deltas_this_cluster)
 }
 
 
