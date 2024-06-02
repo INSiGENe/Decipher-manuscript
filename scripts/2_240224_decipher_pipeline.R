@@ -80,10 +80,10 @@ seurat_oi <- mapConditionsInSeurat(seurat_oi,"condition",case_condition,control_
 ##QC ----
 ##############
 CpC_data <- generateQCDataByClusterAndCondition(seurat_oi,max(stringr::str_length(unique(seurat_oi$cluster))))
-plotQC_CpC(CpC_data,outputPath=output_figures_filepath)
-param_min_CpC <- 100
+#plotQC_CpC(CpC_data,outputPath=output_figures_filepath)
+
 #PARAM: select the minimum number of cells per cluster + condition
-clusters_passing_CpC_filter <- getClustersPassingCpCFilter(CpC_data,param_min_CpC)
+clusters_passing_CpC_filter <- getClustersPassingCpCFilter(CpC_data,minCpC = 100)
 seurat_oi <- subset(seurat_oi,subset = cluster %in% clusters_passing_CpC_filter)
 
 ##############
