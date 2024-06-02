@@ -17,8 +17,6 @@ condition_reference = "stim"
 dataset_path <- "sample_analysis"
 dir.create(dataset_path)
 pre_processing_path <- file.path(dataset_path,"pre_processing")
-#this variable is duplicated, remove
-pre_processing_filepath <- pre_processing_path
 reference_filepath <- "reference_data"
 output_filepath <- dataset_path
 output_data_filepath <- file.path(output_filepath,"data")
