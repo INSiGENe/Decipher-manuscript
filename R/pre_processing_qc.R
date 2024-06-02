@@ -50,9 +50,9 @@ generateQCDataByClusterAndCondition <- function(seuratObj, maxClusterNameLength)
 
 #' Plot Quality Control - Cells per Cluster
 #'
-#' Creates a scatter plot showing the log2-transformed count of cells per cluster,
-#' distinguished by condition. Horizontal lines are drawn at specified cell counts
-#' (100, 300, 500). The plot is saved as a PNG file.
+#' Creates a tile plot showing the counts of cells per cluster,
+#' separated by condition. Colours are drawn at specified cell counts
+#' (100, 300, 500), red indicates low cell counts, yellow moderate, green high. The plot is saved as a PNG file.
 #'
 #' @param qc_plot_data_cells_per_cluster A data frame with QC data.
 #'        Expected columns: 'cluster', 'condition', and 'n' (cell counts).
