@@ -142,7 +142,7 @@ for(this_cluster in unique(decipher_seurat$cluster)){
   #regulon_this_cluster_capped_2 <- capRegulon_2(regulon_this_cluster,n_top = 40)
 
   ##PAGODA -----
-  #silence this function
+  #TODO: silence this function
   regulon_scores_this_cluster <- getRegulonScores(
     seuratObject = decipher_seurat_this_cluster,
     grn_df = regulon_this_cluster_capped)
@@ -215,11 +215,9 @@ for(this_cluster in unique(decipher_seurat$cluster)){
     )
 
     all_rf_results[[this.tf]] <- imp.df
-    #write.csv(imp.df,file.path("data/importances",file=paste(this_cluster,this.tf,"all_importances.csv",sep="_")))
   }
 
   #convert interaction_potential list into a matrix
-  #used to be called interaction_weights
   all_rf_results_matrix <- convertListOfMatricesToMatrix(all_rf_results)
 
   #stuff for visualization
