@@ -118,13 +118,6 @@ for(this_cluster in unique(decipher_seurat$cluster)){
   decipher_seurat_this_cluster <- subset(decipher_seurat,subset = cluster == this_cluster)
   #see how I can simplify this, I don't think I should use downsampled...
   SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
-  #I call downsampled for the interaction matrix, but normal for regulon scores,
-  #should just use the normal one and control max meta cells above in the meta cell component
-  # decipher_seurat_this_cluster_downsampled <- downsampleSeuratByCondition(
-  #   decipher_seurat_this_cluster,
-  #   param_max_n_cells = 600)
-
-  #data_this_cluster_downsampled <- decipher_seurat_this_cluster_downsampled@assays$RNA@data
   data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
 
 
@@ -142,7 +135,6 @@ for(this_cluster in unique(decipher_seurat$cluster)){
   L_set_relevant_features <- L.set %>%
     filter(receptor %in% expressed_receptors_this_clusters & ligand %in% expressed_ligands)
 
-  #data_this_cluster_downsampled_receptors <- data_this_cluster_downsampled[which(rownames(data_this_cluster_downsampled) %in% selected_receptors),]
   data_this_cluster_receptors <- data_this_cluster[which(rownames(data_this_cluster) %in% unique(L_set_relevant_features$receptor)),]
 
   #get regulon
