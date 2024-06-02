@@ -1,5 +1,4 @@
 #main Decipher analysis pipeline
-#Warning: please ensure that the seurat object is pre-processed as per our vignette before running
 #load decipher package -----
 library(devtools)
 load_all()
@@ -10,8 +9,8 @@ set.seed(123)
 #Parameters: dataset ----
 min_cells_per_cluster_condition <- 100
 species <-  "human"
-condition_oi = "ctrl"
-condition_reference = "stim"
+case_condition = "stim"
+control_condition = "ctrl"
 
 #Parameters: directories ----
 dataset_path <- "sample_analysis"
@@ -66,12 +65,10 @@ enrichr_database <- loadEnrichrDatabase(reference_filepath,species)
 cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
 
 #data pre-processing ----
-case_condition <- condition_oi
-control_condition <- condition_reference
 
 #retain original condition
 seurat_oi@meta.data$orig.condition <- seurat_oi@meta.data$condition
-#map conditions to case and control
+#map conditions to case and control because the code internally has 'case' and 'control'references
 seurat_oi <- mapConditionsInSeurat(seurat_oi,"condition",case_condition,control_condition)
 
 ##############
@@ -81,7 +78,7 @@ CpC_data <- generateQCDataByClusterAndCondition(seurat_oi,max(stringr::str_lengt
 #plotQC_CpC(CpC_data,outputPath=output_figures_filepath)
 
 #PARAM: select the minimum number of cells per cluster + condition
-clusters_passing_CpC_filter <- getClustersPassingCpCFilter(CpC_data,minCpC = 100)
+clusters_passing_CpC_filter <- getClustersPassingCpCFilter(CpC_data,minCpc = 100)
 seurat_oi <- subset(seurat_oi,subset = cluster %in% clusters_passing_CpC_filter)
 
 ##############
