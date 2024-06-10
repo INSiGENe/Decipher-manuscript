@@ -107,6 +107,7 @@ expressed_ligands <- getFilteredLigands(
 
 
 #DECIPHER analysis-----
+start_time <- Sys.time()
 for(this_cluster in unique(decipher_seurat$cluster)){
 
   #main object
@@ -234,9 +235,9 @@ for(this_cluster in unique(decipher_seurat$cluster)){
 
   de_markers_this_cluster$gene <- rownames(de_markers_this_cluster)
 
-  regulon_results_df <- enrichResults(de_markers_this_cluster,significant_regulon_deltas_this_cluster,regulon_this_cluster,enrichr_database)
+  #regulon_results_df <- enrichResults(de_markers_this_cluster,significant_regulon_deltas_this_cluster,regulon_this_cluster,enrichr_database)
 
-  enrichr_results_by_cluster[[this_cluster]] <- regulon_results_df
+  #enrichr_results_by_cluster[[this_cluster]] <- regulon_results_df
   regulon_grns_by_cluster[[this_cluster]] <- regulon_this_cluster
   regulon_scores_by_cluster[[this_cluster]] <- regulon_scores_this_cluster
   regulon_deltas_by_cluster[[this_cluster]] <- regulon_deltas_this_cluster
@@ -246,7 +247,7 @@ for(this_cluster in unique(decipher_seurat$cluster)){
   de_markers_by_cluster[[this_cluster]] <- de_markers_this_cluster
   significant_regulons_by_cluster[[this_cluster]] <- significant_regulon_deltas_this_cluster
   }
-
+end_time <- Sys.time()
 decipher_scores_by_regulon_and_cluster <- lapply(decipher_scores_by_regulon_and_cluster,FUN = "listOfDFsRenameColumn",original_name = "weighted.spearman.cont",new_name = "decipher_score")
 decipher_scores_by_cluster <- lapply(decipher_scores_by_regulon_and_cluster,FUN = "calculateScoresByCluster")
 decipher_scores_by_cluster <- addListNameToDFElements(decipher_scores_by_cluster,"receiver_cluster")
