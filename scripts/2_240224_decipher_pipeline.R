@@ -65,7 +65,7 @@ enrichr_database <- loadEnrichrDatabase(reference_filepath,species)
 cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
 
 #data pre-processing ----
-#moved this functions to generateSampleSeuratFromExperimentHub() but need alternative when user actualy starts with seurat object
+#moved this functions to generateSampleSeuratFromExperimentHub() but need alternative when user actually starts with seurat object
 #seurat_oi$orig.condition <- seurat_oi$condition
 #map conditions to case and control because the code internally has 'case' and 'control'references
 #seurat_oi <- mapConditionsInSeurat(seurat_oi,"condition",case_condition,control_condition)
