@@ -122,9 +122,10 @@ plotQC_CpC <- function(qc_plot_data_cells_per_cluster,outputPath = "data/figures
     )+
     ggtitle("Cells per cluster/condition")
 
-  grDevices::png(filePath,width=12,height=16,units="cm",res=400)
-  print(p)
-  dev.off()
+  #grDevices::png(filePath,width=12,height=16,units="cm",res=400)
+  #print(p)
+  #dev.off()
+  return(p)
 }
 
 
