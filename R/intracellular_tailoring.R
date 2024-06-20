@@ -207,6 +207,35 @@ addRandomGRNs <- function(decipher_seurat_this_cluster,regulon_this_cluster_capp
   return(regulon_this_cluster_capped)
 }
 
+#' Get Regulons for All Clusters
+#'
+#' This function retrieves regulons for each cluster in a Seurat object from a specified file.
+#'
+#' @param filepath A string representing the path to the file containing regulon data.
+#' @param seurat_object A Seurat object containing single-cell RNA-seq data.
+#'
+#' @return A list where each element corresponds to a cluster and contains the regulons for that cluster.
+#'
+#' @details The function iterates through each unique cluster in the Seurat object and applies the `getRegulon` function to retrieve regulons for that cluster from the specified file. The results are stored in a list, with each element corresponding to a cluster.
+#'
+#' @examples
+#' \dontrun{
+#' filepath <- "path/to/regulon/file"
+#' seurat_object <- CreateSeuratObject(counts = your_counts_matrix)
+#' regulons <- getRegulonsAllClusters(filepath, seurat_object)
+#' }
+#'
+#' @export
+getRegulonsAllClusters <- function(filepath, seurat_object) {
+  regulons_all_clusters <- list()
+  for(this_cluster in unique(seurat_object$cluster)){
+
+    regulons_all_clusters[[this_cluster]] <- getRegulon(filepath, this_cluster)
+
+  }
+  return(regulons_all_clusters)
+}
+
 
 
 

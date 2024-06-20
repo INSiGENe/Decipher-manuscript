@@ -104,10 +104,14 @@ expressed_ligands <- getFilteredLigands(
   L.set,
   param_min_ligand_expr_in_cluster = 0.1)
 
+#used to be called expressed_receptors within the loop
 expressed_receptors_all_clusters <- getExpressedReceptorsForEachCluster(decipher_seurat,L.set)
 
+#used to be called L_set_relevant_features within the loop
 L_set_relevant_features_all_clusters <- getRelevantFeaturesForEachCluster(L.set,expressed_ligands,expressed_receptors_all_clusters)
 
+#used to be called regulon_this_cluster within the loop
+regulons_all_clusters <- getRegulonsAllClusters(output_filepath,decipher_seurat)
 
 #DECIPHER analysis-----
 start_time <- Sys.time()
