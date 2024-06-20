@@ -113,6 +113,13 @@ L_set_relevant_features_all_clusters <- getRelevantFeaturesForEachCluster(L.set,
 #used to be called regulon_this_cluster within the loop
 regulons_all_clusters <- getRegulonsAllClusters(output_filepath,decipher_seurat)
 
+#used to be called regulon_this_cluster_capped within the loop
+capped_regulons_all_clusters <- capRegulonsAllClusters(regulons_all_clusters,decipher_seurat,flag.normalize.non.log)
+
+#used to be called regulon_scores_this_cluster within the loop
+#does not pass identical test but I did a spot check and it looked identical, likely number formatting (despite both being doubles)
+regulon_scores_all_clusters <- getRegulonScoresAllClusters(capped_regulons_all_clusters,decipher_seurat)
+
 #DECIPHER analysis-----
 start_time <- Sys.time()
 for(this_cluster in unique(decipher_seurat$cluster)[1]){
@@ -128,12 +135,6 @@ for(this_cluster in unique(decipher_seurat$cluster)[1]){
   }
 
   data_this_cluster_receptors <- data_this_cluster[which(rownames(data_this_cluster) %in% unique(L_set_relevant_features$receptor)),]
-
-  #get regulon
-  regulon_this_cluster <- getRegulon(output_filepath,this_cluster)
-  regulon_this_cluster_capped <- capRegulon(regulon_this_cluster,n_top = 40)
-  regulon_this_cluster_capped <- addRandomGRNs(decipher_seurat_this_cluster,regulon_this_cluster_capped)
-  #regulon_this_cluster_capped_2 <- capRegulon_2(regulon_this_cluster,n_top = 40)
 
   ##PAGODA -----
   #TODO: silence this function

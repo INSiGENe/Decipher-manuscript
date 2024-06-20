@@ -236,6 +236,49 @@ getRegulonsAllClusters <- function(filepath, seurat_object) {
   return(regulons_all_clusters)
 }
 
+#' Cap Regulons for All Clusters
+#'
+#' This function processes and caps the regulons for each cluster, normalizing the Seurat object if specified.
+#'
+#' @param regulons_all_clusters A list of regulons for each cluster, typically obtained from `getRegulonsAllClusters`.
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
+#' @param flag.normalize.non.log A logical flag indicating whether to normalize non-log-transformed data.
+#'
+#' @return A list where each element corresponds to a cluster and contains the capped regulons for that cluster.
+#'
+#' @details The function iterates through each unique cluster in the `decipher_seurat` object, subsets the Seurat object for the cluster, normalizes the data if `flag.normalize.non.log` is TRUE, caps the regulons to the top 40 features, and adds random gene regulatory networks (GRNs) to the capped regulons.
+#'
+#' @examples
+#' \dontrun{
+#' regulons_all_clusters <- getRegulonsAllClusters(filepath, seurat_object)
+#' decipher_seurat <- CreateSeuratObject(counts = your_counts_matrix)
+#' capped_regulons <- capRegulonsAllClusters(regulons_all_clusters, decipher_seurat, TRUE)
+#' }
+#'
+#' @export
+capRegulonsAllClusters <- function(regulons_all_clusters, decipher_seurat, flag.normalize.non.log) {
+  capped_regulons_all_clusters <- list()
+
+  for(this_cluster in unique(decipher_seurat$cluster)){
+    regulon_this_cluster <- regulons_all_clusters[[this_cluster]]
+    # main object
+    decipher_seurat_this_cluster <- subset(decipher_seurat, subset = cluster == this_cluster)
+    # set identity
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
+
+    if(flag.normalize.non.log){
+      decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
+    }
+
+    regulon_this_cluster_capped <- capRegulon(regulon_this_cluster, n_top = 40)
+    regulon_this_cluster_capped <- addRandomGRNs(decipher_seurat_this_cluster, regulon_this_cluster_capped)
+
+    capped_regulons_all_clusters[[this_cluster]] <- regulon_this_cluster_capped
+  }
+
+  return(capped_regulons_all_clusters)
+}
+
 
 
 

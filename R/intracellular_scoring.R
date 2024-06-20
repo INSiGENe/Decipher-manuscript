@@ -379,4 +379,48 @@ getSignificantRegulons <- function(regulon_deltas_this_cluster){
   return(significant_regulon_deltas_this_cluster)
 }
 
+#' Get Regulon Scores for All Clusters
+#'
+#' This function calculates regulon scores for each cluster in a Seurat object based on capped regulons.
+#'
+#' @param capped_regulons_all_clusters A list of capped regulons for each cluster, typically obtained from `capRegulonsAllClusters`.
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
+#'
+#' @return A list where each element corresponds to a cluster and contains the regulon scores for that cluster.
+#'
+#' @details The function iterates through each unique cluster in the `decipher_seurat` object, subsets the Seurat object for the cluster, normalizes the data if necessary, and calculates the regulon scores for the capped regulons of that cluster.
+#'
+#' @examples
+#' \dontrun{
+#' capped_regulons_all_clusters <- capRegulonsAllClusters(regulons_all_clusters, decipher_seurat, TRUE)
+#' decipher_seurat <- CreateSeuratObject(counts = your_counts_matrix)
+#' regulon_scores <- getRegulonScoresAllClusters(capped_regulons_all_clusters, decipher_seurat)
+#' }
+#'
+#' @export
+getRegulonScoresAllClusters <- function(capped_regulons_all_clusters, decipher_seurat) {
+
+  regulon_scores_all_cluster <- list()
+
+  for(this_cluster in unique(decipher_seurat$cluster)){
+    regulon_this_cluster_capped <- capped_regulons_all_clusters[[this_cluster]]
+    # main object
+    decipher_seurat_this_cluster <- subset(decipher_seurat, subset = cluster == this_cluster)
+    # set identity
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
+
+    if(flag.normalize.non.log){
+      decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
+    }
+
+    regulon_scores_this_cluster <- getRegulonScores(
+      seuratObject = decipher_seurat_this_cluster,
+      grn_df = regulon_this_cluster_capped)
+
+    regulon_scores_all_cluster[[this_cluster]] <- regulon_scores_this_cluster
+  }
+
+  return(regulon_scores_all_cluster)
+}
+
 
