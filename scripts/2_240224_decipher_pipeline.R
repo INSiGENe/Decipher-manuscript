@@ -106,11 +106,8 @@ expressed_ligands <- getFilteredLigands(
 
 expressed_receptors_all_clusters <- getExpressedReceptorsForEachCluster(decipher_seurat,L.set)
 
-L_set_relevant_features_all_clusters_new <- getRelevantFeaturesForEachCluster(L.set,expressed_ligands,expressed_receptors_all_clusters)
+L_set_relevant_features_all_clusters <- getRelevantFeaturesForEachCluster(L.set,expressed_ligands,expressed_receptors_all_clusters)
 
-#filter
-L_set_relevant_features <- L.set %>%
-  filter(receptor %in% expressed_receptors_this_clusters & ligand %in% expressed_ligands)
 
 #DECIPHER analysis-----
 start_time <- Sys.time()
