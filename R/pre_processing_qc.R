@@ -339,3 +339,42 @@ getFilteredReceptorsForCluster <- function(decipher_seurat,L.set,param_min_recep
   return(expressed_receptor)
 
 }
+
+
+#' Get Relevant Features for Each Cluster
+#'
+#' This function identifies and retrieves relevant ligand-receptor features for each cluster based on expressed ligands and receptors.
+#'
+#' @param L.set A data frame containing ligand-receptor pairs.
+#' @param expressed_ligands A vector of expressed ligands.
+#' @param expressed_receptors_all_clusters A list of expressed receptors for each cluster, typically obtained from `getExpressedReceptorsForEachCluster`.
+#'
+#' @return A list where each element corresponds to a cluster and contains the relevant ligand-receptor features for that cluster.
+#'
+#' @details The function iterates through each cluster in the `expressed_receptors_all_clusters` list, filters the `L.set` data frame to include only those ligand-receptor pairs where the receptor is expressed in the cluster and the ligand is in the `expressed_ligands` vector. The filtered results are then stored in a list, with each element corresponding to a cluster.
+#'
+#' @examples
+#' \dontrun{
+#' L.set <- data.frame(ligand = c("Ligand1", "Ligand2"), receptor = c("Receptor1", "Receptor2"))
+#' expressed_ligands <- c("Ligand1", "Ligand3")
+#' expressed_receptors_all_clusters <- list(Cluster1 = c("Receptor1"), Cluster2 = c("Receptor2"))
+#' relevant_features <- getRelevantFeaturesForEachCluster(L.set, expressed_ligands, expressed_receptors_all_clusters)
+#' }
+#'
+#' @export
+getRelevantFeaturesForEachCluster <- function(L.set, expressed_ligands, expressed_receptors_all_clusters){
+
+  L_set_relevant_features_all_clusters <- list()
+
+  for(this_cluster in names(expressed_receptors_all_clusters)){
+    expressed_receptors_this_cluster <- expressed_receptors_all_clusters[[this_cluster]]
+
+    L_set_relevant_features <- L.set %>%
+      filter(receptor %in% expressed_receptors_this_cluster & ligand %in% expressed_ligands)
+
+    L_set_relevant_features_all_clusters[[this_cluster]] <- L_set_relevant_features
+  }
+
+  return(L_set_relevant_features_all_clusters)
+}
+

@@ -106,6 +106,12 @@ expressed_ligands <- getFilteredLigands(
 
 expressed_receptors_all_clusters <- getExpressedReceptorsForEachCluster(decipher_seurat,L.set)
 
+L_set_relevant_features_all_clusters_new <- getRelevantFeaturesForEachCluster(L.set,expressed_ligands,expressed_receptors_all_clusters)
+
+#filter
+L_set_relevant_features <- L.set %>%
+  filter(receptor %in% expressed_receptors_this_clusters & ligand %in% expressed_ligands)
+
 #DECIPHER analysis-----
 start_time <- Sys.time()
 for(this_cluster in unique(decipher_seurat$cluster)[1]){
@@ -116,14 +122,9 @@ for(this_cluster in unique(decipher_seurat$cluster)[1]){
   SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
   data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
 
-
   if(flag.normalize.non.log){
     decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster,normalization.method = "RC",scale.factor=100000)
   }
-
-  #filter
-  L_set_relevant_features <- L.set %>%
-    filter(receptor %in% expressed_receptors_this_clusters & ligand %in% expressed_ligands)
 
   data_this_cluster_receptors <- data_this_cluster[which(rownames(data_this_cluster) %in% unique(L_set_relevant_features$receptor)),]
 
