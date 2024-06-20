@@ -469,3 +469,36 @@ getRegulonDeltasAllClusters <- function(regulon_scores_all_clusters, decipher_se
 }
 
 
+#' Get Significant Regulons for All Clusters
+#'
+#' This function identifies significant regulon deltas for each cluster.
+#'
+#' @param regulon_deltas_all_clusters A list of regulon deltas for each cluster, typically obtained from `getRegulonDeltasAllClusters`.
+#'
+#' @return A list where each element corresponds to a cluster and contains the significant regulon deltas for that cluster.
+#'
+#' @details The function iterates through each cluster in the `regulon_deltas_all_clusters` list, applies the `getSignificantRegulons` function to identify significant regulon deltas, and stores the results in a list with each element corresponding to a cluster.
+#'
+#' @examples
+#' \dontrun{
+#' regulon_deltas_all_clusters <- getRegulonDeltasAllClusters(regulon_scores_all_clusters, decipher_seurat)
+#' significant_regulons <- getSignificantRegulonsAllClusters(regulon_deltas_all_clusters)
+#' }
+#'
+#' @export
+getSignificantRegulonsAllClusters <- function(regulon_deltas_all_clusters) {
+
+  significant_regulon_deltas_all_clusters <- list()
+
+  for(this_cluster in names(regulon_deltas_all_clusters)){
+    regulon_deltas_this_cluster <- regulon_deltas_all_clusters[[this_cluster]]
+
+    significant_regulon_deltas_this_cluster <- getSignificantRegulons(regulon_deltas_this_cluster)
+
+    significant_regulon_deltas_all_clusters[[this_cluster]] <- significant_regulon_deltas_this_cluster
+  }
+
+  return(significant_regulon_deltas_all_clusters)
+}
+
+

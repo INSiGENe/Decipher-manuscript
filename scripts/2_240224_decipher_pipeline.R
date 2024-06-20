@@ -123,6 +123,8 @@ regulon_scores_all_clusters <- getRegulonScoresAllClusters(capped_regulons_all_c
 #used to be called regulon_deltas_this_cluster
 regulon_deltas_all_clusters <- getRegulonDeltasAllClusters(regulon_scores_all_clusters,decipher_seurat)
 
+significant_regulon_deltas_all_clusters_new <- getSignificantRegulonsAllClusters(regulon_deltas_all_clusters)
+
 #DECIPHER analysis-----
 start_time <- Sys.time()
 for(this_cluster in unique(decipher_seurat$cluster)[1]){
