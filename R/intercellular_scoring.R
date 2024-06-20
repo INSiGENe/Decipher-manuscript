@@ -475,3 +475,55 @@ getInteractionPotentialMatrixForRepresentativeInteractions <- function(data_this
 
 }
 
+
+#' Get Interaction Potentials Matrix for All Clusters
+#'
+#' This function calculates the interaction potentials matrix for each cluster in a Seurat object.
+#'
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
+#' @param decipher_seurat_this_cluster A Seurat object subset for a specific cluster.
+#' @param L_set_relevant_features_all_clusters A list of relevant ligand-receptor features for each cluster.
+#' @param flag.normalize.non.log A logical flag indicating whether to normalize non-log-transformed data.
+#'
+#' @return A list where each element corresponds to a cluster and contains the interaction potentials matrix for that cluster.
+#'
+#' @details The function iterates through each unique cluster in the `decipher_seurat` object, subsets the Seurat object for the cluster, normalizes the data if necessary, and calculates the interaction potentials matrix for each cluster using the `getInteractionPotentialsMatrixThisCluster` function.
+#'
+#' @examples
+#' \dontrun{
+#' decipher_seurat <- CreateSeuratObject(counts = your_counts_matrix)
+#' L_set_relevant_features_all_clusters <- getRelevantFeaturesForEachCluster(L.set, expressed_ligands, expressed_receptors_all_clusters)
+#' interaction_potentials_matrix <- getInteractionPotentialsMatrixAllClusters(
+#'   decipher_seurat, decipher_seurat_this_cluster, L_set_relevant_features_all_clusters, TRUE)
+#' }
+#'
+#' @export
+getInteractionPotentialsMatrixAllClusters <- function(decipher_seurat, decipher_seurat_this_cluster, L_set_relevant_features_all_clusters, flag.normalize.non.log) {
+  interaction_potentials_matrix_all_clusters <- list()
+
+  for(this_cluster in unique(decipher_seurat$cluster)){
+    # main object
+    decipher_seurat_this_cluster <- subset(decipher_seurat, subset = cluster == this_cluster)
+    # set identity
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
+
+    if(flag.normalize.non.log){
+      decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
+    }
+
+    # set identity
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster$condition
+
+    interaction_potentials_matrix_this_cluster <- getInteractionPotentialsMatrixThisCluster(
+      seurat_obj = decipher_seurat,
+      seurat_obj_this_cluster_ds = decipher_seurat_this_cluster,
+      selected_lr_pairs = L_set_relevant_features_all_clusters[[this_cluster]]
+    )
+
+    interaction_potentials_matrix_all_clusters[[this_cluster]] <- interaction_potentials_matrix_this_cluster
+  }
+
+  return(interaction_potentials_matrix_all_clusters)
+}
+
+

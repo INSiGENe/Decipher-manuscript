@@ -123,7 +123,15 @@ regulon_scores_all_clusters <- getRegulonScoresAllClusters(capped_regulons_all_c
 #used to be called regulon_deltas_this_cluster
 regulon_deltas_all_clusters <- getRegulonDeltasAllClusters(regulon_scores_all_clusters,decipher_seurat)
 
+#used to be called significant_regulon_deltas_this_cluster
 significant_regulon_deltas_all_clusters <- getSignificantRegulonsAllClusters(regulon_deltas_all_clusters)
+
+#used to be called significant_regulon_markers_by_cluster
+significant_regulon_markers_all_clusters <- getDifferentiallyExpressedTargetsForRegulonsAllClusters(decipher_seurat,significant_regulon_deltas_all_clusters,regulons_all_clusters,flag.normalize.non.log)
+
+#used to be called interaction_potentials_matrix_this_cluster
+#careful with this one
+interaction_potentials_matrix_all_clusters <- getInteractionPotentialsMatrixAllClusters(decipher_seurat,decipher_seurat_this_cluster,L_set_relevant_features_all_clusters,flag.normalize.non.log)
 
 #DECIPHER analysis-----
 start_time <- Sys.time()
@@ -152,20 +160,10 @@ for(this_cluster in unique(decipher_seurat$cluster)[1]){
   #### find target genes for each top differentially expressed regulons and calculate diff expr. ----
   SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster$condition
   #wait but this needs to align to my GRN right?
-  significant_regulon_markers_by_cluster[[this_cluster]] <- getDifferentiallyExpressedTargetsForRegulons(
-    seuratObj = decipher_seurat_this_cluster,
-    regulonNames = significant_regulon_deltas_this_cluster$name,
-    logFcThreshold = 0.58,
-    grnDf = regulon_this_cluster,
-    targetCt = this_cluster
-  )
+  significant_regulon_markers_by_cluster[[this_cluster]] <- significant_regulon_markers_all_clusters[[this_cluster]]
 
   ## calculate Interaction Potential Matrix ----
-  interaction_potentials_matrix_this_cluster <- getInteractionPotentialsMatrixThisCluster(
-    seurat_obj = decipher_seurat,
-    seurat_obj_this_cluster_ds = decipher_seurat_this_cluster,
-    selected_lr_pairs = L_set_relevant_features
-  )
+  interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_all_clusters[[this_cluster]]
 
   #this cannot be moved from this location
   interaction_deltas <- calculateInteractionDeltas(interaction_potentials_matrix_this_cluster,decipher_seurat_lr)
