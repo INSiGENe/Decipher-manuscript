@@ -4,7 +4,11 @@
 \alias{generateSampleSeuratFromExperimentHub}
 \title{Generate a Sample Seurat Object from ExperimentHub}
 \usage{
-generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition)
+generateSampleSeuratFromExperimentHub(
+  min_cells_per_cluster_condition,
+  case_condition,
+  control_condition
+)
 }
 \arguments{
 \item{min_cells_per_cluster_condition}{The minimum number of cells required per cluster-condition combination.}
