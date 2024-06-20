@@ -120,6 +120,9 @@ capped_regulons_all_clusters <- capRegulonsAllClusters(regulons_all_clusters,dec
 #does not pass identical test but I did a spot check and it looked identical, likely number formatting (despite both being doubles)
 regulon_scores_all_clusters <- getRegulonScoresAllClusters(capped_regulons_all_clusters,decipher_seurat)
 
+#used to be called regulon_deltas_this_cluster
+regulon_deltas_all_clusters <- getRegulonDeltasAllClusters(regulon_scores_all_clusters,decipher_seurat)
+
 #DECIPHER analysis-----
 start_time <- Sys.time()
 for(this_cluster in unique(decipher_seurat$cluster)[1]){
@@ -134,18 +137,13 @@ for(this_cluster in unique(decipher_seurat$cluster)[1]){
     decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster,normalization.method = "RC",scale.factor=100000)
   }
 
-  data_this_cluster_receptors <- data_this_cluster[which(rownames(data_this_cluster) %in% unique(L_set_relevant_features$receptor)),]
+  data_this_cluster_receptors <- data_this_cluster[which(rownames(data_this_cluster) %in% unique(L_set_relevant_features_all_clusters[[this_cluster]]$receptor)),]
 
   ##PAGODA -----
-  #TODO: silence this function
-  regulon_scores_this_cluster <- getRegulonScores(
-    seuratObject = decipher_seurat_this_cluster,
-    grn_df = regulon_this_cluster_capped)
+  regulon_scores_this_cluster <- regulon_scores_all_clusters[[this_cluster]]
 
   ##PAGODA DELTA ----
-  regulon_deltas_this_cluster <- getRegulonDeltas(
-    regulon_scores_this_cluster,
-    decipher_seurat_this_cluster$condition)
+  regulon_deltas_this_cluster <- regulon_deltas_all_clusters[[this_cluster]]
 
   significant_regulon_deltas_this_cluster <- getSignificantRegulons(regulon_deltas_this_cluster)
 

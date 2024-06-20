@@ -424,3 +424,48 @@ getRegulonScoresAllClusters <- function(capped_regulons_all_clusters, decipher_s
 }
 
 
+#' Get Regulon Deltas for All Clusters
+#'
+#' This function calculates the differences (deltas) in regulon scores between conditions for each cluster in a Seurat object.
+#'
+#' @param regulon_scores_all_clusters A list of regulon scores for each cluster, typically obtained from `getRegulonScoresAllClusters`.
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
+#'
+#' @return A list where each element corresponds to a cluster and contains the regulon deltas for that cluster.
+#'
+#' @details The function iterates through each unique cluster in the `decipher_seurat` object, subsets the Seurat object for the cluster, normalizes the data if necessary, and calculates the deltas in regulon scores for the conditions in that cluster.
+#'
+#' @examples
+#' \dontrun{
+#' regulon_scores_all_clusters <- getRegulonScoresAllClusters(capped_regulons_all_clusters, decipher_seurat)
+#' decipher_seurat <- CreateSeuratObject(counts = your_counts_matrix)
+#' regulon_deltas <- getRegulonDeltasAllClusters(regulon_scores_all_clusters, decipher_seurat)
+#' }
+#'
+#' @export
+getRegulonDeltasAllClusters <- function(regulon_scores_all_clusters, decipher_seurat) {
+
+  regulon_deltas_all_cluster <- list()
+
+  for(this_cluster in unique(decipher_seurat$cluster)){
+    regulon_scores_this_cluster <- regulon_scores_all_clusters[[this_cluster]]
+    # main object
+    decipher_seurat_this_cluster <- subset(decipher_seurat, subset = cluster == this_cluster)
+    # set identity
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
+
+    if(flag.normalize.non.log){
+      decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
+    }
+
+    regulon_deltas_this_cluster <- getRegulonDeltas(
+      regulon_scores_this_cluster,
+      decipher_seurat_this_cluster$condition)
+
+    regulon_deltas_all_cluster[[this_cluster]] <- regulon_deltas_this_cluster
+  }
+
+  return(regulon_deltas_all_cluster)
+}
+
+
