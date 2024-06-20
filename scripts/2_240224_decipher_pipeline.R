@@ -47,7 +47,7 @@ interaction_deltas_by_cluster <- list()
 
 #create sample dataset ----
 #including seurat object and h5ad objects
-seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition)
+seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition,case_condition,control_condition)
 ##save outputs for Decipher analysis
 saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.rds"))
 #in addition, we need to create python-compatible h5ad objects for the CO pipeline, here, I've opted against it
@@ -104,10 +104,11 @@ expressed_ligands <- getFilteredLigands(
   L.set,
   param_min_ligand_expr_in_cluster = 0.1)
 
+expressed_receptors_all_clusters <- getExpressedReceptorsForEachCluster(decipher_seurat,L.set)
 
 #DECIPHER analysis-----
 start_time <- Sys.time()
-for(this_cluster in unique(decipher_seurat$cluster)){
+for(this_cluster in unique(decipher_seurat$cluster)[1]){
 
   #main object
   decipher_seurat_this_cluster <- subset(decipher_seurat,subset = cluster == this_cluster)
@@ -121,12 +122,6 @@ for(this_cluster in unique(decipher_seurat$cluster)){
   }
 
   #filter
-  expressed_receptors_this_clusters <- getFilteredReceptorsForCluster(
-    decipher_seurat,
-    L.set,
-    param_min_receptor_expr_in_cluster = 0.1,
-    this_cluster)
-
   L_set_relevant_features <- L.set %>%
     filter(receptor %in% expressed_receptors_this_clusters & ligand %in% expressed_ligands)
 

@@ -252,6 +252,46 @@ getFilteredLigands <- function(decipher_seurat,L.set,param_min_ligand_expr_in_cl
 }
 
 
+#' Get Expressed Receptors for Each Cluster
+#'
+#' This function identifies and retrieves expressed receptors for each cluster in a Seurat object.
+#'
+#' @param seurat_object A Seurat object containing single-cell RNA-seq data.
+#' @param L.set A set of ligands used for filtering receptors.
+#'
+#' @return A list where each element corresponds to a cluster and contains the expressed receptors for that cluster.
+#'
+#' @details The function iterates through each unique cluster in the Seurat object and applies the `getFilteredReceptorsForCluster` function to identify receptors expressed in that cluster. The parameter `param_min_receptor_expr_in_cluster` is set to 0.1 to filter receptors based on their expression level.
+#'
+#' @examples
+#' \dontrun{
+#' seurat_object <- CreateSeuratObject(counts = your_counts_matrix)
+#' L.set <- c("Ligand1", "Ligand2", "Ligand3")
+#' expressed_receptors <- getExpressedReceptorsForEachCluster(seurat_object, L.set)
+#' }
+#'
+#' @export
+getExpressedReceptorsForEachCluster <- function(seurat_object, L.set) {
+
+  expressed_receptors_all_clusters <- list()
+
+  for(this_cluster in unique(seurat_object$cluster)){
+
+    expressed_receptors_this_cluster <- getFilteredReceptorsForCluster(
+      seurat_object,
+      L.set,
+      param_min_receptor_expr_in_cluster = 0.1,
+      this_cluster)
+
+    expressed_receptors_all_clusters[[this_cluster]] <- expressed_receptors_this_cluster
+
+  }
+  return(expressed_receptors_all_clusters)
+
+}
+
+
+
 #' Filter Receptors Based on Expression Threshold within a Specific Cluster
 #'
 #' This function filters out receptors based on their expression levels within a specific cluster
