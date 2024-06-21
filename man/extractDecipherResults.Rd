@@ -10,7 +10,8 @@ extractDecipherResults(
   data_this_cluster_downsampled_receptors,
   selected_lr_pairs,
   this.tf,
-  val.this.tf
+  val.this.tf,
+  tf.merged
 )
 }
 \arguments{
