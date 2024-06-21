@@ -560,4 +560,37 @@ calculateInteractionDeltasAllClusters <- function(interaction_potentials_matrix_
   return(interaction_deltas_all_clusters)
 }
 
+#' Filter Interaction Potentials by Deltas
+#'
+#' This function filters the interaction potentials matrix for each cluster based on the interaction deltas.
+#'
+#' @param interaction_potentials_matrix_all_clusters A list of interaction potentials matrices for each cluster, typically obtained from `getInteractionPotentialsMatrixAllClusters`.
+#' @param interaction_deltas_all_clusters A list of interaction deltas for each cluster, typically obtained from `calculateInteractionDeltasAllClusters`.
+#'
+#' @return A list where each element corresponds to a cluster and contains the filtered interaction potentials matrix for that cluster.
+#'
+#' @details The function iterates through each cluster in the `interaction_potentials_matrix_all_clusters` list, filters the interaction potentials matrix based on the interaction deltas, and stores the results in a list with each element corresponding to a cluster.
+#'
+#' @examples
+#' \dontrun{
+#' interaction_potentials_matrix_all_clusters <- getInteractionPotentialsMatrixAllClusters(
+#'   decipher_seurat, decipher_seurat_this_cluster, L_set_relevant_features, TRUE)
+#' interaction_deltas_all_clusters <- calculateInteractionDeltasAllClusters(interaction_potentials_matrix_all_clusters, decipher_seurat_lr)
+#' filtered_interaction_potentials_matrix <- filterIntPotByDeltas(interaction_potentials_matrix_all_clusters, interaction_deltas_all_clusters)
+#' }
+#'
+#' @export
+filterIntPotByDeltas <- function(interaction_potentials_matrix_all_clusters, interaction_deltas_all_clusters) {
+  filtered_interaction_potentials_matrix_all_clusters <- list()
+
+  for(this_cluster in names(interaction_potentials_matrix_all_clusters)){
+    interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_all_clusters[[this_cluster]]
+    interaction_deltas <- interaction_deltas_all_clusters[[this_cluster]]
+    interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_this_cluster[rownames(interaction_deltas), ]
+    filtered_interaction_potentials_matrix_all_clusters[[this_cluster]] <- interaction_potentials_matrix_this_cluster
+  }
+
+  return(filtered_interaction_potentials_matrix_all_clusters)
+}
+
 

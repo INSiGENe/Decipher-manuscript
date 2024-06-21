@@ -139,6 +139,10 @@ interaction_potentials_matrix_all_clusters <- getInteractionPotentialsMatrixAllC
 #used to be called interaction_deltas_by_cluster
 interaction_deltas_all_clusters <- calculateInteractionDeltasAllClusters(interaction_potentials_matrix_all_clusters,decipher_seurat_lr)
 
+filtered_interaction_potentials_matrix_all_clusters <- filterIntPotByDeltas(interaction_potentials_matrix_all_clusters,interaction_deltas_all_clusters)
+
+
+
 #DECIPHER analysis-----
 start_time <- Sys.time()
 for(this_cluster in unique(decipher_seurat$cluster)[1]){
