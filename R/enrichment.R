@@ -34,7 +34,8 @@ findMarkersForRegulon <- function(seuratObj, regulon, grnDf, logFcThreshold) {
     ident.2 = "control",
     features = targetGenes,
     logfc.threshold = logFcThreshold,
-    only.pos = FALSE
+    only.pos = FALSE,
+    verbose=FALSE
   )
 }
 
