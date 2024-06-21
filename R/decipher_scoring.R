@@ -30,7 +30,7 @@
 #' @importFrom randomForest importance
 #' @importFrom stats cor
 #' @export
-extractDecipherResults <- function(random_forest_results,interaction_potentials_matrix_clusters,data_this_cluster_downsampled_receptors,selected_lr_pairs,this.tf,val.this.tf){
+extractDecipherResults <- function(random_forest_results,interaction_potentials_matrix_clusters,data_this_cluster_downsampled_receptors,selected_lr_pairs,this.tf,val.this.tf,tf.merged){
 
   interaction_mapping_table <-  getInteractionMappingTable(
     receptorMatrix = data_this_cluster_downsampled_receptors,
@@ -68,3 +68,96 @@ extractDecipherResults <- function(random_forest_results,interaction_potentials_
 
   return(imp.df)
 }
+
+
+#' Get Random Forest Weights for All Clusters
+#'
+#' This function calculates random forest weights for all clusters in a Seurat object using significant regulon deltas, regulon scores, interaction potentials, and relevant ligand-receptor features.
+#'
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
+#' @param significant_regulon_deltas_all_clusters A list of significant regulon deltas for each cluster.
+#' @param regulon_scores_all_clusters A list of regulon scores for each cluster.
+#' @param interaction_potentials_matrix_clusters_all_clusters A list of interaction potentials matrices for each cluster.
+#' @param L_set_relevant_features_all_clusters A list of relevant ligand-receptor features for each cluster.
+#' @param flag.normalize.non.log A logical flag indicating whether to normalize non-log-transformed data.
+#'
+#' @return A list where each element corresponds to a cluster and contains the random forest importance results for that cluster.
+#'
+#' @details The function iterates through each unique cluster in the Seurat object, subsets the Seurat object for the cluster, normalizes the data if necessary, and calculates random forest importance scores for the transcription factors using the `randomForest` package. A progress bar is displayed to show the progress of the computation.
+#'
+#' @examples
+#' \dontrun{
+#' decipher_seurat <- CreateSeuratObject(counts = your_counts_matrix)
+#' significant_regulon_deltas_all_clusters <- getSignificantRegulonsAllClusters(regulon_deltas_all_clusters)
+#' regulon_scores_all_clusters <- getRegulonScoresAllClusters(capped_regulons_all_clusters, decipher_seurat)
+#' interaction_potentials_matrix_clusters_all_clusters <- getInteractionPotentialMatrixForRepresentativeInteractionsAllClusters(
+#'   decipher_seurat, L_set_relevant_features_all_clusters, filtered_interaction_potentials_matrix_all_clusters, cytosig_ligands, TRUE)
+#' rf_results_all_clusters <- getRandomForestWeightsAllClusters(
+#'   decipher_seurat, significant_regulon_deltas_all_clusters, regulon_scores_all_clusters, interaction_potentials_matrix_clusters_all_clusters, L_set_relevant_features_all_clusters, TRUE)
+#' }
+#'
+#' @import progress
+#' @importFrom randomForest randomForest
+#' @export
+getRandomForestWeightsAllClusters <- function(decipher_seurat, significant_regulon_deltas_all_clusters, regulon_scores_all_clusters, interaction_potentials_matrix_clusters_all_clusters, L_set_relevant_features_all_clusters, flag.normalize.non.log) {
+  rf_results_all_clusters <- list()
+
+  # Calculate total number of tasks
+  total_tasks <- sum(sapply(significant_regulon_deltas_all_clusters, function(x) length(x$name)))
+
+  # Initialize progress bar
+  pb <- progress::progress_bar$new(
+    format = "  [:bar] :current/:total (:percent) :elapsedfull",
+    total = total_tasks, clear = FALSE, width = 60
+  )
+
+  for(this_cluster in names(significant_regulon_deltas_all_clusters)){
+    all_rf_results <- list()
+    significant_regulon_deltas_this_cluster <- significant_regulon_deltas_all_clusters[[this_cluster]]
+    regulon_scores_this_cluster <- regulon_scores_all_clusters[[this_cluster]]
+    interaction_potentials_matrix_clusters <- interaction_potentials_matrix_clusters_all_clusters[[this_cluster]]
+
+    # main object
+    decipher_seurat_this_cluster <- subset(decipher_seurat, subset = cluster == this_cluster)
+    # set identity
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
+    data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
+
+    if(flag.normalize.non.log){
+      decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
+    }
+
+    data_this_cluster_receptors <- data_this_cluster[which(rownames(data_this_cluster) %in% unique(L_set_relevant_features_all_clusters[[this_cluster]]$receptor)),]
+    for(this.tf in significant_regulon_deltas_this_cluster$name){
+      ind.this.tf <- which(significant_regulon_deltas_this_cluster$name == this.tf)
+      val.this.tf <- significant_regulon_deltas_this_cluster$deltaPagoda[ind.this.tf]
+      tf.merged <- regulon_scores_this_cluster[this.tf, colnames(interaction_potentials_matrix_clusters)]
+
+      set.seed(123)
+      rf <- randomForest::randomForest(
+        x = t(interaction_potentials_matrix_clusters),
+        y=tf.merged,
+        ntree = 100,
+        importance=T)
+
+      imp.df <- extractDecipherResults(
+        random_forest_results = rf,
+        interaction_potentials_matrix_clusters,
+        data_this_cluster_receptors,
+        selected_lr_pairs = L_set_relevant_features_all_clusters[[this_cluster]],
+        this.tf,
+        val.this.tf,
+        tf.merged
+      )
+
+      all_rf_results[[this.tf]] <- imp.df
+
+      # Update progress bar
+      pb$tick()
+    }
+    rf_results_all_clusters[[this_cluster]] <- all_rf_results
+
+  }
+  return(rf_results_all_clusters)
+}
+

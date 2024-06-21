@@ -107,41 +107,79 @@ expressed_ligands <- getFilteredLigands(
   param_min_ligand_expr_in_cluster = 0.1)
 
 #used to be called expressed_receptors within the loop
-expressed_receptors_all_clusters <- getExpressedReceptorsForEachCluster(decipher_seurat,L.set)
+expressed_receptors_all_clusters <- getExpressedReceptorsForEachCluster(
+  decipher_seurat,
+  L.set)
 
 #used to be called L_set_relevant_features within the loop
-L_set_relevant_features_all_clusters <- getRelevantFeaturesForEachCluster(L.set,expressed_ligands,expressed_receptors_all_clusters)
+L_set_relevant_features_all_clusters <- getRelevantFeaturesForEachCluster(
+  L.set,
+  expressed_ligands,
+  expressed_receptors_all_clusters)
 
 #used to be called regulon_this_cluster within the loop
-regulons_all_clusters <- getRegulonsAllClusters(output_filepath,decipher_seurat)
+regulons_all_clusters <- getRegulonsAllClusters(
+  output_filepath,
+  decipher_seurat)
 
 #used to be called regulon_this_cluster_capped within the loop
-capped_regulons_all_clusters <- capRegulonsAllClusters(regulons_all_clusters,decipher_seurat,flag.normalize.non.log)
+capped_regulons_all_clusters <- capRegulonsAllClusters(
+  regulons_all_clusters,
+  decipher_seurat,
+  flag.normalize.non.log)
 
 #used to be called regulon_scores_this_cluster within the loop
 #does not pass identical test but I did a spot check and it looked identical, likely number formatting (despite both being doubles)
-regulon_scores_all_clusters <- getRegulonScoresAllClusters(capped_regulons_all_clusters,decipher_seurat)
+regulon_scores_all_clusters <- getRegulonScoresAllClusters(
+  capped_regulons_all_clusters,
+  decipher_seurat)
 
 #used to be called regulon_deltas_this_cluster
-regulon_deltas_all_clusters <- getRegulonDeltasAllClusters(regulon_scores_all_clusters,decipher_seurat)
+regulon_deltas_all_clusters <- getRegulonDeltasAllClusters(
+  regulon_scores_all_clusters,
+  decipher_seurat)
 
 #used to be called significant_regulon_deltas_this_cluster
-significant_regulon_deltas_all_clusters <- getSignificantRegulonsAllClusters(regulon_deltas_all_clusters)
+significant_regulon_deltas_all_clusters <- getSignificantRegulonsAllClusters(
+  regulon_deltas_all_clusters)
 
 #used to be called significant_regulon_markers_by_cluster
-significant_regulon_markers_all_clusters <- getDifferentiallyExpressedTargetsForRegulonsAllClusters(decipher_seurat,significant_regulon_deltas_all_clusters,regulons_all_clusters,flag.normalize.non.log)
+significant_regulon_markers_all_clusters <- getDifferentiallyExpressedTargetsForRegulonsAllClusters(
+  decipher_seurat,significant_regulon_deltas_all_clusters,
+  regulons_all_clusters,
+  flag.normalize.non.log)
 
 #used to be called interaction_potentials_matrix_this_cluster
 #careful with this one, though it looks fine, just double check a few times
-interaction_potentials_matrix_all_clusters <- getInteractionPotentialsMatrixAllClusters(decipher_seurat,decipher_seurat_this_cluster,L_set_relevant_features_all_clusters,flag.normalize.non.log)
+interaction_potentials_matrix_all_clusters <- getInteractionPotentialsMatrixAllClusters(
+  decipher_seurat,decipher_seurat_this_cluster,
+  L_set_relevant_features_all_clusters,
+  flag.normalize.non.log)
 
 #used to be called interaction_deltas
 #used to be called interaction_deltas_by_cluster
-interaction_deltas_all_clusters <- calculateInteractionDeltasAllClusters(interaction_potentials_matrix_all_clusters,decipher_seurat_lr)
+interaction_deltas_all_clusters <- calculateInteractionDeltasAllClusters(
+  interaction_potentials_matrix_all_clusters,
+  decipher_seurat_lr)
 
-filtered_interaction_potentials_matrix_all_clusters <- filterIntPotByDeltas(interaction_potentials_matrix_all_clusters,interaction_deltas_all_clusters)
+#used to be called interaction_potentials_matrix_this_cluster
+filtered_interaction_potentials_matrix_all_clusters <- filterIntPotByDeltas(
+  interaction_potentials_matrix_all_clusters,
+  interaction_deltas_all_clusters)
 
+#careful with this one, not identical but I believe this is due to number encoding
+#used to be called interaction_potentials_matrix_clusters
+interaction_potentials_matrix_clusters_all_clusters <-
+  getInteractionPotentialMatrixForRepresentativeInteractionsAllClusters(
+    decipher_seurat,
+    L_set_relevant_features_all_clusters,
+    filtered_interaction_potentials_matrix_all_clusters,
+    cytosig_ligands,
+    flag.normalize.non.log)
 
+#so the seed has to be set before randomForest for reproducibility, is this ok SEB?
+#used to be called all_rf_results
+rf_results_all_clusters <- getRandomForestWeightsAllClusters(decipher_seurat,significant_regulon_deltas_all_clusters,regulon_scores_all_clusters,interaction_potentials_matrix_clusters_all_clusters,L_set_relevant_features_all_clusters,flag.normalize.non.log)
 
 #DECIPHER analysis-----
 start_time <- Sys.time()
@@ -180,45 +218,13 @@ for(this_cluster in unique(decipher_seurat$cluster)[1]){
   interaction_deltas_by_cluster[[this_cluster]] <- interaction_deltas
 
   #subset interaction potential matrix to those interactions that have changed between conditions
-  interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_this_cluster[rownames(interaction_deltas),]
+  interaction_potentials_matrix_this_cluster <- filtered_interaction_potentials_matrix_all_clusters[[this_cluster]]
 
   ## subset interaction_potential matrix by correlation clusters for cluster-based RF ----
-  interaction_potentials_matrix_clusters <- getInteractionPotentialMatrixForRepresentativeInteractions(
-    data_this_cluster_receptors,
-    selected_lr_pairs = L_set_relevant_features,
-    interaction_potentials_matrix_this_cluster,
-    cytosig_ligands
-  )
+  interaction_potentials_matrix_clusters <- interaction_potentials_matrix_clusters_all_clusters[[this_cluster]]
 
   ## run random forest on each regulon -----
-  all_rf_results <- list()
-  for(this.tf in significant_regulon_deltas_this_cluster$name){
-
-    ind.this.tf <- which(significant_regulon_deltas_this_cluster$name == this.tf)
-
-    val.this.tf <- significant_regulon_deltas_this_cluster$deltaPagoda[ind.this.tf]
-
-    print(paste("calculating forest for",this.tf))
-
-    tf.merged <- regulon_scores_this_cluster[this.tf,colnames(interaction_potentials_matrix_clusters)]
-
-    rf <- randomForest::randomForest(
-      x = t(interaction_potentials_matrix_clusters),
-      y=tf.merged,
-      ntree = 100,
-      importance=T)
-
-    imp.df <- extractDecipherResults(
-      random_forest_results = rf,
-      interaction_potentials_matrix_clusters,
-      data_this_cluster_receptors,
-      selected_lr_pairs = L_set_relevant_features,
-      this.tf,
-      val.this.tf
-    )
-
-    all_rf_results[[this.tf]] <- imp.df
-  }
+  all_rf_results <- rf_results_all_clusters[[this_cluster]]
 
   #convert interaction_potential list into a matrix
   all_rf_results_matrix <- convertListOfMatricesToMatrix(all_rf_results)
