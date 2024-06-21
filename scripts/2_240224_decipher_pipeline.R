@@ -179,7 +179,16 @@ interaction_potentials_matrix_clusters_all_clusters <-
 
 #so the seed has to be set before randomForest for reproducibility, is this ok SEB?
 #used to be called all_rf_results
+#embedded logic to convert to matrix as well: all_rf_results_matrix
 rf_results_all_clusters <- getRandomForestWeightsAllClusters(decipher_seurat,significant_regulon_deltas_all_clusters,regulon_scores_all_clusters,interaction_potentials_matrix_clusters_all_clusters,L_set_relevant_features_all_clusters,flag.normalize.non.log)
+
+#used to be lr_markers_this_cluster
+lr_markers_all_clusters_new <- FindMarkersAllClusters(
+  decipher_seurat,
+  rf_results_all_clusters,
+  flag.normalize.non.log
+)
+
 
 #DECIPHER analysis-----
 start_time <- Sys.time()
@@ -224,19 +233,10 @@ for(this_cluster in unique(decipher_seurat$cluster)[1]){
   interaction_potentials_matrix_clusters <- interaction_potentials_matrix_clusters_all_clusters[[this_cluster]]
 
   ## run random forest on each regulon -----
-  all_rf_results <- rf_results_all_clusters[[this_cluster]]
-
-  #convert interaction_potential list into a matrix
-  all_rf_results_matrix <- convertListOfMatricesToMatrix(all_rf_results)
+  all_rf_results_matrix <- rf_results_all_clusters[[this_cluster]]
 
   #stuff for visualization
-  lr_markers_this_cluster <- FindMarkers(decipher_seurat_this_cluster,
-                                         ident.1 = "case",
-                                         ident.2 = "control",
-                                         feature = unique(c(all_rf_results_matrix$ligand,all_rf_results_matrix$receptor)),
-                                         logfc.threshold = 0,
-                                         min.pct = 0,
-                                         only.pos = FALSE)
+  lr_markers_this_cluster <- lr_markers_all_clusters[[this_cluster]]
 
   de_markers_this_cluster <- FindMarkers(decipher_seurat_this_cluster,
                                          ident.1 = "case",
