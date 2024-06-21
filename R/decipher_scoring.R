@@ -162,7 +162,7 @@ getRandomForestWeightsAllClusters <- function(decipher_seurat, significant_regul
   return(rf_results_all_clusters)
 }
 
-#' Find Marker Genes for Ligand-Receptor Pairs in All Clusters
+#' Find LR Marker Genes for Ligand-Receptor Pairs in All Clusters
 #'
 #' This function identifies marker genes for ligand-receptor pairs in each cluster of a Seurat object based on random forest results.
 #'
@@ -180,12 +180,12 @@ getRandomForestWeightsAllClusters <- function(decipher_seurat, significant_regul
 #' rf_results_all_clusters <- getRandomForestWeightsAllClusters(
 #'   decipher_seurat, significant_regulon_deltas_all_clusters, regulon_scores_all_clusters,
 #'   interaction_potentials_matrix_clusters_all_clusters, L_set_relevant_features_all_clusters, TRUE)
-#' lr_markers_all_clusters <- FindMarkersAllClusters(decipher_seurat, rf_results_all_clusters, TRUE)
+#' lr_markers_all_clusters <- FindLRMarkersAllClusters(decipher_seurat, rf_results_all_clusters, TRUE)
 #' }
 #'
 #' @importFrom Seurat NormalizeData FindMarkers
 #' @export
-FindMarkersAllClusters <- function(decipher_seurat, rf_results_all_clusters, flag.normalize.non.log) {
+FindLRMarkersAllClusters <- function(decipher_seurat, rf_results_all_clusters, flag.normalize.non.log) {
   lr_markers_all_clusters <- list()
 
   for(this_cluster in unique(decipher_seurat$cluster)){
@@ -215,5 +215,57 @@ FindMarkersAllClusters <- function(decipher_seurat, rf_results_all_clusters, fla
   }
   return(lr_markers_all_clusters)
 }
+
+#' Find Differentially Expressed Markers for All Clusters
+#'
+#' This function identifies differentially expressed markers for each cluster in a Seurat object.
+#'
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
+#' @param flag.normalize.non.log A logical flag indicating whether to normalize non-log-transformed data.
+#'
+#' @return A list where each element corresponds to a cluster and contains the differentially expressed markers for that cluster.
+#'
+#' @details The function iterates through each unique cluster in the `decipher_seurat` object, subsets the Seurat object for the cluster, normalizes the data if necessary, and identifies differentially expressed markers using the `FindMarkers` function. The results for each cluster are stored in a list.
+#'
+#' @examples
+#' \dontrun{
+#' decipher_seurat <- CreateSeuratObject(counts = your_counts_matrix)
+#' markers_all_clusters <- FindMarkersAllClusters(decipher_seurat, TRUE)
+#' }
+#'
+#' @importFrom Seurat NormalizeData FindMarkers
+#' @export
+FindMarkersAllClusters <- function(decipher_seurat, flag.normalize.non.log) {
+  markers_all_clusters <- list()
+
+  for(this_cluster in unique(decipher_seurat$cluster)){
+
+    # main object
+    decipher_seurat_this_cluster <- subset(decipher_seurat, subset = cluster == this_cluster)
+    # set identity
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
+    data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
+
+    if(flag.normalize.non.log){
+      decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
+    }
+
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster$condition
+
+    de_markers_this_cluster <- FindMarkers(
+      object = decipher_seurat_this_cluster,
+      ident.1 = "case",
+      ident.2 = "control",
+      logfc.threshold = 0.58,
+      only.pos = FALSE
+    )
+
+    de_markers_this_cluster$gene <- rownames(de_markers_this_cluster)
+
+    markers_all_clusters[[this_cluster]] <- de_markers_this_cluster
+  }
+  return(markers_all_clusters)
+}
+
 
 
