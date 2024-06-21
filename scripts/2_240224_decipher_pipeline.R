@@ -209,5 +209,10 @@ saveRDS(feature_statistics,file.path(output_data_filepath,"feature_statistics.rd
 saveRDS(decipher_seurat_lr,file.path(output_data_filepath,"decipher_seurat_lr.rds"))
 saveRDS(L.set,file.path(output_data_filepath,"L_set.rds"))
 saveRDS(decipher_scores_by_cluster,file.path(output_data_filepath,"decipher_scores_by_cluster.rds"))
+saveRDS(interaction_potentials_matrix_clusters_all_clusters,file.path(output_data_filepath,"interaction_potentials_matrix_clusters_all_clusters.rds"))
+saveRDS(expressed_receptors_all_clusters, file.path(output_data_filepath, "expressed_receptors_all_clusters.rds"))
+saveRDS(capped_regulons_all_clusters, file.path(output_data_filepath, "capped_regulons_all_clusters.rds"))
+saveRDS(L_set_relevant_features_all_clusters, file.path(output_data_filepath, "L_set_relevant_features_all_clusters.rds"))
+
 #saveRDS(enrichr_results_by_cluster,file.path(output_data_filepath,"enrichr_results_by_cluster.rds"))
 
