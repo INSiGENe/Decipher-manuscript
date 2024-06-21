@@ -32,6 +32,8 @@ dir.create(output_importances_filepath,recursive=TRUE)
 flag.normalize.non.log <- FALSE
 
 ##output objects initialize ----
+#I won't need this once everything is out of the big loop!
+#nor the downstream assignment!
 ligand_scores_result <- list()
 decipher_scores_by_regulon_and_cluster <- list()
 regulon_scores_by_cluster <- list()
@@ -130,8 +132,12 @@ significant_regulon_deltas_all_clusters <- getSignificantRegulonsAllClusters(reg
 significant_regulon_markers_all_clusters <- getDifferentiallyExpressedTargetsForRegulonsAllClusters(decipher_seurat,significant_regulon_deltas_all_clusters,regulons_all_clusters,flag.normalize.non.log)
 
 #used to be called interaction_potentials_matrix_this_cluster
-#careful with this one
+#careful with this one, though it looks fine, just double check a few times
 interaction_potentials_matrix_all_clusters <- getInteractionPotentialsMatrixAllClusters(decipher_seurat,decipher_seurat_this_cluster,L_set_relevant_features_all_clusters,flag.normalize.non.log)
+
+#used to be called interaction_deltas
+#used to be called interaction_deltas_by_cluster
+interaction_deltas_all_clusters <- calculateInteractionDeltasAllClusters(interaction_potentials_matrix_all_clusters,decipher_seurat_lr)
 
 #DECIPHER analysis-----
 start_time <- Sys.time()
@@ -166,7 +172,7 @@ for(this_cluster in unique(decipher_seurat$cluster)[1]){
   interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_all_clusters[[this_cluster]]
 
   #this cannot be moved from this location
-  interaction_deltas <- calculateInteractionDeltas(interaction_potentials_matrix_this_cluster,decipher_seurat_lr)
+  interaction_deltas <- interaction_deltas_all_clusters[[this_cluster]]
   interaction_deltas_by_cluster[[this_cluster]] <- interaction_deltas
 
   #subset interaction potential matrix to those interactions that have changed between conditions

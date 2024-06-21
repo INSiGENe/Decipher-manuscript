@@ -526,4 +526,38 @@ getInteractionPotentialsMatrixAllClusters <- function(decipher_seurat, decipher_
   return(interaction_potentials_matrix_all_clusters)
 }
 
+#' Calculate Interaction Deltas for All Clusters
+#'
+#' This function calculates the interaction deltas for each cluster based on the interaction potentials matrix.
+#'
+#' @param interaction_potentials_matrix_all_clusters A list of interaction potentials matrices for each cluster, typically obtained from `getInteractionPotentialsMatrixAllClusters`.
+#' @param decipher_seurat_lr A Seurat object containing ligand-receptor interaction data.
+#'
+#' @return A list where each element corresponds to a cluster and contains the interaction deltas for that cluster.
+#'
+#' @details The function iterates through each cluster in the `interaction_potentials_matrix_all_clusters` list, calculates the interaction deltas using the `calculateInteractionDeltas` function, and stores the results in a list with each element corresponding to a cluster.
+#'
+#' @examples
+#' \dontrun{
+#' interaction_potentials_matrix_all_clusters <- getInteractionPotentialsMatrixAllClusters(
+#'   decipher_seurat, decipher_seurat_this_cluster, L_set_relevant_features, TRUE)
+#' decipher_seurat_lr <- CreateSeuratObject(counts = your_ligand_receptor_counts_matrix)
+#' interaction_deltas <- calculateInteractionDeltasAllClusters(interaction_potentials_matrix_all_clusters, decipher_seurat_lr)
+#' }
+#'
+#' @export
+calculateInteractionDeltasAllClusters <- function(interaction_potentials_matrix_all_clusters, decipher_seurat_lr) {
+  interaction_deltas_all_clusters <- list()
+
+  for(this_cluster in names(interaction_potentials_matrix_all_clusters)){
+    interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_all_clusters[[this_cluster]]
+
+    interaction_deltas <- calculateInteractionDeltas(interaction_potentials_matrix_this_cluster, decipher_seurat_lr)
+
+    interaction_deltas_all_clusters[[this_cluster]] <- interaction_deltas
+  }
+
+  return(interaction_deltas_all_clusters)
+}
+
 
