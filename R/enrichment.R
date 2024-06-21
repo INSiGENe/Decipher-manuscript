@@ -243,4 +243,43 @@ getDifferentiallyExpressedTargetsForRegulonsAllClusters <- function(decipher_seu
   return(significant_regulon_markers_all_clusters)
 }
 
+#' Enrich Results for All Clusters
+#'
+#' This function performs enrichment analysis on differentially expressed markers for each cluster using a specified database.
+#'
+#' @param de_markers_all_clusters A list of differentially expressed markers for each cluster, typically obtained from `FindMarkersAllClusters`.
+#' @param significant_regulon_deltas_all_clusters A list of significant regulon deltas for each cluster.
+#' @param regulons_all_clusters A list of regulons for each cluster.
+#' @param enrichr_database A character vector specifying the database to use for enrichment analysis.
+#'
+#' @return A list where each element corresponds to a cluster and contains the enrichment results for that cluster.
+#'
+#' @details The function iterates through each cluster in the `de_markers_all_clusters` list, performs enrichment analysis on the differentially expressed markers using the `enrichResults` function, and stores the results in a list. The enrichment analysis uses the specified `enrichr_database`.
+#'
+#' @examples
+#' \dontrun{
+#' de_markers_all_clusters <- FindMarkersAllClusters(decipher_seurat, TRUE)
+#' significant_regulon_deltas_all_clusters <- getSignificantRegulonsAllClusters(regulon_deltas_all_clusters)
+#' regulons_all_clusters <- getRegulonsAllClusters(filepath, decipher_seurat)
+#' enrichr_database <- "GO_Biological_Process_2021"
+#' enriched_results_all_clusters <- enrichResultsAllClusters(
+#'   de_markers_all_clusters, significant_regulon_deltas_all_clusters, regulons_all_clusters, enrichr_database)
+#' }
+#'
+#' @export
+enrichResultsAllClusters <- function(de_markers_all_clusters, significant_regulon_deltas_all_clusters, regulons_all_clusters, enrichr_database) {
+  enriched_results_all_clusters <- list()
+  for(this_cluster in names(de_markers_all_clusters)){
+    de_markers_this_cluster <- de_markers_all_clusters[[this_cluster]]
+    significant_regulon_deltas_this_cluster <- significant_regulon_deltas_all_clusters[[this_cluster]]
+    regulon_this_cluster <- regulons_all_clusters[[this_cluster]]
+    enriched_results_all_clusters[[this_cluster]] <- enrichResults(
+      de_markers_this_cluster,
+      significant_regulon_deltas_this_cluster,
+      regulon_this_cluster,
+      enrichr_database)
+  }
+  return(enriched_results_all_clusters)
+}
+
 

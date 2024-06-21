@@ -183,12 +183,26 @@ interaction_potentials_matrix_clusters_all_clusters <-
 rf_results_all_clusters <- getRandomForestWeightsAllClusters(decipher_seurat,significant_regulon_deltas_all_clusters,regulon_scores_all_clusters,interaction_potentials_matrix_clusters_all_clusters,L_set_relevant_features_all_clusters,flag.normalize.non.log)
 
 #used to be lr_markers_this_cluster
-lr_markers_all_clusters_new <- FindMarkersAllClusters(
+lr_markers_all_clusters <- FindLRMarkersAllClusters(
   decipher_seurat,
   rf_results_all_clusters,
   flag.normalize.non.log
 )
 
+#used to be called de_markers_this_cluster
+de_markers_all_clusters <- FindMarkersAllClusters(
+  decipher_seurat,
+  flag.normalize.non.log
+)
+
+#this function takes a while so would be best to add a progress bar for the user
+enriched_results_all_clusters_new <- enrichResultsAllClusters(
+  de_markers_all_clusters,
+  significant_regulon_deltas_all_clusters,
+  regulons_all_clusters,
+  enrichr_database)
+
+#I still need to convert this function
 
 #DECIPHER analysis-----
 start_time <- Sys.time()
@@ -224,7 +238,6 @@ for(this_cluster in unique(decipher_seurat$cluster)[1]){
 
   #this cannot be moved from this location
   interaction_deltas <- interaction_deltas_all_clusters[[this_cluster]]
-  interaction_deltas_by_cluster[[this_cluster]] <- interaction_deltas
 
   #subset interaction potential matrix to those interactions that have changed between conditions
   interaction_potentials_matrix_this_cluster <- filtered_interaction_potentials_matrix_all_clusters[[this_cluster]]
@@ -238,17 +251,13 @@ for(this_cluster in unique(decipher_seurat$cluster)[1]){
   #stuff for visualization
   lr_markers_this_cluster <- lr_markers_all_clusters[[this_cluster]]
 
-  de_markers_this_cluster <- FindMarkers(decipher_seurat_this_cluster,
-                                         ident.1 = "case",
-                                         ident.2 = "control",
-                                         logfc.threshold = 0.58,
-                                         only.pos = FALSE)
+  de_markers_this_cluster <- de_markers_all_clusters[[this_cluster]]
 
-  de_markers_this_cluster$gene <- rownames(de_markers_this_cluster)
+  regulon_results_df <- enrichResults(de_markers_this_cluster,significant_regulon_deltas_this_cluster,regulons_all_clusters[[this_cluster]],enrichr_database)
 
-  #regulon_results_df <- enrichResults(de_markers_this_cluster,significant_regulon_deltas_this_cluster,regulon_this_cluster,enrichr_database)
-
-  #enrichr_results_by_cluster[[this_cluster]] <- regulon_results_df
+  significant_regulon_markers_by_cluster[[this_cluster]] <- significant_regulon_markers_all_clusters[[this_cluster]]
+  enrichr_results_by_cluster[[this_cluster]] <- regulon_results_df
+  interaction_deltas_by_cluster[[this_cluster]] <- interaction_deltas
   regulon_grns_by_cluster[[this_cluster]] <- regulon_this_cluster
   regulon_scores_by_cluster[[this_cluster]] <- regulon_scores_this_cluster
   regulon_deltas_by_cluster[[this_cluster]] <- regulon_deltas_this_cluster
