@@ -9,6 +9,7 @@ library(targets)
 
 # Set target options:
 tar_option_set(
+  #Decipher here (#0)
   packages = c("tibble","randomForest","pagoda2","Seurat","babelgene","magrittr","tibble","stringr","Matrix","SeuratObject","tidyr","scde","ExperimentHub","dplyr","ggplot2"), # Packages that your targets need for their tasks.
   seed = 123
   # format = "qs", # Optionally set the default storage format. qs is fast.
@@ -52,7 +53,6 @@ lapply(list.files("R", full.names = TRUE), source)
 #parameters for pipeline
 #TODO: Figure out a more user-friendly way/adaptable way to add these
 
-
 # Define parameters
  min_cells_per_cluster_condition <- 100  # Minimum number of cells per cluster condition
  species <- "human"                      # Species of the sample
@@ -82,6 +82,26 @@ list(
 
   #QC visuals
   tar_target(CpC_data,generateQCDataByClusterAndCondition(seurat_oi,max(stringr::str_length(unique(seurat_oi$cluster))))),
-  tar_target(CpC_plot,plotQC_CpC(CpC_data,outputPath=reference_filepath))
+  tar_target(CpC_plot,plotQC_CpC(CpC_data,outputPath=reference_filepath)),
+  tar_target(clusters_passing_CpC_filter,getClustersPassingCpCFilter(CpC_data,minCpc = 100)),
+  tar_target(seurat_oi_CpC,subset(seurat_oi,subset = cluster %in% clusters_passing_CpC_filter)),
+
+  #meta cells
+  tar_target(seurat_oi_meta,metaCellModule(
+    seurat_object = seurat_oi_CpC,
+    min_meta_cells = 100
+  )),
+  tar_target(decipher_seurat_lr,subset(seurat_oi_meta,features = unique(c(L.set$ligand,L.set$receptor)))),
+
+  tar_target(feature_statistics,getFeatureStatistics(
+    features=unique(c(L.set$ligand,L.set$receptor)),
+    seuratObj=seurat_oi_meta)),
+
+  tar_target(expressed_ligands,getFilteredLigands(
+    seurat_oi_meta,
+    L.set,
+    param_min_ligand_expr_in_cluster = 0.1)
+  )
+
 
 )
