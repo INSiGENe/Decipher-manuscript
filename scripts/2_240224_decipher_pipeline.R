@@ -11,12 +11,12 @@ set.seed(123)
 min_cells_per_cluster_condition <- 100
 species <-  "human"
 #for sample dataset condition_name is "condition", case_condition is "stim" and control_condition is "ctrl"
-condition_name <- "Cohort"
-case_condition = "ICU-SEP"
-control_condition = "ICU-NoSEP"
+condition_name <- "condition"
+case_condition = "stim"
+control_condition = "ctrl"
 
 #Parameters: directories ----
-dataset_path <- "sepsis_v4"
+dataset_path <- "sample_analysis"
 dir.create(dataset_path)
 pre_processing_path <- file.path(dataset_path,"pre_processing")
 reference_filepath <- "reference_data"
@@ -37,9 +37,11 @@ flag.normalize.non.log <- FALSE
 #create sample dataset ----
 #including seurat object and h5ad objects
 #seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition,case_condition,control_condition)
-seurat_oi <- readRDS(file.path(pre_processing_path,"seurat_object_oi.rds"))
 ##save outputs for Decipher analysis
 #saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.rds"))
+
+seurat_oi <- readRDS(file.path(pre_processing_path,"seurat_object_oi.rds"))
+
 #in addition, we need to create python-compatible h5ad objects for the CO pipeline, here, I've opted against it
 #as they are not necessary for this script
 # for(this_cluster in unique(kang.seurat$cluster)){
@@ -56,9 +58,9 @@ cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
 
 #data pre-processing ----
 #moved this functions to generateSampleSeuratFromExperimentHub() but need alternative when user actually starts with seurat object
-seurat_oi$orig.condition <- seurat_oi[[condition_name]]
+#seurat_oi$orig.condition <- seurat_oi[[condition_name]]
 #map conditions to case and control because the code internally has 'case' and 'control'references
-seurat_oi <- mapConditionsInSeurat(seurat_oi,condition_name,case_condition,control_condition)
+#seurat_oi <- mapConditionsInSeurat(seurat_oi,condition_name,case_condition,control_condition)
 
 ##############
 ##QC ----
@@ -69,8 +71,8 @@ plotQC_CpC(CpC_data,outputPath=output_figures_filepath)
 #PARAM: select the minimum number of cells per cluster + condition
 clusters_passing_CpC_filter <- getClustersPassingCpCFilter(CpC_data,minCpc = 100)
 seurat_oi <- subset(seurat_oi,subset = cluster %in% clusters_passing_CpC_filter)
-plotQC_UpC(seuratObject = seurat_oi,outputPath = output_figures_filepath)
-k_parameter = 3
+plotQC_UpC(seuratObject = seurat_oi,outputPath = output_figures_filepath,id = "_sc")
+k_parameter = 10
 min_meta_cells_parameter = 100
 ##############
 ##Meta cells ----
