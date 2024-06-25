@@ -4,7 +4,7 @@
 \alias{metaCellModule}
 \title{Meta Cell Module Processing}
 \usage{
-metaCellModule(seurat_object, min_meta_cells)
+metaCellModule(seurat_object, min_meta_cells, k = NULL)
 }
 \arguments{
 \item{seurat_object}{A Seurat object containing single-cell RNA-seq data.}

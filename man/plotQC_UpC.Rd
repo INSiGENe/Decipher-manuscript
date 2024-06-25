@@ -4,7 +4,7 @@
 \alias{plotQC_UpC}
 \title{Plot Quality Control - UMIs per Cluster}
 \usage{
-plotQC_UpC(seuratObject, outputPath = "data/figures")
+plotQC_UpC(seuratObject, outputPath = "data/figures", id = NULL)
 }
 \arguments{
 \item{seuratObject}{A Seurat object containing single-cell RNA sequencing data.}

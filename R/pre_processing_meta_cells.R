@@ -574,8 +574,12 @@ calculate_suggested_number_of_metacell_neighbours <- function(seurat_object,para
 #'
 #' @importFrom Seurat NormalizeData
 #' @export
-metaCellModule <- function(seurat_object,min_meta_cells){
-  suggested_number_of_metacell_neighbours <- calculate_suggested_number_of_metacell_neighbours(seurat_object,min_meta_cells)
+metaCellModule <- function(seurat_object,min_meta_cells,k=NULL){
+  if(is.null(k)){
+    suggested_number_of_metacell_neighbours <- calculate_suggested_number_of_metacell_neighbours(seurat_object,min_meta_cells)
+  } else {
+    suggested_number_of_metacell_neighbours <- k
+  }
 
   MetaCellMatrices <- generateMetaCellMatrices(
     seuratObj = seurat_object,

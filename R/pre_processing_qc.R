@@ -69,8 +69,13 @@ generateQCDataByClusterAndCondition <- function(seuratObj, maxClusterNameLength)
 #' @examples
 #' # Assuming 'qcData' is a valid data frame with the necessary columns:
 #' plotQC_CpC(qcData)
-plotQC_CpC <- function(qc_plot_data_cells_per_cluster,outputPath = "data/figures"){
-  fileName <- paste("cells_per_cluster",".png",sep="")
+plotQC_CpC <- function(qc_plot_data_cells_per_cluster,outputPath = "data/figures",id=NULL){
+  if(!is.null(id)){
+    fileName <- paste("cells_per_cluster",id,".png",sep="")
+  }else{
+    fileName <- paste("cells_per_cluster",".png",sep="")
+  }
+
   filePath <- file.path(outputPath, fileName)
 
   df <- qc_plot_data_cells_per_cluster
@@ -181,7 +186,7 @@ getClustersPassingCpCFilter <- function(cpcData, minCpc = 100) {
 #' @examples
 #' # Assuming 'seurat' is a valid Seurat object:
 #' plotQC_UpC(seurat)
-plotQC_UpC <- function(seuratObject,outputPath = "data/figures"){
+plotQC_UpC <- function(seuratObject,outputPath = "data/figures",id = NULL){
   rnaCountsMatrix <- Seurat::GetAssayData(seuratObject, assay = "RNA", slot = "counts")
   UpC <- colSums(rnaCountsMatrix)
   UpCdf <- data.frame(
@@ -200,7 +205,12 @@ plotQC_UpC <- function(seuratObject,outputPath = "data/figures"){
     ggtitle(label = "UMIs per Cluster")+
     ylim(0,100000)
 
-  fileName <- paste("UMIs_per_cluster",".png",sep="")
+  if(!is.null(id)){
+    fileName <- paste("UMIs_per_cluster",id,".png",sep="")
+  } else {
+    fileName <- paste("UMIs_per_cluster",".png",sep="")
+  }
+
   filePath <- file.path(outputPath, fileName)
   png(filePath,width=30,height=20,units="cm",res=400)
   print(p)

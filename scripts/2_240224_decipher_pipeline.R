@@ -10,11 +10,13 @@ set.seed(123)
 #Parameters: dataset ----
 min_cells_per_cluster_condition <- 100
 species <-  "human"
-case_condition = "stim"
-control_condition = "ctrl"
+#for sample dataset condition_name is "condition", case_condition is "stim" and control_condition is "ctrl"
+condition_name <- "Cohort"
+case_condition = "ICU-SEP"
+control_condition = "ICU-NoSEP"
 
 #Parameters: directories ----
-dataset_path <- "sample_analysis"
+dataset_path <- "sepsis_v4"
 dir.create(dataset_path)
 pre_processing_path <- file.path(dataset_path,"pre_processing")
 reference_filepath <- "reference_data"
@@ -34,9 +36,10 @@ flag.normalize.non.log <- FALSE
 
 #create sample dataset ----
 #including seurat object and h5ad objects
-seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition,case_condition,control_condition)
+#seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition,case_condition,control_condition)
+seurat_oi <- readRDS(file.path(pre_processing_path,"seurat_object_oi.rds"))
 ##save outputs for Decipher analysis
-saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.rds"))
+#saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.rds"))
 #in addition, we need to create python-compatible h5ad objects for the CO pipeline, here, I've opted against it
 #as they are not necessary for this script
 # for(this_cluster in unique(kang.seurat$cluster)){
@@ -53,27 +56,42 @@ cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
 
 #data pre-processing ----
 #moved this functions to generateSampleSeuratFromExperimentHub() but need alternative when user actually starts with seurat object
-#seurat_oi$orig.condition <- seurat_oi$condition
+seurat_oi$orig.condition <- seurat_oi[[condition_name]]
 #map conditions to case and control because the code internally has 'case' and 'control'references
-#seurat_oi <- mapConditionsInSeurat(seurat_oi,"condition",case_condition,control_condition)
+seurat_oi <- mapConditionsInSeurat(seurat_oi,condition_name,case_condition,control_condition)
 
 ##############
 ##QC ----
 ##############
 CpC_data <- generateQCDataByClusterAndCondition(seurat_oi,max(stringr::str_length(unique(seurat_oi$cluster))))
-#plotQC_CpC(CpC_data,outputPath=output_figures_filepath)
+plotQC_CpC(CpC_data,outputPath=output_figures_filepath)
 
 #PARAM: select the minimum number of cells per cluster + condition
 clusters_passing_CpC_filter <- getClustersPassingCpCFilter(CpC_data,minCpc = 100)
 seurat_oi <- subset(seurat_oi,subset = cluster %in% clusters_passing_CpC_filter)
-
+plotQC_UpC(seuratObject = seurat_oi,outputPath = output_figures_filepath)
+k_parameter = 3
+min_meta_cells_parameter = 100
 ##############
 ##Meta cells ----
 ##############
 decipher_seurat <- metaCellModule(
   seurat_object = seurat_oi,
-  min_meta_cells = 100
+  min_meta_cells = min_meta_cells_parameter,
+  k = k_parameter
 )
+
+plotQC_UpC(seuratObject = decipher_seurat,outputPath = output_figures_filepath,id = "_meta")
+
+CpC_data_meta <- generateQCDataByClusterAndCondition(decipher_seurat,max(stringr::str_length(unique(decipher_seurat$cluster))))
+plotQC_CpC(CpC_data_meta,outputPath=output_figures_filepath,id = "_meta")
+
+
+parameter_record <- data.frame(
+  "k" = k_parameter,
+  "min_meta_cells" = min_meta_cells_parameter
+)
+write.csv(parameter_record,file.path(output_data_filepath,"parameter_record.csv"))
 
 saveRDS(decipher_seurat,file.path(output_data_filepath,"pseudobulk_seurat.rds"))
 

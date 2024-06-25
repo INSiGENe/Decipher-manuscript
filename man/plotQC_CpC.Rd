@@ -4,7 +4,11 @@
 \alias{plotQC_CpC}
 \title{Plot Quality Control - Cells per Cluster}
 \usage{
-plotQC_CpC(qc_plot_data_cells_per_cluster, outputPath = "data/figures")
+plotQC_CpC(
+  qc_plot_data_cells_per_cluster,
+  outputPath = "data/figures",
+  id = NULL
+)
 }
 \arguments{
 \item{qc_plot_data_cells_per_cluster}{A data frame with QC data.
