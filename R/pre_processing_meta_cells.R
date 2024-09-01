@@ -18,8 +18,8 @@ generateMetaCellMatrices <- function(seuratObj, paramMinMetaCells = 100, paramMa
 
   for (this_cluster in unique(seuratObj$cluster)) {
     cat("Calculating pseudobulk matrices for cluster:", this_cluster, "\n")
+    seuratObjectCluster <- seuratObj[, which(seuratObj$cluster == this_cluster), seed=NULL]
 
-    seuratObjectCluster <- subset(seuratObj, subset = cluster == this_cluster)
     minCellCount <- min(table(seuratObjectCluster$condition))
     minCellCount <- floor(minCellCount/(paramK+1))
 

@@ -118,7 +118,7 @@ getRandomForestWeightsAllClusters <- function(decipher_seurat, significant_regul
     interaction_potentials_matrix_clusters <- interaction_potentials_matrix_clusters_all_clusters[[this_cluster]]
 
     # main object
-    decipher_seurat_this_cluster <- subset(decipher_seurat, subset = cluster == this_cluster)
+    decipher_seurat_this_cluster <- decipher_seurat[, which(decipher_seurat$cluster == this_cluster), seed=NULL]
     # set identity
     SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
     data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
@@ -191,7 +191,7 @@ FindLRMarkersAllClusters <- function(decipher_seurat, rf_results_all_clusters, f
   for(this_cluster in unique(decipher_seurat$cluster)){
 
     # main object
-    decipher_seurat_this_cluster <- subset(decipher_seurat, subset = cluster == this_cluster)
+    decipher_seurat_this_cluster <- decipher_seurat[, which(decipher_seurat$cluster == this_cluster), seed=NULL]
     # set identity
     SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
     data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
@@ -241,7 +241,7 @@ FindMarkersAllClusters <- function(decipher_seurat, flag.normalize.non.log) {
   for(this_cluster in unique(decipher_seurat$cluster)){
 
     # main object
-    decipher_seurat_this_cluster <- subset(decipher_seurat, subset = cluster == this_cluster)
+    decipher_seurat_this_cluster <- decipher_seurat[, which(decipher_seurat$cluster == this_cluster), seed=NULL]
     # set identity
     SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
     data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data

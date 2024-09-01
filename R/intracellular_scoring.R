@@ -405,7 +405,7 @@ getRegulonScoresAllClusters <- function(capped_regulons_all_clusters, decipher_s
   for(this_cluster in unique(decipher_seurat$cluster)){
     regulon_this_cluster_capped <- capped_regulons_all_clusters[[this_cluster]]
     # main object
-    decipher_seurat_this_cluster <- subset(decipher_seurat, subset = cluster == this_cluster)
+    decipher_seurat_this_cluster <- decipher_seurat[, which(decipher_seurat$cluster == this_cluster), seed=NULL]
     # set identity
     SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
 
@@ -450,7 +450,7 @@ getRegulonDeltasAllClusters <- function(regulon_scores_all_clusters, decipher_se
   for(this_cluster in unique(decipher_seurat$cluster)){
     regulon_scores_this_cluster <- regulon_scores_all_clusters[[this_cluster]]
     # main object
-    decipher_seurat_this_cluster <- subset(decipher_seurat, subset = cluster == this_cluster)
+    decipher_seurat_this_cluster <- decipher_seurat[, which(decipher_seurat$cluster == this_cluster), seed=NULL]
     # set identity
     SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
 

@@ -36,9 +36,9 @@ flag.normalize.non.log <- FALSE
 
 #create sample dataset ----
 #including seurat object and h5ad objects
-#seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition,case_condition,control_condition)
+seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition,case_condition,control_condition)
 ##save outputs for Decipher analysis
-#saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.rds"))
+saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.rds"))
 
 seurat_oi <- readRDS(file.path(pre_processing_path,"seurat_object_oi.rds"))
 
@@ -70,7 +70,8 @@ plotQC_CpC(CpC_data,outputPath=output_figures_filepath)
 
 #PARAM: select the minimum number of cells per cluster + condition
 clusters_passing_CpC_filter <- getClustersPassingCpCFilter(CpC_data,minCpc = 100)
-seurat_oi <- subset(seurat_oi,subset = cluster %in% clusters_passing_CpC_filter)
+seurat_oi <- seurat_oi[, which(seurat_oi$cluster %in% clusters_passing_CpC_filter), seed=NULL]
+
 plotQC_UpC(seuratObject = seurat_oi,outputPath = output_figures_filepath,id = "_sc")
 k_parameter = 10
 min_meta_cells_parameter = 100
@@ -100,7 +101,7 @@ saveRDS(decipher_seurat,file.path(output_data_filepath,"pseudobulk_seurat.rds"))
 ##############
 #data pre-processing: main analysis ----
 ##############
-decipher_seurat_lr <- subset(decipher_seurat,features = unique(c(L.set$ligand,L.set$receptor)))
+decipher_seurat_lr <- decipher_seurat[unique(c(L.set$ligand,L.set$receptor)),, seed=NULL]
 
 feature_statistics <- getFeatureStatistics(
   features=unique(c(L.set$ligand,L.set$receptor)),
