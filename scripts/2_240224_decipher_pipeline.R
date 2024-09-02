@@ -36,9 +36,9 @@ flag.normalize.non.log <- FALSE
 
 #create sample dataset ----
 #including seurat object and h5ad objects
-seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition,case_condition,control_condition)
+#seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition,case_condition,control_condition)
 ##save outputs for Decipher analysis
-saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.rds"))
+#saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.rds"))
 
 seurat_oi <- readRDS(file.path(pre_processing_path,"seurat_object_oi.rds"))
 
