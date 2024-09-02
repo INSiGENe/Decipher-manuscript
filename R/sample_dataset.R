@@ -49,7 +49,8 @@ generateSampleSeuratFromExperimentHub <- function(min_cells_per_cluster_conditio
   kang.seurat[["percent.mt"]] <- 0
 
   #this seurat is already clustered, so we don't need to do much pre-processing except some filtering
-  kang.seurat <- subset(kang.seurat, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+  kang.seurat <- kang.seurat[, which(kang.seurat$nFeature_RNA > 200 & kang.seurat$nFeature_RNA < 2500 & kang.seurat$percent.mt < 5), seed=NULL]
+
   dim(kang.seurat) #expect 18890 rows (genes) by 28869 columns (cells)
 
   #normalize the data
