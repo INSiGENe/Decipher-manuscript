@@ -133,7 +133,7 @@ getRandomForestWeightsAllClusters <- function(decipher_seurat, significant_regul
       val.this.tf <- significant_regulon_deltas_this_cluster$deltaPagoda[ind.this.tf]
       tf.merged <- regulon_scores_this_cluster[this.tf, colnames(interaction_potentials_matrix_clusters)]
 
-      set.seed(123)
+      #set.seed(123)
       rf <- randomForest::randomForest(
         x = t(interaction_potentials_matrix_clusters),
         y=tf.merged,
