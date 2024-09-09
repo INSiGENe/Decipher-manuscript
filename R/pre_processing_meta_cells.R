@@ -43,7 +43,7 @@ generateMetaCellMatrices <- function(seuratObj, paramMinMetaCells = 100, paramMa
         cellsToKeep <- conditionData$cell
       }
 
-      seuratObjectCondition <- subset(seuratObjectCluster, cells = cellsToKeep)
+      seuratObjectCondition <- seuratObjectCluster[,cellsToKeep,seed=NULL]
 
       B_matrix <- calculatePseudoBulkCell(
         seuratObject = seuratObjectCondition,
@@ -330,7 +330,7 @@ generateMetaCellMatricesWPairings <- function(seuratObj, paramMinMetaCells = 100
     control_cells = seuratObj@meta.data %>% filter(cluster %in% control_cluster & condition == "control") %>% pull(barcode)
     all_cells = c(case_cells,control_cells)
 
-    seuratObjectCluster <- subset(seuratObj, cells = all_cells)
+    seuratObjectCluster <- seuratObj[,all_cells,seed=NULL]
     minCellCount <- min(table(seuratObjectCluster$condition))
     minCellCount <- floor(minCellCount/(paramK+1))
 
@@ -354,7 +354,7 @@ generateMetaCellMatricesWPairings <- function(seuratObj, paramMinMetaCells = 100
         cellsToKeep <- conditionData$cell
       }
 
-      seuratObjectCondition <- subset(seuratObjectCluster, cells = cellsToKeep)
+      seuratObjectCondition <- seuratObjectCluster[,cellsToKeep,seed=NULL]
 
       B_matrix <- calculatePseudoBulkCell(
         seuratObject = seuratObjectCondition,
@@ -489,7 +489,7 @@ KeepClustersWithMtNCellsPerCondition <- function(seurat_object,N){
     filter(!cluster %in% insufficient_clusters) %>%
     pull(cell)
 
-  seurat_object <- subset(seurat_object,cells = cells_to_keep)
+  seurat_object <- seurat_object[,cells_to_keep,seed=NULL]
 
   return(seurat_object)
 }
