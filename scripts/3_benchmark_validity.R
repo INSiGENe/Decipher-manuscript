@@ -52,7 +52,8 @@ seurat_oi <- readRDS(file.path(pre_processing_path,"seurat_object_oi.rds"))
 # }
 
 #load reference data ----
-L.set             <- getForrestLRDatabase(reference_filepath,species)
+#L.set             <- getForrestLRDatabase(reference_filepath,species)
+L.set <- loadLSet(reference_filepath,species)
 enrichr_database  <- loadEnrichrDatabase(reference_filepath,species)
 cytosig_ligands   <- loadCytosigLigands(reference_filepath,species)
 
@@ -62,9 +63,11 @@ seurat_oi$orig.condition <- seurat_oi[["condition"]]
 #map conditions to case and control because the code internally has 'case' and 'control'references
 
 
-for(i in 1:10){
+for(i in 1:100){
 # THIS CODE SNIPPET MESSES THINGS UP!
 #seurat_oi <- mapConditionsInSeurat(seurat_oi,condition_name,case_condition,control_condition)
+
+  set.seed(i)
 
 ##############
 ##QC ----

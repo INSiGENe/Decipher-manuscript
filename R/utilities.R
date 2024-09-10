@@ -293,7 +293,8 @@ downsampleSeuratByCondition <- function(seurat_object,param_max_n_cells){
   }
 
   SeuratObject::Idents(seurat_object) <- seurat_object@meta.data$condition
-  seurat_object_downsampled <- subset(seurat_object, downsample = base_n_cells)
+  #seurat_object_downsampled <- subset(seurat_object, downsample = base_n_cells)
+  seurat_object_downsampled  <- seurat_object[, sample(Cells(seurat_object), base_n_cells), seed = NULL]
   return(seurat_object_downsampled)
 }
 
