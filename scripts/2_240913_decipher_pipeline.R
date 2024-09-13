@@ -184,8 +184,7 @@ decipher_scores_by_regulon_and_cluster <- getRandomForestWeightsAllClusters(
   regulon_scores_by_cluster,
   interaction_potentials_matrix_clusters_all_clusters,
   L_set_relevant_features_all_clusters,
-  flag.normalize.non.log,
-  random.seed = NULL)
+  flag.normalize.non.log)
 
 lr_markers_by_cluster <- FindLRMarkersAllClusters(
   decipher_seurat,
