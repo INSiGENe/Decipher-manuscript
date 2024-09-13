@@ -9,7 +9,8 @@ getDifferentiallyExpressedTargetsForRegulons(
   regulonNames,
   logFcThreshold,
   grnDf,
-  targetCt
+  targetCt,
+  random.seed
 )
 }
 \arguments{

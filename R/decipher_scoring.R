@@ -133,7 +133,6 @@ getRandomForestWeightsAllClusters <- function(decipher_seurat, significant_regul
       val.this.tf <- significant_regulon_deltas_this_cluster$deltaPagoda[ind.this.tf]
       tf.merged <- regulon_scores_this_cluster[this.tf, colnames(interaction_potentials_matrix_clusters)]
 
-      #set.seed(123)
       rf <- randomForest::randomForest(
         x = t(interaction_potentials_matrix_clusters),
         y=tf.merged,
@@ -169,6 +168,7 @@ getRandomForestWeightsAllClusters <- function(decipher_seurat, significant_regul
 #' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
 #' @param rf_results_all_clusters A list of random forest results for each cluster.
 #' @param flag.normalize.non.log A logical flag indicating whether to normalize non-log-transformed data.
+#' @param random.seed Set to NULL to keep the global seed random, or specify a value for reproducibility.
 #'
 #' @return A list where each element corresponds to a cluster and contains the marker genes for that cluster.
 #'
@@ -185,7 +185,7 @@ getRandomForestWeightsAllClusters <- function(decipher_seurat, significant_regul
 #'
 #' @importFrom Seurat NormalizeData FindMarkers
 #' @export
-FindLRMarkersAllClusters <- function(decipher_seurat, rf_results_all_clusters, flag.normalize.non.log) {
+FindLRMarkersAllClusters <- function(decipher_seurat, rf_results_all_clusters, flag.normalize.non.log,random.seed) {
   lr_markers_all_clusters <- list()
 
   for(this_cluster in unique(decipher_seurat$cluster)){
@@ -210,7 +210,9 @@ FindLRMarkersAllClusters <- function(decipher_seurat, rf_results_all_clusters, f
       features = unique(c(all_rf_results_matrix$ligand, all_rf_results_matrix$receptor)),
       logfc.threshold = 0,
       min.pct = 0,
-      only.pos = FALSE
+      only.pos = FALSE,
+      random.seed = random.seed,
+      max.cells.per.ident = 100000
     )
   }
   return(lr_markers_all_clusters)
@@ -222,6 +224,7 @@ FindLRMarkersAllClusters <- function(decipher_seurat, rf_results_all_clusters, f
 #'
 #' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
 #' @param flag.normalize.non.log A logical flag indicating whether to normalize non-log-transformed data.
+#' @param random.seed Set to NULL to keep the global seed random, or specify a value for reproducibility.
 #'
 #' @return A list where each element corresponds to a cluster and contains the differentially expressed markers for that cluster.
 #'
@@ -235,7 +238,7 @@ FindLRMarkersAllClusters <- function(decipher_seurat, rf_results_all_clusters, f
 #'
 #' @importFrom Seurat NormalizeData FindMarkers
 #' @export
-FindMarkersAllClusters <- function(decipher_seurat, flag.normalize.non.log) {
+FindMarkersAllClusters <- function(decipher_seurat, flag.normalize.non.log,random.seed) {
   markers_all_clusters <- list()
 
   for(this_cluster in unique(decipher_seurat$cluster)){
@@ -257,7 +260,9 @@ FindMarkersAllClusters <- function(decipher_seurat, flag.normalize.non.log) {
       ident.1 = "case",
       ident.2 = "control",
       logfc.threshold = 0.58,
-      only.pos = FALSE
+      only.pos = FALSE,
+      random.seed = random.seed,
+      max.cells.per.ident = 100000
     )
 
     de_markers_this_cluster$gene <- rownames(de_markers_this_cluster)

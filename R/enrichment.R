@@ -10,13 +10,13 @@
 #' @param grnDf Gene regulatory network data frame.
 #' @param targetCt Target count.
 #' @return A list containing markers for each regulon.
-getDifferentiallyExpressedTargetsForRegulons <- function(seuratObj, regulonNames, logFcThreshold, grnDf, targetCt) {
+getDifferentiallyExpressedTargetsForRegulons <- function(seuratObj, regulonNames, logFcThreshold, grnDf, targetCt,random.seed) {
   SeuratObject::Idents(seuratObj) <- seuratObj$condition
 
   regulonWithDiffTargets <- list()
 
   for (regulon in regulonNames) {
-    markers <- findMarkersForRegulon(seuratObj, regulon, grnDf, logFcThreshold)
+    markers <- findMarkersForRegulon(seuratObj, regulon, grnDf, logFcThreshold,random.seed)
     if (nrow(markers) > 0) {
       markers <- annotateMarkers(markers, targetCt, regulon)
       regulonWithDiffTargets[[regulon]] <- markers
@@ -26,7 +26,7 @@ getDifferentiallyExpressedTargetsForRegulons <- function(seuratObj, regulonNames
   return(regulonWithDiffTargets)
 }
 
-findMarkersForRegulon <- function(seuratObj, regulon, grnDf, logFcThreshold) {
+findMarkersForRegulon <- function(seuratObj, regulon, grnDf, logFcThreshold,random.seed) {
   targetGenes <- getTargetGenesForRegulon(regulon, grnDf, seuratObj)
   FindMarkers(
     seuratObj,
@@ -35,7 +35,9 @@ findMarkersForRegulon <- function(seuratObj, regulon, grnDf, logFcThreshold) {
     features = targetGenes,
     logfc.threshold = logFcThreshold,
     only.pos = FALSE,
-    verbose=FALSE
+    verbose=FALSE,
+    max.cells.per.ident=100000,
+    random.seed=random.seed
   )
 }
 
@@ -214,7 +216,7 @@ enrichResults <- function(de_markers_this_cluster,significant_regulon_deltas_thi
 #' }
 #'
 #' @export
-getDifferentiallyExpressedTargetsForRegulonsAllClusters <- function(decipher_seurat, significant_regulon_deltas_all_clusters, regulons_all_clusters, flag.normalize.non.log) {
+getDifferentiallyExpressedTargetsForRegulonsAllClusters <- function(decipher_seurat, significant_regulon_deltas_all_clusters, regulons_all_clusters, flag.normalize.non.log,random.seed) {
   significant_regulon_markers_all_clusters <- list()
 
   for(this_cluster in unique(decipher_seurat$cluster)){
@@ -236,7 +238,8 @@ getDifferentiallyExpressedTargetsForRegulonsAllClusters <- function(decipher_seu
       regulonNames = significant_regulon_deltas_this_cluster$name,
       logFcThreshold = 0.58,
       grnDf = regulon_this_cluster,
-      targetCt = this_cluster
+      targetCt = this_cluster,
+      random.seed=random.seed
     )
 
   }

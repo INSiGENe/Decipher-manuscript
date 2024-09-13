@@ -8,7 +8,8 @@ getDifferentiallyExpressedTargetsForRegulonsAllClusters(
   decipher_seurat,
   significant_regulon_deltas_all_clusters,
   regulons_all_clusters,
-  flag.normalize.non.log
+  flag.normalize.non.log,
+  random.seed
 )
 }
 \arguments{
