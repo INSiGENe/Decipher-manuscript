@@ -436,3 +436,48 @@ convertListOfMatricesToMatrix <- function(listOfMatrices){
 
   return(result_matrix)
 }
+
+
+#' Write H5AD Files for Each Cluster in a Seurat Object
+#'
+#' This function writes .h5ad files for each cluster in a given Seurat object.
+#' Each cluster is processed and saved as a separate .h5ad file in a specified directory.
+#'
+#' @param seurat_object A Seurat object containing the data to be processed.
+#' @param pre_processing_path A string specifying the path to the directory where the h5ad files will be saved.
+#' @return None. The function writes .h5ad files to the specified directory.
+#' @examples
+#' \dontrun{
+#' writeH5ADObjects(seurat_object, "path/to/pre_processing")
+#' }
+#' @import Seurat
+#' @importFrom SummarizedExperiment assays
+#' @import zellkonverter
+#' @export
+writeH5ADObjects <- function(seurat_object, pre_processing_path) {
+  # Create a new directory for h5ad files if it doesn't exist
+  h5ad_dir_path <- file.path(pre_processing_path, "h5ad_by_cluster")
+  if (!dir.exists(h5ad_dir_path)) {
+    dir.create(h5ad_dir_path)
+  }
+
+  # Process each cluster found in the Seurat object
+  for (this_cluster in unique(seurat_object$cluster)) {
+    # Subset the Seurat object for the current cluster
+    seurat_object_this_cluster <- seurat_object[,which(seurat_object$cluster == this_cluster),seed=NULL]
+
+    # Convert to SingleCellExperiment
+    sce.object <- Seurat::as.SingleCellExperiment(seurat_object_this_cluster)
+
+    # Remove the logcounts assay if it exists
+    if ("logcounts" %in% names(SummarizedExperiment::assays(sce.object))) {
+      SummarizedExperiment::assays(sce.object)[["logcounts"]] <- NULL
+    }
+
+    # Write the SCE object to an h5ad file
+    zellkonverter::writeH5AD(sce.object,
+                             file.path(h5ad_dir_path, paste(this_cluster, ".h5ad", sep = "")),
+                             X_name = "counts")
+  }
+}
+
