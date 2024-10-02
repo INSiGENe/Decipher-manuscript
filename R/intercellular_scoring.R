@@ -480,10 +480,10 @@ getInteractionPotentialMatrixForRepresentativeInteractions <- function(data_this
 #'
 #' This function calculates the interaction potentials matrix for each cluster in a Seurat object.
 #'
-#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
-#' @param decipher_seurat_this_cluster A Seurat object subset for a specific cluster.
+#' @param decipher_seurat A Seurat object containing meta-cells with cluster and condition metadata.
 #' @param L_set_relevant_features_all_clusters A list of relevant ligand-receptor features for each cluster.
 #' @param flag.normalize.non.log A logical flag indicating whether to normalize non-log-transformed data.
+#' @param sc_seurat (Optional) A single-cell Seurat object for calculating ligand expression based on single-cell data.
 #'
 #' @return A list where each element corresponds to a cluster and contains the interaction potentials matrix for that cluster.
 #'
@@ -498,7 +498,7 @@ getInteractionPotentialMatrixForRepresentativeInteractions <- function(data_this
 #' }
 #'
 #' @export
-getInteractionPotentialsMatrixAllClusters <- function(decipher_seurat, decipher_seurat_this_cluster, L_set_relevant_features_all_clusters, flag.normalize.non.log) {
+getInteractionPotentialsMatrixAllClusters <- function(decipher_seurat, L_set_relevant_features_all_clusters, flag.normalize.non.log,sc_seurat = NULL) {
   interaction_potentials_matrix_all_clusters <- list()
 
   for(this_cluster in unique(decipher_seurat$cluster)){
@@ -514,11 +514,20 @@ getInteractionPotentialsMatrixAllClusters <- function(decipher_seurat, decipher_
     # set identity
     SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster$condition
 
-    interaction_potentials_matrix_this_cluster <- getInteractionPotentialsMatrixThisCluster(
-      seurat_obj = decipher_seurat,
-      seurat_obj_this_cluster_ds = decipher_seurat_this_cluster,
-      selected_lr_pairs = L_set_relevant_features_all_clusters[[this_cluster]]
-    )
+    if(is.null(sc_seurat)){
+      interaction_potentials_matrix_this_cluster <- getInteractionPotentialsMatrixThisCluster(
+        seurat_obj = decipher_seurat,
+        seurat_obj_this_cluster_ds = decipher_seurat_this_cluster,
+        selected_lr_pairs = L_set_relevant_features_all_clusters[[this_cluster]]
+      )
+    } else {
+      interaction_potentials_matrix_this_cluster <- getInteractionPotentialsMatrixThisCluster(
+        seurat_obj = sc_seurat,
+        seurat_obj_this_cluster_ds = decipher_seurat_this_cluster,
+        selected_lr_pairs = L_set_relevant_features_all_clusters[[this_cluster]]
+      )
+    }
+
 
     interaction_potentials_matrix_all_clusters[[this_cluster]] <- interaction_potentials_matrix_this_cluster
   }
