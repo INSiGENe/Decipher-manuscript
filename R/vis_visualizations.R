@@ -535,7 +535,7 @@ plotBubble <- function(df,color.var,size.var,stroke.var,plot.position,col.min.va
 #' @import ggplot2
 #' @importFrom grDevices png dev.off
 #' @importFrom utils write.csv
-plotDecipherPrioritizedMap <- function(dataset_path){
+plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cells = NULL){
   decipher_path <- file.path(dataset_path,"data")
   #read data ----
   lr_markers_by_cluster <- readRDS(file.path(decipher_path,"lr_markers_by_cluster.rds"))
@@ -603,15 +603,29 @@ plotDecipherPrioritizedMap <- function(dataset_path){
   # selected_scts <- c("B_cell","Monocyte","HSC","CD4_T","CD8_Tem","NK_cell_1")
 
   #now
-  decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
-    mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
-    group_by(decipher_score_sign) %>%
-    arrange(desc(abs(prioritization_score))) %>%
-    select(interaction) %>%
-    distinct() %>%
-    slice_head(n = 4) %>%
-    ungroup() %>%
-    left_join(decipher_scores_by_cluster_bound)
+  if(is.null(selected_receiver_cells)){
+    decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
+      mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
+      group_by(decipher_score_sign) %>%
+      arrange(desc(abs(prioritization_score))) %>%
+      select(interaction) %>%
+      distinct() %>%
+      slice_head(n = top_n) %>%
+      ungroup() %>%
+      left_join(decipher_scores_by_cluster_bound)
+  } else {
+    decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
+      mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
+      filter(receiver %in% selected_receiver_cells) %>%
+      group_by(decipher_score_sign) %>%
+      arrange(desc(abs(prioritization_score))) %>%
+      select(interaction) %>%
+      distinct() %>%
+      slice_head(n = top_n) %>%
+      ungroup() %>%
+      left_join(decipher_scores_by_cluster_bound)
+  }
+
 
   top_interactions <- decipher_top_interactions_all_clusters %>%
     select(interaction) %>%
@@ -624,8 +638,6 @@ plotDecipherPrioritizedMap <- function(dataset_path){
     mutate(size = 1)
 
   plot_limits_ligand <- list(max = max(base_data$ligand.diff.expr),min = min(base_data$ligand.diff.expr))
-  plot_limits_receptor <- list(max = max(base_data$receptor.diff.expr),min = min(base_data$receptor.diff.expr))
-  plot_limits_decipher <- list(max = max(base_data$decipher_score),min = min(base_data$decipher_score))
 
   base_data$stroke <- 0.5
 
@@ -652,8 +664,19 @@ plotDecipherPrioritizedMap <- function(dataset_path){
     x_lab= "SCT",
     y_lab = "Interaction")
 
+  if(is.null(selected_receiver_cells)){
+    base_data_decipher <- base_data
+
+  } else {
+    base_data_decipher <- base_data %>%
+      filter(receiver_cluster %in% selected_receiver_cells)
+  }
+
+  plot_limits_receptor <- list(max = max(base_data_decipher$receptor.diff.expr),min = min(base_data_decipher$receptor.diff.expr))
+  plot_limits_decipher <- list(max = max(base_data_decipher$decipher_score),min = min(base_data_decipher$decipher_score))
+
   decipher_bubble_plot <- plotBubble(
-    df = base_data,
+    df = base_data_decipher,
     x_var = "receiver_cluster",
     color.var = "decipher_score",
     size.var = "size",
@@ -665,7 +688,7 @@ plotDecipherPrioritizedMap <- function(dataset_path){
     y_lab = "")
 
   receptor_bubble_plot <- plotBubble(
-    df = base_data,
+    df = base_data_decipher,
     x_var = "receiver_cluster",
     color.var = "receptor.diff.expr",
     size.var = "size_receptor",
