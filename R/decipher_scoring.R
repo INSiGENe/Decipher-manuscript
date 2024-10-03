@@ -161,6 +161,8 @@ getRandomForestWeightsAllClusters <- function(decipher_seurat, significant_regul
   return(rf_results_all_clusters)
 }
 
+
+
 #' Find LR Marker Genes for Ligand-Receptor Pairs in All Clusters
 #'
 #' This function identifies marker genes for ligand-receptor pairs in each cluster of a Seurat object based on random forest results.
@@ -203,11 +205,69 @@ FindLRMarkersAllClusters <- function(decipher_seurat, rf_results_all_clusters, f
     SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster$condition
 
     all_rf_results_matrix <- rf_results_all_clusters[[this_cluster]]
+    this_features <- intersect(rownames(decipher_seurat_this_cluster),unique(c(all_rf_results_matrix$ligand, all_rf_results_matrix$receptor)))
     lr_markers_all_clusters[[this_cluster]] <- FindMarkers(
       object = decipher_seurat_this_cluster,
       ident.1 = "case",
       ident.2 = "control",
-      features = unique(c(all_rf_results_matrix$ligand, all_rf_results_matrix$receptor)),
+      features = this_features,
+      logfc.threshold = 0,
+      min.pct = 0,
+      only.pos = FALSE,
+      random.seed = random.seed,
+      max.cells.per.ident = 100000
+    )
+  }
+  return(lr_markers_all_clusters)
+}
+
+#' Find LR Marker Genes for Ligand-Receptor Pairs in All Clusters
+#'
+#' This function identifies marker genes for ligand-receptor pairs in each cluster of a Seurat object based on random forest results.
+#'
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
+#' @param expressed_ligands A character vector of expressed ligands
+#' @param flag.normalize.non.log A logical flag indicating whether to normalize non-log-transformed data.
+#' @param random.seed Set to NULL to keep the global seed random, or specify a value for reproducibility.
+#'
+#' @return A list where each element corresponds to a cluster and contains the marker genes for that cluster.
+#'
+#' @details The function iterates through each unique cluster in the `decipher_seurat` object, subsets the Seurat object for the cluster, normalizes the data if necessary, and identifies marker genes for ligand-receptor pairs using the `FindMarkers` function.
+#'
+#' @examples
+#' \dontrun{
+#' decipher_seurat <- CreateSeuratObject(counts = your_counts_matrix)
+#' rf_results_all_clusters <- getRandomForestWeightsAllClusters(
+#'   decipher_seurat, significant_regulon_deltas_all_clusters, regulon_scores_all_clusters,
+#'   interaction_potentials_matrix_clusters_all_clusters, L_set_relevant_features_all_clusters, TRUE)
+#' lr_markers_all_clusters <- FindLRMarkersAllClusters(decipher_seurat, rf_results_all_clusters, TRUE)
+#' }
+#'
+#' @importFrom Seurat NormalizeData FindMarkers
+#' @export
+FindLMarkersAllClustersSC <- function(decipher_seurat, expressed_ligands, flag.normalize.non.log,random.seed) {
+  lr_markers_all_clusters <- list()
+
+  for(this_cluster in unique(decipher_seurat$cluster)){
+
+    # main object
+    decipher_seurat_this_cluster <- decipher_seurat[, which(decipher_seurat$cluster == this_cluster), seed=NULL]
+    # set identity
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
+    data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
+
+    if(flag.normalize.non.log){
+      decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
+    }
+
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster$condition
+
+    this_features <- intersect(rownames(decipher_seurat_this_cluster),unique(expressed_ligands))
+    lr_markers_all_clusters[[this_cluster]] <- FindMarkers(
+      object = decipher_seurat_this_cluster,
+      ident.1 = "case",
+      ident.2 = "control",
+      features = this_features,
       logfc.threshold = 0,
       min.pct = 0,
       only.pos = FALSE,

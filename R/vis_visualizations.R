@@ -535,13 +535,18 @@ plotBubble <- function(df,color.var,size.var,stroke.var,plot.position,col.min.va
 #' @import ggplot2
 #' @importFrom grDevices png dev.off
 #' @importFrom utils write.csv
-plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cells = NULL){
+plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cells = NULL,sc_feature_statistics=FALSE){
   decipher_path <- file.path(dataset_path,"data")
   #read data ----
   lr_markers_by_cluster <- readRDS(file.path(decipher_path,"lr_markers_by_cluster.rds"))
   feature_statistics <- readRDS(file.path(decipher_path,"feature_statistics.rds"))
   decipher_scores_by_cluster <- readRDS(file.path(decipher_path,"decipher_scores_by_cluster.rds"))
   L_set <- readRDS(file.path(decipher_path,"L_set.rds"))
+  if(sc_feature_statistics){
+    l_markers_by_cluster_sc <- readRDS(file.path(decipher_path,"l_markers_by_cluster_sc.rds"))
+    l_markers_by_cluster_sc <- getLigandReceptorDiffExprMarkersByCt(l_markers_by_cluster_sc)
+
+  }
 
   ct_lr_markers <- getLigandReceptorDiffExprMarkersByCt(lr_markers_by_cluster)
   decipher_scores_by_cluster_bound <- bind_rows(decipher_scores_by_cluster)
@@ -652,8 +657,37 @@ plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cell
 
   base_data$receiver_cluster <- convert_text_patterns(base_data$receiver_cluster)
 
+  if(!sc_feature_statistics){
+    base_data_ligand <- base_data
+  } else {
+    base_data_ligand <- normalized_feature_statistics %>%
+      filter(condition == "case") %>%  # Assuming 'case' condition is desired
+      select(cluster, feature, frac.normalized.counts.features.condition) %>%
+      filter(feature %in% unique(base_data$ligand)) %>%
+      # Join with base_data to get additional information
+      rename(ligand.frac = frac.normalized.counts.features.condition) %>%
+      # Handle NAs by setting them to 0 or appropriate default
+      mutate(
+        ligand.frac = replace_na(ligand.frac, 0),
+      ) %>%
+      left_join(l_markers_by_cluster_sc[,c("cluster","gene","avg_log2FC")],by = c("cluster"="cluster","feature"="gene")) %>%
+      rename(ligand.diff.expr = avg_log2FC) %>%
+      left_join(unique(select(base_data,interaction,ligand)),by = c("feature"="ligand"))%>%
+      dplyr::rename("receiver_cluster"="cluster") %>%
+      dplyr::rename("ligand"="feature")
+
+    plot_limits_ligand <- list(max = max(base_data_ligand$ligand.diff.expr),min = min(base_data_ligand$ligand.diff.expr))
+
+    base_data_ligand$stroke <- 0.5
+
+    base_data_ligand <- base_data_ligand %>%
+      mutate(stroke_ligand = if_else(ligand.frac > 0.05,0.5,NA)) %>%
+      mutate(size_ligand = if_else(ligand.frac > 0.05,ligand.frac,NA))
+  }
+
+
   ligand_bubble_plot <- plotBubble(
-    df = base_data,
+    df = base_data_ligand,
     x_var = "receiver_cluster" ,
     color.var = "ligand.diff.expr",
     size.var = "size_ligand",
