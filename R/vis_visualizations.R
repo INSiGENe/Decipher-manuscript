@@ -500,8 +500,11 @@ plotBubble <- function(df,color.var,size.var,stroke.var,plot.position,col.min.va
       aesthetics = "fill",
       limits = c(col.min.val,col.max.val)
     )+ggtitle(label = plot.title)+ guides(size = "none")+
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5,size=5),
+          axis.text.y = element_text(size=5),
           legend.position = "bottom",
+          legend.key.size = unit(0.4, 'cm'),           # Smaller legend keys
+          legend.text = element_text(size = 6),        # Smaller legend text
           plot.margin = ggplot2::margin(t = 10, r = 0, b = 0, l = 2, unit = "pt"),
           plot.title = element_text(hjust = 0.5))
 
@@ -535,7 +538,8 @@ plotBubble <- function(df,color.var,size.var,stroke.var,plot.position,col.min.va
 #' @import ggplot2
 #' @importFrom grDevices png dev.off
 #' @importFrom utils write.csv
-plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cells = NULL,sc_feature_statistics=FALSE){
+#' @import patchwork
+plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cells = NULL,sc_feature_statistics=FALSE,primary_ct = NULL,split_by_direction = FALSE){
   decipher_path <- file.path(dataset_path,"data")
   #read data ----
   lr_markers_by_cluster <- readRDS(file.path(decipher_path,"lr_markers_by_cluster.rds"))
@@ -609,27 +613,80 @@ plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cell
 
   #now
   if(is.null(selected_receiver_cells)){
-    decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
-      mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
-      group_by(decipher_score_sign) %>%
-      arrange(desc(abs(prioritization_score))) %>%
-      select(interaction) %>%
-      distinct() %>%
-      slice_head(n = top_n) %>%
-      ungroup() %>%
-      left_join(decipher_scores_by_cluster_bound)
+    if(!split_by_direction){
+      decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
+        mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
+        group_by(decipher_score_sign) %>%
+        arrange(desc(abs(prioritization_score))) %>%
+        select(interaction) %>%
+        distinct() %>%
+        slice_head(n = top_n) %>%
+        ungroup() %>%
+        left_join(decipher_scores_by_cluster_bound)
+    } else {
+      decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
+        mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
+        filter(decipher_score_sign == "positive") %>%
+        arrange(desc(abs(prioritization_score))) %>%
+        select(interaction) %>%
+        distinct() %>%
+        slice_head(n = top_n) %>%
+        left_join(decipher_scores_by_cluster_bound)
+    }
+
   } else {
-    decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
-      mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
-      filter(receiver %in% selected_receiver_cells) %>%
-      group_by(decipher_score_sign) %>%
-      arrange(desc(abs(prioritization_score))) %>%
-      select(interaction) %>%
-      distinct() %>%
-      slice_head(n = top_n) %>%
-      ungroup() %>%
-      left_join(decipher_scores_by_cluster_bound)
+    if(is.null(primary_ct)){
+      if(!split_by_direction){
+        decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
+          mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
+          filter(receiver %in% selected_receiver_cells) %>%
+          group_by(decipher_score_sign) %>%
+          arrange(desc(abs(prioritization_score))) %>%
+          select(interaction) %>%
+          distinct() %>%
+          slice_head(n = top_n) %>%
+          ungroup() %>%
+          left_join(decipher_scores_by_cluster_bound)
+      } else {
+        decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
+          mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
+          filter(receiver %in% selected_receiver_cells) %>%
+          filter(decipher_score_sign == "positive") %>%
+          arrange(desc(abs(prioritization_score))) %>%
+          select(interaction) %>%
+          distinct() %>%
+          slice_head(n = top_n) %>%
+          left_join(decipher_scores_by_cluster_bound)
+      }
+    } else {
+        if(!split_by_direction){
+          decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
+            mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
+            filter(receiver %in% primary_ct) %>%
+            group_by(decipher_score_sign) %>%
+            arrange(desc(abs(prioritization_score))) %>%
+            select(interaction) %>%
+            distinct() %>%
+            slice_head(n = top_n) %>%
+            ungroup() %>%
+            left_join(decipher_scores_by_cluster_bound)
+        } else {
+          decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
+            mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
+            filter(receiver %in% primary_ct) %>%
+            filter(decipher_score_sign == "positive") %>%
+            arrange(desc(abs(prioritization_score))) %>%
+            select(interaction) %>%
+            distinct() %>%
+            slice_head(n = top_n) %>%
+            left_join(decipher_scores_by_cluster_bound)
+        }
+
+    }
+
+
   }
+
 
 
   top_interactions <- decipher_top_interactions_all_clusters %>%
@@ -733,11 +790,36 @@ plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cell
     x_lab= "RCT",
     y_lab = "")
 
-  png(file.path(dataset_path,"figures","decipher_plot_prioritized.png"),width = 21,height = 11,units = "cm",res = 600)
-  print(ligand_bubble_plot+decipher_bubble_plot+receptor_bubble_plot)
-  dev.off()
+  if(is.null(primary_ct)){
+    if(!split_by_direction){
+      png(file.path(dataset_path,"figures","decipher_plot_prioritized.png"),width = 21,height = 11,units = "cm",res = 600)
 
-  write.csv(base_data,file.path(dataset_path,"figures","decipher_plot_prioritized.csv"))
+    } else {
+      png(file.path(dataset_path,"figures","decipher_plot_prioritized_split.png"),width = 21,height = 11,units = "cm",res = 600)
+
+    }
+    print(ligand_bubble_plot+decipher_bubble_plot+receptor_bubble_plot+
+            patchwork::plot_layout(widths = c(2, 1, 1)))
+    dev.off()
+
+    write.csv(base_data,file.path(dataset_path,"figures","decipher_plot_prioritized.csv"))
+
+  } else {
+    if(!split_by_direction){
+      filename_no_ext <- paste("decipher_plot_prioritized_",primary_ct,sep="")
+    } else {
+      filename_no_ext <- paste("decipher_plot_prioritized_","split_",primary_ct,sep="")
+
+    }
+    filename <- paste(filename_no_ext,".png",sep="")
+    png(file.path(dataset_path,"figures",filename),width = 21,height = 11,units = "cm",res = 600)
+    print(ligand_bubble_plot+decipher_bubble_plot+receptor_bubble_plot+
+            patchwork::plot_layout(widths = c(2, 1, 1)))
+    dev.off()
+
+    write.csv(base_data,file.path(dataset_path,"figures",paste(filename_no_ext,".csv",sep="")))
+
+  }
 
 }
 
