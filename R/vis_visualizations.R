@@ -612,80 +612,36 @@ plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cell
   # selected_scts <- c("B_cell","Monocyte","HSC","CD4_T","CD8_Tem","NK_cell_1")
 
   #now
-  if(is.null(selected_receiver_cells)){
-    if(!split_by_direction){
-      decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
-        mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
-        group_by(decipher_score_sign) %>%
-        arrange(desc(abs(prioritization_score))) %>%
-        select(interaction) %>%
-        distinct() %>%
-        slice_head(n = top_n) %>%
-        ungroup() %>%
-        left_join(decipher_scores_by_cluster_bound)
-    } else {
-      decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
-        mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
-        filter(decipher_score_sign == "positive") %>%
-        arrange(desc(abs(prioritization_score))) %>%
-        select(interaction) %>%
-        distinct() %>%
-        slice_head(n = top_n) %>%
-        left_join(decipher_scores_by_cluster_bound)
-    }
+  decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
+    mutate(decipher_score_sign = if_else(prioritization_score >= 0, "positive", "negative"))
 
-  } else {
-    if(is.null(primary_ct)){
-      if(!split_by_direction){
-        decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
-          mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
-          filter(receiver %in% selected_receiver_cells) %>%
-          group_by(decipher_score_sign) %>%
-          arrange(desc(abs(prioritization_score))) %>%
-          select(interaction) %>%
-          distinct() %>%
-          slice_head(n = top_n) %>%
-          ungroup() %>%
-          left_join(decipher_scores_by_cluster_bound)
-      } else {
-        decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
-          mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
-          filter(receiver %in% selected_receiver_cells) %>%
-          filter(decipher_score_sign == "positive") %>%
-          arrange(desc(abs(prioritization_score))) %>%
-          select(interaction) %>%
-          distinct() %>%
-          slice_head(n = top_n) %>%
-          left_join(decipher_scores_by_cluster_bound)
-      }
-    } else {
-        if(!split_by_direction){
-          decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
-            mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
-            filter(receiver %in% primary_ct) %>%
-            group_by(decipher_score_sign) %>%
-            arrange(desc(abs(prioritization_score))) %>%
-            select(interaction) %>%
-            distinct() %>%
-            slice_head(n = top_n) %>%
-            ungroup() %>%
-            left_join(decipher_scores_by_cluster_bound)
-        } else {
-          decipher_top_interactions_all_clusters <- decipher_scores_by_cluster_bound_clean %>%
-            mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
-            filter(receiver %in% primary_ct) %>%
-            filter(decipher_score_sign == "positive") %>%
-            arrange(desc(abs(prioritization_score))) %>%
-            select(interaction) %>%
-            distinct() %>%
-            slice_head(n = top_n) %>%
-            left_join(decipher_scores_by_cluster_bound)
-        }
-
-    }
-
-
+  # Apply filter based on selected receiver cells or primary_ct
+  if (!is.null(selected_receiver_cells)) {
+    decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters %>%
+      filter(receiver %in% selected_receiver_cells)
   }
+
+  if (!is.null(primary_ct)) {
+    decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters %>%
+      filter(receiver %in% primary_ct)
+  }
+
+  # Further filtering based on direction if required
+  if (split_by_direction) {
+    decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters %>%
+      filter(decipher_score_sign == "positive")
+  }
+
+  # Group, arrange, and select interactions
+  decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters %>%
+    group_by(decipher_score_sign) %>%
+    arrange(desc(abs(prioritization_score))) %>%
+    select(interaction) %>%
+    distinct() %>%
+    slice_head(n = top_n) %>%
+    ungroup() %>%
+    left_join(decipher_scores_by_cluster_bound)
+
 
 
 
@@ -713,6 +669,10 @@ plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cell
 
 
   base_data$receiver_cluster <- convert_text_patterns(base_data$receiver_cluster)
+  if(!is.null(selected_receiver_cells)){
+    base_data$receiver_cluster <- factor(base_data$receiver_cluster,levels = selected_receiver_cells)
+
+  }
 
   if(!sc_feature_statistics){
     base_data_ligand <- base_data
