@@ -539,7 +539,7 @@ plotBubble <- function(df,color.var,size.var,stroke.var,plot.position,col.min.va
 #' @importFrom grDevices png dev.off
 #' @importFrom utils write.csv
 #' @import patchwork
-plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cells = NULL,sc_feature_statistics=FALSE,primary_ct = NULL,split_by_direction = FALSE){
+plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cells = NULL,sc_feature_statistics=FALSE,primary_ct = NULL,split_by_direction = FALSE,direction = c("pos","neg"),dataset_name){
   decipher_path <- file.path(dataset_path,"data")
   #read data ----
   lr_markers_by_cluster <- readRDS(file.path(decipher_path,"lr_markers_by_cluster.rds"))
@@ -628,8 +628,14 @@ plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cell
 
   # Further filtering based on direction if required
   if (split_by_direction) {
-    decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters %>%
-      filter(decipher_score_sign == "positive")
+    if(direction == "pos"){
+      decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters %>%
+        filter(decipher_score_sign == "positive")
+    } else {
+      decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters %>%
+        filter(decipher_score_sign == "negative")
+    }
+
   }
 
   # Group, arrange, and select interactions
@@ -749,37 +755,47 @@ plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cell
     plot.title = "Receptor",
     x_lab= "RCT",
     y_lab = "")
+  # Helper function to handle file saving
+  save_plot_and_data <- function(filename_prefix, ligand_plot, decipher_plot, receptor_plot, base_data, dataset_path) {
+    # Construct file paths
+    filename_png <- paste0(filename_prefix, ".png")
+    filename_csv <- paste0(filename_prefix, ".csv")
 
-  if(is.null(primary_ct)){
-    if(!split_by_direction){
-      png(file.path(dataset_path,"figures","decipher_plot_prioritized.png"),width = 21,height = 11,units = "cm",res = 600)
-
-    } else {
-      png(file.path(dataset_path,"figures","decipher_plot_prioritized_split.png"),width = 21,height = 11,units = "cm",res = 600)
-
-    }
-    print(ligand_bubble_plot+decipher_bubble_plot+receptor_bubble_plot+
-            patchwork::plot_layout(widths = c(2, 1, 1)))
+    # Save plot as PNG
+    png(file.path(dataset_path, "figures", filename_png), width = 21, height = 11, units = "cm", res = 600)
+    print(ligand_plot + decipher_plot + receptor_plot + patchwork::plot_layout(widths = c(2, 1, 1)))
     dev.off()
 
-    write.csv(base_data,file.path(dataset_path,"figures","decipher_plot_prioritized.csv"))
-
-  } else {
-    if(!split_by_direction){
-      filename_no_ext <- paste("decipher_plot_prioritized_",primary_ct,sep="")
-    } else {
-      filename_no_ext <- paste("decipher_plot_prioritized_","split_",primary_ct,sep="")
-
-    }
-    filename <- paste(filename_no_ext,".png",sep="")
-    png(file.path(dataset_path,"figures",filename),width = 21,height = 11,units = "cm",res = 600)
-    print(ligand_bubble_plot+decipher_bubble_plot+receptor_bubble_plot+
-            patchwork::plot_layout(widths = c(2, 1, 1)))
-    dev.off()
-
-    write.csv(base_data,file.path(dataset_path,"figures",paste(filename_no_ext,".csv",sep="")))
-
+    # Save base data as CSV
+    write.csv(base_data, file.path(dataset_path, "figures", filename_csv))
   }
+
+  # Logic to determine the filename
+  if (is.null(primary_ct)) {
+    if (!split_by_direction) {
+      filename_prefix <- paste(dataset_name,"decipher_plot_prioritized",sep="_")
+    } else {
+      if (direction == "pos") {
+        filename_prefix <- paste(dataset_name,"decipher_plot_prioritized_split_pos",sep="_")
+      } else {
+        filename_prefix <- paste(dataset_name,"decipher_plot_prioritized_split_neg",sep="_")
+      }
+    }
+  } else {
+    if (!split_by_direction) {
+      filename_prefix <- paste(dataset_name,"decipher_plot_prioritized", primary_ct,sep = "_")
+    } else {
+      if (direction == "pos") {
+        filename_prefix <- paste(dataset_name,"decipher_plot_prioritized_split_pos", primary_ct,sep="_")
+      } else {
+        filename_prefix <- paste(dataset_name,"decipher_plot_prioritized_split_neg", primary_ct,sep="_")
+      }
+    }
+  }
+
+  # Call the helper function to save plots and data
+  save_plot_and_data(filename_prefix, ligand_bubble_plot, decipher_bubble_plot, receptor_bubble_plot, base_data, dataset_path)
+
 
 }
 
