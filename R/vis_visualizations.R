@@ -539,7 +539,7 @@ plotBubble <- function(df,color.var,size.var,stroke.var,plot.position,col.min.va
 #' @importFrom grDevices png dev.off
 #' @importFrom utils write.csv
 #' @import patchwork
-plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cells = NULL,sc_feature_statistics=FALSE,primary_ct = NULL,split_by_direction = FALSE,direction = c("pos","neg"),dataset_name){
+plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cells = NULL,sc_feature_statistics=FALSE,primary_ct = NULL,split_by_direction = FALSE,direction = c("pos","neg"),dataset_name,abs_decipher_plot_limit = NULL){
   decipher_path <- file.path(dataset_path,"data")
   #read data ----
   lr_markers_by_cluster <- readRDS(file.path(decipher_path,"lr_markers_by_cluster.rds"))
@@ -730,7 +730,26 @@ plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cell
   }
 
   plot_limits_receptor <- list(max = max(base_data_decipher$receptor.diff.expr),min = min(base_data_decipher$receptor.diff.expr))
-  plot_limits_decipher <- list(max = max(base_data_decipher$decipher_score),min = min(base_data_decipher$decipher_score))
+  if(is.null(abs_decipher_plot_limit)){
+    plot_limits_decipher <- list(max = max(base_data_decipher$decipher_score),min = min(base_data_decipher$decipher_score))
+  } else{
+    # Condition 2: Plot limit is specified
+    plot_limits_decipher <- list(
+      max = abs_decipher_plot_limit,
+      min = -abs_decipher_plot_limit
+    )    # Calculate epsilon
+
+    epsilon <- 0.01 * abs_decipher_plot_limit
+
+    # Update 'decipher_score' by capping the values
+    base_data_decipher <- base_data_decipher %>%
+      mutate(decipher_score = case_when(
+        decipher_score > abs_decipher_plot_limit ~ abs_decipher_plot_limit - epsilon,
+        decipher_score < -abs_decipher_plot_limit ~ -abs_decipher_plot_limit + epsilon,
+        TRUE ~ decipher_score
+      ))
+
+  }
 
   decipher_bubble_plot <- plotBubble(
     df = base_data_decipher,
