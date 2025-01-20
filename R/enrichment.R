@@ -216,7 +216,7 @@ enrichResults <- function(de_markers_this_cluster,significant_regulon_deltas_thi
 #' }
 #'
 #' @export
-getDifferentiallyExpressedTargetsForRegulonsAllClusters <- function(decipher_seurat, significant_regulon_deltas_all_clusters, regulons_all_clusters, flag.normalize.non.log,random.seed) {
+getDifferentiallyExpressedTargetsForRegulonsAllClusters <- function(decipher_seurat, significant_regulon_deltas_all_clusters, regulons_all_clusters, flag.normalize.non.log,random.seed,logFC_threshold = 0.58) {
   significant_regulon_markers_all_clusters <- list()
 
   for(this_cluster in unique(decipher_seurat$cluster)){
@@ -236,7 +236,7 @@ getDifferentiallyExpressedTargetsForRegulonsAllClusters <- function(decipher_seu
     significant_regulon_markers_all_clusters[[this_cluster]] <- getDifferentiallyExpressedTargetsForRegulons(
       seuratObj = decipher_seurat_this_cluster,
       regulonNames = significant_regulon_deltas_this_cluster$name,
-      logFcThreshold = 0.58,
+      logFcThreshold = logFC_threshold,
       grnDf = regulon_this_cluster,
       targetCt = this_cluster,
       random.seed=random.seed

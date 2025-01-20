@@ -450,28 +450,32 @@ getInteractionPotentialMatrixForRepresentativeInteractions <- function(data_this
   one_to_one_interactions <- intersect(getOneToOneInteractions(interaction_mapping_table),rownames(interaction_potentials_matrix_this_cluster))
   many_to_one_interactions <- intersect(getManyToOneInteractions(interaction_mapping_table),rownames(interaction_potentials_matrix_this_cluster))
 
-  interaction_potentials_matrix_this_cluster_oto <- interaction_potentials_matrix_this_cluster[one_to_one_interactions,]
-  interaction_potentials_matrix_this_cluster_mto <- interaction_potentials_matrix_this_cluster[many_to_one_interactions,]
+  interaction_potentials_matrix_this_cluster_oto <- interaction_potentials_matrix_this_cluster[one_to_one_interactions,,drop=FALSE]
+  interaction_potentials_matrix_this_cluster_mto <- interaction_potentials_matrix_this_cluster[many_to_one_interactions,,drop=FALSE]
 
 
-  ## correlation clusters for many-to-one interactions ----
-  mto_interactions_clusters <- getCorrelationClusters(
-    interactionPotentialsMatrixMTO = interaction_potentials_matrix_this_cluster_mto,
-    interactionMappingTable = interaction_mapping_table,
-    pctMTOReceptors = 1.15,
-    correlationMethod = "spearman",
-    clusteringMethod = "complete")
+if(nrow(interaction_potentials_matrix_this_cluster_mto) >= 2){
+    ## correlation clusters for many-to-one interactions ----
+    mto_interactions_clusters <- getCorrelationClusters(
+      interactionPotentialsMatrixMTO = interaction_potentials_matrix_this_cluster_mto,
+      interactionMappingTable = interaction_mapping_table,
+      pctMTOReceptors = 1.15,
+      correlationMethod = "spearman",
+      clusteringMethod = "complete")
 
-  ## representative interaction for each cluster ----
-  representative_interactions_mto <- getRepresentativeInteractionsForMTOClusters(
-    mtoInteractionsClusters = mto_interactions_clusters,
-    interactionMappingTable = interaction_mapping_table,
-    prioritizedBenchmarkingLigands = cytosig_ligands
-  )
+    ## representative interaction for each cluster ----
+    representative_interactions_mto <- getRepresentativeInteractionsForMTOClusters(
+      mtoInteractionsClusters = mto_interactions_clusters,
+      interactionMappingTable = interaction_mapping_table,
+      prioritizedBenchmarkingLigands = cytosig_ligands
+    )
 
-  ## cluster-based matrix from random forest -----
-  interaction_potentials_matrix_this_cluster_mto_representative <- interaction_potentials_matrix_this_cluster[representative_interactions_mto$interaction,]
-  interaction_potentials_matrix_clusters <- rbind(interaction_potentials_matrix_this_cluster_oto,interaction_potentials_matrix_this_cluster_mto_representative)
+    interaction_potentials_matrix_this_cluster_mto_representative <- interaction_potentials_matrix_this_cluster[representative_interactions_mto$interaction,]
+  } else {
+    interaction_potentials_matrix_this_cluster_mto_representative <- interaction_potentials_matrix_this_cluster_mto
+  }
+  
+    interaction_potentials_matrix_clusters <- rbind(interaction_potentials_matrix_this_cluster_oto,interaction_potentials_matrix_this_cluster_mto_representative)
 
 }
 
@@ -595,7 +599,7 @@ filterIntPotByDeltas <- function(interaction_potentials_matrix_all_clusters, int
   for(this_cluster in names(interaction_potentials_matrix_all_clusters)){
     interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_all_clusters[[this_cluster]]
     interaction_deltas <- interaction_deltas_all_clusters[[this_cluster]]
-    interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_this_cluster[rownames(interaction_deltas), ]
+    interaction_potentials_matrix_this_cluster <- interaction_potentials_matrix_this_cluster[rownames(interaction_deltas), ,drop=FALSE]
     filtered_interaction_potentials_matrix_all_clusters[[this_cluster]] <- interaction_potentials_matrix_this_cluster
   }
 
@@ -644,10 +648,10 @@ getInteractionPotentialMatrixForRepresentativeInteractionsAllClusters <- functio
     data_this_cluster_receptors <- data_this_cluster[which(rownames(data_this_cluster) %in% unique(L_set_relevant_features_all_clusters[[this_cluster]]$receptor)), ]
 
     interaction_potentials_matrix_clusters <- getInteractionPotentialMatrixForRepresentativeInteractions(
-      data_this_cluster_receptors,
+      data_this_cluster_downsampled_receptors = data_this_cluster_receptors,
       selected_lr_pairs = L_set_relevant_features_all_clusters[[this_cluster]],
-      filtered_interaction_potentials_matrix_all_clusters[[this_cluster]],
-      cytosig_ligands
+      interaction_potentials_matrix_this_cluster = filtered_interaction_potentials_matrix_all_clusters[[this_cluster]],
+      cytosig_ligands = cytosig_ligands
     )
 
     interaction_potentials_matrix_clusters_all_clusters[[this_cluster]] <- interaction_potentials_matrix_clusters
