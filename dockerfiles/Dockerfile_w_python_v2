@@ -57,9 +57,5 @@ COPY renv/ renv/
 # Restore R environment
 RUN R -e "renv::restore(lockfile = 'renv.lock', prompt = FALSE)"
 
-
-# (Optional) Force reticulate/basilisk environment creation now:
-RUN R -e "library(reticulate); py_config(); library(basilisk); basilisk::setupBasiliskEnv()"
-
-# (Optional) Force any Python modules you know you need
-RUN R -e "library(reticulate); py_install(c('numpy', 'pandas'))"
+# (Optional) Force reticulate environment detection:
+RUN R -e "library(reticulate); py_config()"
