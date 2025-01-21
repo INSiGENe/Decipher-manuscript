@@ -1,0 +1,65 @@
+# Use r-base:4.4.1 as the base image
+FROM r-base:4.4.1
+
+# Set the working directory
+WORKDIR /usr/src/app
+
+# Install system dependencies, including g++-12 and libgfortran-12-dev
+RUN apt-get update && apt-get install -y \
+    gfortran \
+    libgfortran-12-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libcairo2-dev \
+    libxt-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libtiff5-dev \
+    libwebp-dev \       
+    pkg-config \
+    libfontconfig1-dev \
+    libzmq3-dev \
+    libhdf5-dev \
+    build-essential \
+    wget \
+    bzip2 \
+    ca-certificates \
+    curl \
+    git \
+    &&  rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+   
+ENV PATH /opt/conda/bin:$PATH
+
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+    /bin/bash /tmp/miniconda.sh -b -p /opt/conda && \
+    rm /tmp/miniconda.sh && \
+    /opt/conda/bin/conda clean -tipsy
+    
+ENV BASILISK_GLOBALCONDA=/opt/conda
+ENV BASILISK_USE_SYSTEM_DIR=true
+ENV RETICULATE_PYTHON=/opt/conda/bin/python
+
+# Copy your R project files (including renv.lock)
+COPY . .
+
+# Install renv
+RUN R -e "install.packages('renv')"
+
+# Copy renv.lock and renv/ folder first for caching
+COPY renv.lock renv.lock
+COPY renv/ renv/
+
+# Restore R environment
+RUN R -e "renv::restore(lockfile = 'renv.lock', prompt = FALSE)"
+
+
+# (Optional) Force reticulate/basilisk environment creation now:
+RUN R -e "library(reticulate); py_config(); library(basilisk); basilisk::setupBasiliskEnv()"
+
+# (Optional) Force any Python modules you know you need
+RUN R -e "library(reticulate); py_install(c('numpy', 'pandas'))"

@@ -1,0 +1,33 @@
+# Use r-base:4.4.1 as the base image
+FROM r-base:4.4.1
+
+# Set the working directory
+WORKDIR /usr/src/app
+
+# Install system dependencies, including g++-12 and libgfortran-12-dev
+RUN apt-get update && apt-get install -y \
+    gfortran \
+    libgfortran-12-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libcairo2-dev \
+    libxt-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libtiff5-dev \
+    libwebp-dev \       
+    pkg-config \
+    && apt-get clean
+
+# Copy your R project files (including renv.lock)
+COPY . .
+
+# Install renv
+RUN R -e "install.packages('renv')"
+
+# Install only the 'ragg' package
+RUN R -e "renv::restore()"
