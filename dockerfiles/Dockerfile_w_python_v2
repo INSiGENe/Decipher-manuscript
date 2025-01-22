@@ -44,15 +44,12 @@ ENV BASILISK_GLOBALCONDA=/opt/conda
 ENV BASILISK_USE_SYSTEM_DIR=true
 ENV RETICULATE_PYTHON=/opt/conda/bin/python
 
-# Copy your R project files (including renv.lock)
-COPY . .
-
-# Install renv
-RUN R -e "install.packages('renv')"
-
 # Copy renv.lock and renv/ folder first for caching
 COPY renv.lock renv.lock
 COPY renv/ renv/
+
+# Install renv
+RUN R -e "install.packages('renv')"
 
 # Restore R environment
 RUN R -e "renv::restore(lockfile = 'renv.lock', prompt = FALSE)"
@@ -67,7 +64,12 @@ RUN R -e " \
     library(SingleCellExperiment); \
     sce <- SingleCellExperiment( \
         assays = list(counts = matrix(rpois(25, lambda = 5), ncol = 5)), \
-        colData = DataFrame(cell_type = rep('type1', 5)) \
+        colData = DataFrame(cell_type = rep('type1', 5)), \
+        rowData = DataFrame(gene_name = paste0('gene', 1:5)) \
     ); \
     writeH5AD(sce, 'test.h5ad'); \
 "
+
+
+# Copy your R project files (including renv.lock)
+COPY . .
