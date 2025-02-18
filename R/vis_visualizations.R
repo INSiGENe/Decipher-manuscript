@@ -54,23 +54,23 @@ pairwise_comparison_plot <- function(df1, df2, method1, method2,overlap_max = NA
     # For prioritization_score.x
     top_x <- merged_data %>%
       arrange(desc(prioritization_score.x)) %>%
-      slice_head(n = overlap_max)
+      dplyr::slice_head(n = overlap_max)
 
     # For prioritization_score.y
     top_y <- merged_data %>%
       arrange(desc(prioritization_score.y)) %>%
-      slice_head(n = overlap_max)
+      dplyr::slice_head(n = overlap_max)
 
     if(use_rank){
       # For prioritization_score.x
       top_x <- merged_data %>%
         arrange(prioritization_score.x) %>%
-        slice_head(n = overlap_max)
+        dplyr::slice_head(n = overlap_max)
 
       # For prioritization_score.y
       top_y <- merged_data %>%
         arrange(prioritization_score.y) %>%
-        slice_head(n = overlap_max)
+        dplyr::slice_head(n = overlap_max)
     }
 
     # Merging the two results
@@ -644,7 +644,7 @@ plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cell
     arrange(desc(abs(prioritization_score))) %>%
     select(interaction) %>%
     distinct() %>%
-    slice_head(n = top_n) %>%
+    dplyr::slice_head(n = top_n) %>%
     ungroup() %>%
     left_join(decipher_scores_by_cluster_bound)
 
@@ -897,7 +897,7 @@ if(is.null(receiver_cell_type)){
     arrange(desc(abs(prioritization_score))) %>%
     select(interaction,decipher_score_sign) %>%
     distinct() %>%
-    slice_head(n = slice_n) %>%
+    dplyr::slice_head(n = slice_n) %>%
     ungroup() %>%
     left_join(decipher_scores_by_cluster_bound_clean, by = c("interaction"))
 } else {
@@ -908,7 +908,7 @@ if(is.null(receiver_cell_type)){
     arrange(desc(abs(prioritization_score))) %>%
     select(interaction,decipher_score_sign) %>%
     distinct() %>%
-    slice_head(n = slice_n) %>%
+    dplyr::slice_head(n = slice_n) %>%
     ungroup() %>%
     left_join(decipher_scores_by_cluster_bound_clean, by = c("interaction"))
 }

@@ -33,7 +33,7 @@ docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace cel
 #5YR PIC
 
 sudo docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.3
-source("scripts/5yr_pic/")
+source("scripts/5yr_pic/5yr_pic_0_pre_processing_jan_2025.R")
 
 docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
 python3 /scripts/5yr_pic/5yr_pic_1_cell_oracle_jan_2025.py
@@ -44,10 +44,15 @@ source("scripts/5yr_pic/5yr_pic_2_decipher_pipeline_v1_modularized_jan_2025.R")
 #CORD PIC
 
 sudo docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.3
-source("scripts/cord_pic/")
+source("scripts/cord_pic/cord_pic_0_pre_processing_jan_2025.R")
 
 docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
 python3 /scripts/cord_pic/cord_pic_1_cell_oracle_jan_2025.py
 
 sudo docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.3
 source("scripts/cord_pic/cord_pic_2_decipher_pipeline_v1_modularized_jan_2025.R")
+
+#BCG
+
+sudo docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.3
+source("scripts/BCG/bcg_0_pre_processing_jan_2025.R")

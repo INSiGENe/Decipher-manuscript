@@ -4,6 +4,9 @@ sudo docker run -it -m 45g --memory-swap 50g -v "$(pwd):/workspace" -w /workspac
 
 
 
+sudo docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.3
+
+
 
 
 #run this at the head of the folder structure
