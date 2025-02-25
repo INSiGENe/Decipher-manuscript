@@ -1,0 +1,76 @@
+# Use r-base:4.4.2 as the base image
+FROM r-base:4.4.1
+
+# Set the working directory
+WORKDIR /usr/src/app
+
+# Install system dependencies, including g++-12 and libgfortran-12-dev
+RUN apt-get update && apt-get install -y \
+    gfortran \
+    libgfortran-12-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libcairo2-dev \
+    libxt-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libtiff5-dev \
+    libwebp-dev \       
+    pkg-config \
+    libfontconfig1-dev \
+    libzmq3-dev \
+    libhdf5-dev \
+    build-essential \
+    wget \
+    bzip2 \
+    ca-certificates \
+    curl \
+    git \
+    &&  rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+   
+ENV PATH /opt/conda/bin:$PATH
+
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+    /bin/bash /tmp/miniconda.sh -b -p /opt/conda && \
+    rm /tmp/miniconda.sh && \
+    /opt/conda/bin/conda clean -tipsy
+    
+ENV BASILISK_GLOBALCONDA=/opt/conda
+ENV BASILISK_USE_SYSTEM_DIR=true
+ENV RETICULATE_PYTHON=/opt/conda/bin/python
+ENV RENV_CONFIG_REPOS_OVERRIDE=https://cloud.r-project.org
+
+# Copy renv.lock and renv/ folder first for caching
+COPY renv.lock renv.lock
+COPY renv/ renv/
+
+# Install renv
+RUN R -e "install.packages('renv')"
+
+# Restore R environment
+RUN R -e "renv::restore(lockfile = 'renv.lock', prompt = FALSE)"
+
+# (Optional) Force reticulate environment detection:
+RUN R -e "library(reticulate); py_config()"
+
+# Force environment creation by calling writeH5AD or anything that triggers Anndata usage
+RUN R -e " \
+    library(zellkonverter); \
+    library(SummarizedExperiment); \
+    library(SingleCellExperiment); \
+    sce <- SingleCellExperiment( \
+        assays = list(counts = matrix(rpois(25, lambda = 5), ncol = 5)), \
+        colData = DataFrame(cell_type = rep('type1', 5)), \
+        rowData = DataFrame(gene_name = paste0('gene', 1:5)) \
+    ); \
+    writeH5AD(sce, 'test.h5ad'); \
+"
+
+
+# Copy your R project files (including renv.lock)
+COPY . .
