@@ -61,7 +61,7 @@ sudo docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspac
 source("scripts/BCG/bcg_0_pre_processing_jan_2025.R")
 
 
-docker build -t manuscript_pre_processing:1.0.2 -f Dockerfile_manuscript_pre_processing .
+docker build -t manuscript_pre_processing:1.0.3 -f Dockerfile_manuscript_pre_processing .
 sudo docker run -it -m 10g --memory-swap 12g -v "$(pwd):/workspace" -w /workspace r-base:4.4.1
 
 sudo docker run -it -m 10g --memory-swap 12g -v "$(pwd):/workspace" -w /workspace --entrypoint /bin/bash manuscript_pre_processing:1.0.1
@@ -79,12 +79,11 @@ export RENV_PATHS_CACHE_HOST=/opt/local/renv/cache
 export RENV_PATHS_CACHE_CONTAINER=/renv/cache
 
 docker run -it --rm \
+    --memory=20g --memory-swap=24g \
     -e "RENV_PATHS_CACHE=${RENV_PATHS_CACHE_CONTAINER}" \
     -v "${RENV_PATHS_CACHE_HOST}:${RENV_PATHS_CACHE_CONTAINER}" \
     -v "$(pwd):/app" \
     -w /app \
-    manuscript_pre_processing:1.0.2
+    manuscript_pre_processing:1.0.3 \
+    bash
     
-    
-     \
-    -e 'renv::restore(); print("All packages restored!"); # your code here'
