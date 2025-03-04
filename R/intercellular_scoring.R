@@ -661,3 +661,124 @@ getInteractionPotentialMatrixForRepresentativeInteractionsAllClusters <- functio
 }
 
 
+#' Get Interaction Potentials Matrix for All Clusters
+#'
+#' This function calculates the interaction potentials matrix for each cluster in a Seurat object.
+#'
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
+#' @param decipher_seurat_this_cluster A Seurat object subset for a specific cluster.
+#' @param L_set_relevant_features_all_clusters A list of relevant ligand-receptor features for each cluster.
+#' @param flag.normalize.non.log A logical flag indicating whether to normalize non-log-transformed data.
+#' @param paramPairings
+#'
+#' @return A list where each element corresponds to a cluster and contains the interaction potentials matrix for that cluster.
+#'
+#' @details The function iterates through each unique cluster in the `decipher_seurat` object, subsets the Seurat object for the cluster, normalizes the data if necessary, and calculates the interaction potentials matrix for each cluster using the `getInteractionPotentialsMatrixThisCluster` function.
+#'
+#' @examples
+#' \dontrun{
+#' decipher_seurat <- CreateSeuratObject(counts = your_counts_matrix)
+#' L_set_relevant_features_all_clusters <- getRelevantFeaturesForEachCluster(L.set, expressed_ligands, expressed_receptors_all_clusters)
+#' interaction_potentials_matrix <- getInteractionPotentialsMatrixAllClusters(
+#'   decipher_seurat, decipher_seurat_this_cluster, L_set_relevant_features_all_clusters, TRUE)
+#' }
+#'
+#' @export
+getInteractionPotentialsMatrixAllClustersWParamPairings <- function(decipher_seurat, L_set_relevant_features_all_clusters, flag.normalize.non.log,paramPairings) {
+  interaction_potentials_matrix_all_clusters <- list()
+
+  all_clusters <- unique(decipher_seurat$cluster)
+
+  for(this_row in c(1:nrow(paramPairings))){
+    case_cluster <- paramPairings$case[this_row]
+    control_cluster <- paramPairings$control[this_row]
+    if(case_cluster %in% all_clusters){} else {next}
+    if(control_cluster %in% all_clusters){} else {next}
+
+    cells <- decipher_seurat@meta.data %>%
+      filter((cluster == case_cluster & condition == "case") | (cluster == control_cluster & condition == "control")) %>%
+      pull(cell)
+
+    # main object
+    decipher_seurat_this_cluster <- decipher_seurat[,cells, seed = NULL]
+
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
+
+    interaction_potentials_matrix_this_cluster <- getInteractionPotentialsMatrixThisCluster(
+      seurat_obj = decipher_seurat,
+      seurat_obj_this_cluster_ds = decipher_seurat_this_cluster,
+      selected_lr_pairs = L_set_relevant_features_all_clusters[[case_cluster]]
+    )
+
+    interaction_potentials_matrix_all_clusters[[case_cluster]] <- interaction_potentials_matrix_this_cluster
+
+    
+  }
+
+  return(interaction_potentials_matrix_all_clusters)
+}
+
+
+
+#' Get Interaction Potential Matrix for Representative Interactions in All Clusters
+#'
+#' This function calculates the interaction potential matrix for representative interactions in each cluster of a Seurat object.
+#'
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
+#' @param L_set_relevant_features_all_clusters A list of relevant ligand-receptor features for each cluster.
+#' @param filtered_interaction_potentials_matrix_all_clusters A list of filtered interaction potentials matrices for each cluster.
+#' @param cytosig_ligands A vector of ligands involved in cytosignaling.
+#' @param flag.normalize.non.log A logical flag indicating whether to normalize non-log-transformed data.
+#' @param paramPairings
+#'
+#' @return A list where each element corresponds to a cluster and contains the interaction potential matrix for representative interactions in that cluster.
+#'
+#' @details The function iterates through each unique cluster in the `decipher_seurat` object, subsets the Seurat object for the cluster, normalizes the data if necessary, and calculates the interaction potential matrix for representative interactions using the `getInteractionPotentialMatrixForRepresentativeInteractions` function.
+#'
+#' @examples
+#' \dontrun{
+#' decipher_seurat <- CreateSeuratObject(counts = your_counts_matrix)
+#' L_set_relevant_features_all_clusters <- getRelevantFeaturesForEachCluster(L.set, expressed_ligands, expressed_receptors_all_clusters)
+#' filtered_interaction_potentials_matrix_all_clusters <- filterIntPotByDeltas(interaction_potentials_matrix_all_clusters, interaction_deltas_all_clusters)
+#' cytosig_ligands <- c("Ligand1", "Ligand2")
+#' interaction_potentials_matrix_clusters_all_clusters <- getInteractionPotentialMatrixForRepresentativeInteractionsAllClusters(
+#'   decipher_seurat, L_set_relevant_features_all_clusters, filtered_interaction_potentials_matrix_all_clusters, cytosig_ligands, TRUE)
+#' }
+#'
+#' @export
+getInteractionPotentialMatrixForRepresentativeInteractionsAllClustersWParamPairings <- function(decipher_seurat, L_set_relevant_features_all_clusters, filtered_interaction_potentials_matrix_all_clusters, cytosig_ligands, flag.normalize.non.log,paramPairings) {
+  interaction_potentials_matrix_clusters_all_clusters <- list()
+  all_clusters <- unique(decipher_seurat$cluster)
+
+  for(this_row in c(1:nrow(paramPairings))){
+    case_cluster <- paramPairings$case[this_row]
+    control_cluster <- paramPairings$control[this_row]
+    if(case_cluster %in% all_clusters){} else {next}
+    if(control_cluster %in% all_clusters){} else {next}
+
+    cells <- decipher_seurat@meta.data %>%
+      filter((cluster == case_cluster & condition == "case") | (cluster == control_cluster & condition == "control")) %>%
+      pull(cell)
+
+    # main object
+    decipher_seurat_this_cluster <- decipher_seurat[,cells, seed = NULL]
+
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
+
+    data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
+
+    data_this_cluster_receptors <- data_this_cluster[which(rownames(data_this_cluster) %in% unique(L_set_relevant_features_all_clusters[[case_cluster]]$receptor)), ]
+
+    interaction_potentials_matrix_clusters <- getInteractionPotentialMatrixForRepresentativeInteractions(
+      data_this_cluster_receptors,
+      selected_lr_pairs = L_set_relevant_features_all_clusters[[case_cluster]],
+      filtered_interaction_potentials_matrix_all_clusters[[case_cluster]],
+      cytosig_ligands
+    )
+
+    interaction_potentials_matrix_clusters_all_clusters[[case_cluster]] <- interaction_potentials_matrix_clusters
+  }
+
+  return(interaction_potentials_matrix_clusters_all_clusters)
+}
+

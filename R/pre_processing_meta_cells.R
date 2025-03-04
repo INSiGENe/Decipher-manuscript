@@ -376,6 +376,8 @@ generateMetaCellMatricesWPairings <- function(seuratObj, paramMinMetaCells = 100
 #'
 #' @return a group from which to calculate minimum sizes
 #' @export
+#' 
+#' @importFrom igraph graph_from_data_frame components
 #'
 #' @examples
 createGroupsFromPairings <- function(paramPairings) {
@@ -385,10 +387,10 @@ createGroupsFromPairings <- function(paramPairings) {
                   control = paste(control, "control"))
 
   # Create a graph from the data frame
-  g <- graph_from_data_frame(df)
+  g <- igraph::graph_from_data_frame(df)
 
   # Find connected components
-  components <- components(g)
+  components <- igraph::components(g)
 
   # Extract each component and remove duplicates
   groups <- lapply(components$membership, function(x) {
@@ -407,6 +409,8 @@ createGroupsFromPairings <- function(paramPairings) {
 #'
 #' @return minimum size of each comparison
 #' @export
+#' 
+#' @importFrom dplyr summarize
 #'
 #' @examples
 calculateMinimumN <- function(groups, min_counts, paramPairings) {
@@ -440,7 +444,7 @@ calculateMinimumN <- function(groups, min_counts, paramPairings) {
     this_min_n <- min_counts %>%
       filter((cluster %in% case_clusters & condition == "case") |
                (cluster %in% control_clusters & condition == "control")) %>%
-      summarise(min_n = min(n)) %>%
+      dplyr::summarize(min_n = min(n)) %>%
       pull(min_n)
 
     # Update the minimum 'n' in paramPairings
@@ -470,6 +474,8 @@ calculateMinimumN <- function(groups, min_counts, paramPairings) {
 #' @examples
 #' # Assuming 's' is a Seurat object and we require at least 100 cells per condition
 #' s_filtered <- KeepClustersWithMtNCellsPerCondition(s, 100)
+#' 
+#' @importFrom dplyr summarize
 #'
 #' @export
 KeepClustersWithMtNCellsPerCondition <- function(seurat_object,N){
@@ -479,7 +485,7 @@ KeepClustersWithMtNCellsPerCondition <- function(seurat_object,N){
   # Identify clusters that have any condition with fewer than N cells
   insufficient_clusters <- metadata %>%
     group_by(cluster, condition) %>%
-    summarize(cell_count = dplyr::n(), .groups = 'drop') %>%
+    dplyr::summarize(cell_count = dplyr::n(), .groups = 'drop') %>%
     group_by(cluster) %>%
     filter(any(cell_count < N)) %>%
     pull(cluster) %>%
@@ -531,7 +537,7 @@ calculate_suggested_number_of_metacell_neighbours <- function(seurat_object,para
   while(flag == FALSE){
     median_values <- this_df  %>%
       group_by(cluster, condition) %>%
-      summarize(
+      dplyr::summarize(
         median_UpC = median(UpC, na.rm = TRUE),
         count = dplyr::n())
 

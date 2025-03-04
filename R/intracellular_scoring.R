@@ -502,3 +502,125 @@ getSignificantRegulonsAllClusters <- function(regulon_deltas_all_clusters) {
 }
 
 
+#' Get Regulon Scores for All Clusters
+#'
+#' This function calculates regulon scores for each cluster in a Seurat object based on capped regulons.
+#'
+#' @param capped_regulons_all_clusters A list of capped regulons for each cluster, typically obtained from `capRegulonsAllClusters`.
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
+#' @param paramPairings
+#'
+#' @return A list where each element corresponds to a cluster and contains the regulon scores for that cluster.
+#'
+#' @details The function iterates through each unique cluster in the `decipher_seurat` object, subsets the Seurat object for the cluster, normalizes the data if necessary, and calculates the regulon scores for the capped regulons of that cluster.
+#'
+#' @examples
+#' \dontrun{
+#' capped_regulons_all_clusters <- capRegulonsAllClusters(regulons_all_clusters, decipher_seurat, TRUE)
+#' decipher_seurat <- CreateSeuratObject(counts = your_counts_matrix)
+#' regulon_scores <- getRegulonScoresAllClusters(capped_regulons_all_clusters, decipher_seurat)
+#' }
+#'
+#' @export
+getRegulonScoresAllClustersWParamPairings <- function(capped_regulons_all_clusters, decipher_seurat, paramPairings) {
+
+  regulon_scores_all_cluster <- list()
+
+  all_clusters <- unique(decipher_seurat$cluster)
+
+  for(this_row in c(1:nrow(paramPairings))){
+    case_cluster <- paramPairings$case[this_row]
+    control_cluster <- paramPairings$control[this_row]
+    if(case_cluster %in% all_clusters){} else {next}
+    if(control_cluster %in% all_clusters){} else {next}
+
+    regulon_this_cluster_capped <- capped_regulons_all_clusters[[case_cluster]]
+
+    cells <- decipher_seurat@meta.data %>%
+      filter((cluster == case_cluster & condition == "case") | (cluster == control_cluster & condition == "control")) %>%
+      pull(cell)
+
+    # main object
+    #decipher_seurat_this_cluster <- subset(decipher_seurat,cells = cells)
+    decipher_seurat_this_cluster <- decipher_seurat[, cells, seed=NULL]
+
+
+    # set identity
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
+
+    if(flag.normalize.non.log){
+      decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
+    }
+
+    regulon_scores_this_cluster <- getRegulonScores(
+      seuratObject = decipher_seurat_this_cluster,
+      grn_df = regulon_this_cluster_capped)
+
+    regulon_scores_all_cluster[[case_cluster]] <- regulon_scores_this_cluster
+  }
+
+  return(regulon_scores_all_cluster)
+}
+
+
+#' Get Regulon Deltas for All Clusters
+#'
+#' This function calculates the differences (deltas) in regulon scores between conditions for each cluster in a Seurat object.
+#'
+#' @param regulon_scores_all_clusters A list of regulon scores for each cluster, typically obtained from `getRegulonScoresAllClusters`.
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
+#' @param paramPairings
+#'
+#' @return A list where each element corresponds to a cluster and contains the regulon deltas for that cluster.
+#'
+#' @details The function iterates through each unique cluster in the `decipher_seurat` object, subsets the Seurat object for the cluster, normalizes the data if necessary, and calculates the deltas in regulon scores for the conditions in that cluster.
+#'
+#' @examples
+#' \dontrun{
+#' regulon_scores_all_clusters <- getRegulonScoresAllClusters(capped_regulons_all_clusters, decipher_seurat)
+#' decipher_seurat <- CreateSeuratObject(counts = your_counts_matrix)
+#' regulon_deltas <- getRegulonDeltasAllClusters(regulon_scores_all_clusters, decipher_seurat)
+#' }
+#'
+#' @export
+getRegulonDeltasAllClustersWParamPairings <- function(regulon_scores_all_clusters, decipher_seurat,paramPairings) {
+
+  regulon_deltas_all_cluster <- list()
+
+  all_clusters <- unique(decipher_seurat$cluster)
+
+  for(this_row in c(1:nrow(paramPairings))){
+    case_cluster <- paramPairings$case[this_row]
+    control_cluster <- paramPairings$control[this_row]
+    if(case_cluster %in% all_clusters){} else {next}
+    if(control_cluster %in% all_clusters){} else {next}
+
+    cells <- decipher_seurat@meta.data %>%
+      filter((cluster == case_cluster & condition == "case") | (cluster == control_cluster & condition == "control")) %>%
+      pull(cell)
+
+    # main object
+    #decipher_seurat_this_cluster <- subset(decipher_seurat,cells = cells)
+    decipher_seurat_this_cluster <- decipher_seurat[, cells, seed=NULL]
+
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
+
+
+    regulon_scores_this_cluster <- regulon_scores_all_clusters[[case_cluster]]
+    # set identity
+
+    if(flag.normalize.non.log){
+      decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
+    }
+
+    regulon_deltas_this_cluster <- getRegulonDeltas(
+      regulon_scores_this_cluster,
+      decipher_seurat_this_cluster$condition)
+
+    regulon_deltas_all_cluster[[case_cluster]] <- regulon_deltas_this_cluster
+  }
+
+  return(regulon_deltas_all_cluster)
+}
+
+

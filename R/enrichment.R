@@ -287,3 +287,69 @@ enrichResultsAllClusters <- function(de_markers_all_clusters, significant_regulo
 }
 
 
+
+#' Get Differentially Expressed Targets for Regulons in All Clusters
+#'
+#' This function identifies differentially expressed target genes for significant regulons in each cluster of a Seurat object.
+#'
+#' @param decipher_seurat A Seurat object containing single-cell RNA-seq data with cluster and condition metadata.
+#' @param significant_regulon_deltas_all_clusters A list of significant regulon deltas for each cluster, typically obtained from `getSignificantRegulonsAllClusters`.
+#' @param regulons_all_clusters A list of regulons for each cluster, typically obtained from `getRegulonsAllClusters`.
+#' @param flag.normalize.non.log A logical flag indicating whether to normalize non-log-transformed data.
+#' @param paramPairings
+#'
+#' @return A list where each element corresponds to a cluster and contains the differentially expressed targets for significant regulons in that cluster.
+#'
+#' @details The function iterates through each unique cluster in the `decipher_seurat` object, subsets the Seurat object for the cluster, normalizes the data if necessary, and identifies differentially expressed targets for significant regulons in that cluster using the `getDifferentiallyExpressedTargetsForRegulons` function.
+#'
+#' @examples
+#' \dontrun{
+#' decipher_seurat <- CreateSeuratObject(counts = your_counts_matrix)
+#' significant_regulon_deltas_all_clusters <- getSignificantRegulonsAllClusters(regulon_deltas_all_clusters)
+#' regulons_all_clusters <- getRegulonsAllClusters(filepath, decipher_seurat)
+#' significant_regulon_markers <- getDifferentiallyExpressedTargetsForRegulonsAllClusters(
+#'   decipher_seurat, significant_regulon_deltas_all_clusters, regulons_all_clusters, TRUE)
+#' }
+#'
+#' @export
+getDifferentiallyExpressedTargetsForRegulonsAllClustersWParamPairings <- function(decipher_seurat, significant_regulon_deltas_all_clusters, regulons_all_clusters, flag.normalize.non.log,paramPairings,random.seed) {
+  significant_regulon_markers_all_clusters <- list()
+
+  all_clusters <- unique(decipher_seurat$cluster)
+
+  for(this_row in c(1:nrow(paramPairings))){
+    case_cluster <- paramPairings$case[this_row]
+    control_cluster <- paramPairings$control[this_row]
+    if(case_cluster %in% all_clusters){} else {next}
+    if(control_cluster %in% all_clusters){} else {next}
+
+    cells <- decipher_seurat@meta.data %>%
+      filter((cluster == case_cluster & condition == "case") | (cluster == control_cluster & condition == "control")) %>%
+      pull(cell)
+
+    # main object
+    #decipher_seurat_this_cluster <- subset(decipher_seurat,cells = cells)
+    decipher_seurat_this_cluster <- decipher_seurat[, cells, seed = NULL]
+
+    SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
+
+    if(flag.normalize.non.log){
+      decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
+    }
+
+    significant_regulon_deltas_this_cluster <- significant_regulon_deltas_all_clusters[[case_cluster]]
+    regulon_this_cluster <- regulons_all_clusters[[case_cluster]]
+
+    significant_regulon_markers_all_clusters[[case_cluster]] <- getDifferentiallyExpressedTargetsForRegulons(
+      seuratObj = decipher_seurat_this_cluster,
+      regulonNames = significant_regulon_deltas_this_cluster$name,
+      logFcThreshold = 0.58,
+      grnDf = regulon_this_cluster,
+      targetCt = case_cluster,
+      random.seed = random.seed
+    )
+
+  }
+
+  return(significant_regulon_markers_all_clusters)
+}
