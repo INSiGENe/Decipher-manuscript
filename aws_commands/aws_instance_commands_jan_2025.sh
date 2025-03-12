@@ -65,12 +65,25 @@ docker run -it -m 40g --memory-swap 44g -v "$(pwd):/workspace" -w /workspace dec
 source("scripts/lupus/lupus_2_decipher_pipeline_v1_modularized_feb_2025.R") #done
 source("scripts/covid/covid_2_decipher_pipeline_v1_modularized_feb_2025.R") 
 
-docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace ebasto/connectome:latest
+docker run -it -m 30g --memory-swap 30g -v "$(pwd):/workspace" -w /workspace ebasto/connectome:latest
 source("scripts/5yr_pic/5yr_pic_3_connectome_analysis_feb_2025.R") #done
 source("scripts/cord_pic/cord_pic_3_connectome_analysis_feb_2025.R") #done
-source("scripts/erp/erp_3_connectome_analysis_feb_2025.R") #done
-source("scripts/sepsis/sepsis_3_connectome_analysis_feb_2025.R")
-source("scripts/BCG/bcg_3_connectome_analysis_feb_2025.R")
-source("scripts/covid/covid_3_connectome_analysis_feb_2025.R")
-source("scripts/lupus/lupus_3_connectome_analysis_feb_2025.R")
-source("scripts/tnbc/tnbc_3_connectome_analysis_feb_2025.R")
+source("scripts/erp/erp_3_connectome_analysis_feb_2025.R") #done but requires 60 gb of RAM
+source("scripts/sepsis/sepsis_3_connectome_analysis_feb_2025.R") #done
+source("scripts/BCG/bcg_3_connectome_analysis_feb_2025.R") #done
+source("scripts/covid/covid_3_connectome_analysis_feb_2025.R") #done
+source("scripts/lupus/lupus_3_connectome_analysis_feb_2025.R") #done but requires 130 gb or RAM
+source("scripts/tnbc/tnbc_3_connectome_analysis_feb_2025.R") #done
+
+#note that NATMI with docker requires downloading the databases and python scripts from the github page and placing them in a folder in the analysis directory called NATMI
+#github https://github.com/asrhou/NATMI
+docker run -it -m 30g --memory-swap 30g -v "$(pwd):/workspace" -w /workspace asrhou/natmi bash scripts/5yr_pic/5yr_pic_5_natmi_analysis_feb_2025.sh #done
+docker run -it -m 30g --memory-swap 30g -v "$(pwd):/workspace" -w /workspace asrhou/natmi bash scripts/tnbc/tnbc_5_natmi_analysis_feb_2025.sh #done
+docker run -it -m 30g --memory-swap 30g -v "$(pwd):/workspace" -w /workspace asrhou/natmi bash scripts/sepsis/sepsis_5_natmi_analysis_feb_2025.sh #done
+docker run -it -m 30g --memory-swap 30g -v "$(pwd):/workspace" -w /workspace asrhou/natmi bash scripts/covid/covid_5_natmi_analysis_feb_2025.sh #done
+docker run -it -m 30g --memory-swap 30g -v "$(pwd):/workspace" -w /workspace asrhou/natmi bash scripts/cord_pic/cord_pic_5_natmi_analysis_feb_2025.sh #done
+docker run -it -m 30g --memory-swap 30g -v "$(pwd):/workspace" -w /workspace asrhou/natmi bash scripts/BCG/bcg_5_natmi_analysis_feb_2025.sh #done
+docker run -it -m 40g --memory-swap 45g -v "$(pwd):/workspace" -w /workspace asrhou/natmi bash scripts/erp/erp_5_natmi_analysis_feb_2025.sh #done
+
+docker run -it -m 50g --memory-swap 55g -v "$(pwd):/workspace" -w /workspace asrhou/natmi bash scripts/lupus/lupus_5_natmi_analysis_feb_2025.sh #running
+
