@@ -11,12 +11,6 @@ python3 scripts/sepsis_6_liana_plus_analysis.py
 
 
 
-#for cytosig
-docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intelligence-suite
-bash scripts/sepsis_7_cytosig_analysis.sh
-python3 scripts/silent/sepsis_cytosig_process_files.py
-
-
 
 #building docker images
 docker build -t decipherc2c-docker:1.0.5 -f Dockerfile_decipherc2c_docker_1.0.5 .
@@ -86,4 +80,43 @@ docker run -it -m 30g --memory-swap 30g -v "$(pwd):/workspace" -w /workspace asr
 docker run -it -m 40g --memory-swap 45g -v "$(pwd):/workspace" -w /workspace asrhou/natmi bash scripts/erp/erp_5_natmi_analysis_feb_2025.sh #done
 
 docker run -it -m 50g --memory-swap 55g -v "$(pwd):/workspace" -w /workspace asrhou/natmi bash scripts/lupus/lupus_5_natmi_analysis_feb_2025.sh #running
+
+#NicheNet
+docker run --rm --memory=60g --memory-swap=62g -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest Rscript scripts/5yr_pic/5yr_pic_4_nichenet_analysis_feb_2025.R #done
+docker run --rm --memory=60g --memory-swap=62g -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest Rscript scripts/BCG/bcg_4_nichenet_analysis_feb_2025.R #done
+docker run --rm --memory=60g --memory-swap=62g -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest Rscript scripts/cord_pic/cord_pic_4_nichenet_analysis_feb_2025.R #done
+docker run --rm --memory=60g --memory-swap=62g -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest Rscript scripts/covid/covid_4_nichenet_analysis_feb_2025.R #done
+docker run --rm --memory=60g --memory-swap=62g -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest Rscript scripts/erp/erp_4_nichenet_analysis_feb_2025.R #done
+docker run --rm --memory=60g --memory-swap=62g -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest Rscript scripts/tnbc/tnbc_4_nichenet_analysis_feb_2025.R #done
+docker run --rm --memory=60g --memory-swap=62g -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest Rscript scripts/sepsis/sepsis_4_nichenet_analysis_feb_2025.R #done
+docker run --rm --memory=60g --memory-swap=62g -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest Rscript scripts/lupus/lupus_4_nichenet_analysis_feb_2025.R #done
+
+docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus \
+    python3 scripts/5yr_pic/5yr_pic_6_liana_plus_analysis_feb_2025.py #done
+docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus \
+    python3 scripts/BCG/bcg_6_liana_plus_analysis_feb_2025.py 
+docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus \
+    python3 scripts/cord_pic/cord_pic_6_liana_plus_analysis_feb_2025.py #done
+docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus \
+    python3 scripts/covid/covid_6_liana_plus_analysis_feb_2025.py #done
+docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus \
+    python3 scripts/erp/erp_6_liana_plus_analysis_feb_2025.py #done
+docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus \
+    python3 scripts/tnbc/tnbc_6_liana_plus_analysis_feb_2025.py #done
+docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus \
+    python3 scripts/sepsis/sepsis_6_liana_plus_analysis_feb_2025.py #done
+docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus \
+    python3 scripts/lupus/lupus_6_liana_plus_analysis_feb_2025.py #done
+
+
+#cytosig
+docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intelligence-suite
+bash scripts/5yr_pic/5yr_pic_7_cytosig_analysis_feb_2025.sh #done
+bash scripts/BCG/bcg_7_cytosig_analysis_feb_2025.sh #re-run
+bash scripts/cord_pic/cord_pic_7_cytosig_analysis_feb_2025.sh #done
+bash scripts/covid/covid_7_cytosig_analysis_feb_2025.sh #running
+bash scripts/erp/erp_7_cytosig_analysis_feb_2025.sh #running
+bash scripts/lupus/lupus_7_cytosig_analysis_feb_2025.sh #running
+bash scripts/sepsis/sepsis_7_cytosig_analysis_feb_2025.sh #running
+bash scripts/tnbc/tnbc_7_cytosig_analysis_feb_2025.sh
 

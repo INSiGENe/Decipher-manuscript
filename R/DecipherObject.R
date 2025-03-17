@@ -8,6 +8,7 @@ DecipherObject <- R6Class(
     #---------------------------------------------------------------------
     # 1) USER-DEFINED PARAMETERS AND PATHS
     #---------------------------------------------------------------------
+    dataset_name = NULL,
     dataset_path = NULL,
     condition_name = NULL,
     case_condition = NULL,
@@ -333,49 +334,11 @@ DecipherObject <- R6Class(
         "receiver_cluster"
       )
       
-      # Save objects
-      saveRDS(decipher_scores_by_regulon_and_cluster, 
-              file.path(self$output_data_filepath, "decipher_scores_by_regulon_and_cluster.rds"))
-      saveRDS(regulon_scores_by_cluster, 
-              file.path(self$output_data_filepath, "regulon_scores_by_cluster.rds"))
-      saveRDS(interaction_potential_by_clusters, 
-              file.path(self$output_data_filepath, "interaction_potential_by_clusters.rds"))
-      saveRDS(regulon_deltas_by_cluster, 
-              file.path(self$output_data_filepath, "regulon_deltas_by_cluster.rds"))
-      saveRDS(significant_regulons_by_cluster, 
-              file.path(self$output_data_filepath, "significant_regulons_by_cluster.rds"))
-      saveRDS(significant_regulon_markers_by_cluster, 
-              file.path(self$output_data_filepath, "significant_regulon_markers_by_cluster.rds"))
-      saveRDS(interaction_deltas_by_cluster, 
-              file.path(self$output_data_filepath, "interaction_deltas_by_cluster.rds"))
-      saveRDS(regulon_grns_by_cluster, 
-              file.path(self$output_data_filepath, "regulon_grns_by_cluster.rds"))
-      saveRDS(lr_markers_by_cluster, 
-              file.path(self$output_data_filepath, "lr_markers_by_cluster.rds"))
-      saveRDS(de_markers_by_cluster, 
-              file.path(self$output_data_filepath, "de_markers_by_cluster.rds"))
-      saveRDS(feature_statistics, 
-              file.path(self$output_data_filepath, "feature_statistics.rds"))
-      saveRDS(self$decipher_seurat_lr, 
-              file.path(self$output_data_filepath, "decipher_seurat_lr.rds"))
-      saveRDS(self$L_set, 
-              file.path(self$output_data_filepath, "L_set.rds"))
-      saveRDS(decipher_scores_by_cluster, 
-              file.path(self$output_data_filepath, "decipher_scores_by_cluster.rds"))
-      saveRDS(interaction_potentials_matrix_clusters_all_clusters, 
-              file.path(self$output_data_filepath, "interaction_potentials_matrix_clusters_all_clusters.rds"))
-      saveRDS(expressed_receptors_all_clusters, 
-              file.path(self$output_data_filepath, "expressed_receptors_all_clusters.rds"))
-      saveRDS(capped_regulons_all_clusters, 
-              file.path(self$output_data_filepath, "capped_regulons_all_clusters.rds"))
-      saveRDS(L_set_relevant_features_all_clusters, 
-              file.path(self$output_data_filepath, "L_set_relevant_features_all_clusters.rds"))
-      
       # final plot
       plotDecipherPrioritizedMap(
         self$dataset_path,
         top_n = 6,
-        dataset_name = "BCG"
+        dataset_name = dataset_name
       )
       
       # Optionally save the enrichr step

@@ -71,7 +71,7 @@ getNumberOfOutliers <- function(df) {
 #' @importFrom base any is.na ifelse
 scale_prioritization_score <- function(df, score_column) {
   # Check if any value in the specified score column is negative
-  has_negatives <- any(df[[score_column]] < 0)
+  has_negatives <- any(df[[score_column]] < 0, na.rm = TRUE)
 
   # Determine the scaling method based on the presence of negative values
   scaled_score <- if (!has_negatives) {
