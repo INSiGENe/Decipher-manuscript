@@ -17,7 +17,7 @@ docker build -t decipherc2c-docker:1.0.5 -f Dockerfile_decipherc2c_docker_1.0.5 
 docker build -t manuscript_pre_processing:1.0.3 -f Dockerfile_manuscript_pre_processing .
 
 #pre-processing
-# Where we store the renv cache *on the host* 
+# Where we store the renv cache *oBut my issue is that the only thing that changes within these two scripts...n the host* 
 # (could be any host path of your choice)
 export RENV_PATHS_CACHE_HOST=/opt/local/renv/cache
 # The path *inside* the container that we will mount it to.
@@ -46,6 +46,9 @@ taskset -c 19-22 python3 scripts/covid/covid_1_cell_oracle_feb_2025.py #done
 #CellOracle with more cores for PCA and KNN due to number of cells
 docker run -it -m 38g --memory-swap 41g -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
 taskset -c 10-18 python3 scripts/lupus/lupus_1_cell_oracle_feb_2025.py #done, almost three hours
+taskset -c 0-3 python cell_oracle_mar_2025.py SkinAtlas_AD CellOracle
+docker run -it -m 60g --memory-swap 62g -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
+
 
 #Decipher
 sudo docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5
@@ -112,10 +115,10 @@ docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace eba
 #cytosig
 docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intelligence-suite
 bash scripts/5yr_pic/5yr_pic_7_cytosig_analysis_feb_2025.sh #done
-bash scripts/BCG/bcg_7_cytosig_analysis_feb_2025.sh #re-run
+bash scripts/BCG/bcg_7_cytosig_analysis_feb_2025.sh #running
 bash scripts/cord_pic/cord_pic_7_cytosig_analysis_feb_2025.sh #done
 bash scripts/covid/covid_7_cytosig_analysis_feb_2025.sh #running
-bash scripts/erp/erp_7_cytosig_analysis_feb_2025.sh #running
+bash scripts/erp/erp_7_cytosig_analysis_feb_2025.sh #done
 bash scripts/lupus/lupus_7_cytosig_analysis_feb_2025.sh #running
 bash scripts/sepsis/sepsis_7_cytosig_analysis_feb_2025.sh #running
 bash scripts/tnbc/tnbc_7_cytosig_analysis_feb_2025.sh

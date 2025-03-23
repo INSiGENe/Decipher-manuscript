@@ -1006,3 +1006,268 @@ if(is.null(receiver_cell_type)){
 }
 
 
+plotDecipherPrioritizedMap_v3 <- function(dataset_path, receiver_cell_type = NULL, output_filename, log_transform, slice_n = 5, return_plot_object = FALSE) {
+  library(ggplot2)
+  library(patchwork)  # For improved layout management
+  
+  decipher_path <- file.path(dataset_path, "data")
+
+  # Read data ----
+  lr_markers_by_cluster <- readRDS(file.path(decipher_path, "lr_markers_by_cluster.rds"))
+  feature_statistics <- readRDS(file.path(decipher_path, "feature_statistics.rds"))
+  decipher_scores_by_cluster <- readRDS(file.path(decipher_path, "decipher_scores_by_cluster.rds"))
+  L_set <- readRDS(file.path(decipher_path, "L_set.rds"))
+
+  ct_lr_markers <- getLigandReceptorDiffExprMarkersByCt(lr_markers_by_cluster)
+  decipher_scores_by_cluster_bound <- bind_rows(decipher_scores_by_cluster)
+
+  # Normalize feature statistics ----
+  normalized_feature_statistics <- feature_statistics %>%
+    mutate(normalized.counts = sum.counts / n.cell) %>%
+    group_by(condition, feature) %>%
+    mutate(total.normalized.counts = sum(normalized.counts)) %>%
+    ungroup() %>%
+    mutate(frac.normalized.counts.features.condition = normalized.counts / total.normalized.counts)
+
+  # Enrich decipher results ----
+  decipher_scores_by_cluster_bound_enriched <- decipher_scores_by_cluster_bound %>%
+    select(interaction, receiver_cluster, decipher_score) %>%
+    tidyr::complete(interaction, receiver_cluster) %>%
+    mutate(decipher_score = tidyr::replace_na(decipher_score, 0),
+           sender_cluster = "mixed") %>%
+    left_join(select(L_set, ligand, receptor, interaction), by = "interaction") %>%
+    left_join(ct_lr_markers[, c("cluster", "gene", "avg_log2FC")], by = c("receiver_cluster" = "cluster", "ligand" = "gene")) %>%
+    rename(ligand.diff.expr = avg_log2FC) %>%
+    left_join(ct_lr_markers[, c("cluster", "gene", "avg_log2FC")], by = c("receiver_cluster" = "cluster", "receptor" = "gene")) %>%
+    rename(receptor.diff.expr = avg_log2FC) %>%
+    mutate(ligand.diff.expr = replaceNAw0(ligand.diff.expr),
+           receptor.diff.expr = replaceNAw0(receptor.diff.expr),
+           condition = "case") %>%
+    left_join(select(normalized_feature_statistics, cluster, feature, condition, frac.normalized.counts.features.condition), by = c("receiver_cluster" = "cluster", "ligand" = "feature", "condition")) %>%
+    rename(ligand.frac = frac.normalized.counts.features.condition) %>%
+    left_join(select(normalized_feature_statistics, cluster, feature, condition, frac.normalized.counts.features.condition), by = c("receiver_cluster" = "cluster", "receptor" = "feature", "condition")) %>%
+    rename(receptor.frac = frac.normalized.counts.features.condition)
+
+  # Top interactions ----
+  decipher_scores_by_cluster_bound_clean <- decipher_scores_by_cluster_bound %>%
+    mutate(interaction = paste(ligand, receptor, sep = "-")) %>%
+    rename(receiver = receiver_cluster, sender = sender_cluster, prioritization_score = decipher_score) %>%
+    select(interaction, ligand, receptor, receiver, prioritization_score) %>%
+    arrange(prioritization_score) %>%
+    mutate(decipher_score_sign = if_else(prioritization_score >= 0, "positive", "negative"))
+
+  if (is.null(receiver_cell_type)) {
+    decipher_top_interactions_by_receiver <- decipher_scores_by_cluster_bound_clean %>%
+      group_by(decipher_score_sign) %>%
+      arrange(desc(abs(prioritization_score))) %>%
+      select(interaction, decipher_score_sign) %>%
+      distinct() %>%
+      dplyr::slice_head(n = slice_n) %>%
+      ungroup() %>%
+      left_join(decipher_scores_by_cluster_bound_clean, by = c("interaction"))
+  } else {
+    decipher_top_interactions_by_receiver <- decipher_scores_by_cluster_bound_clean %>%
+      filter(receiver == receiver_cell_type) %>%
+      group_by(decipher_score_sign) %>%
+      arrange(desc(abs(prioritization_score))) %>%
+      select(interaction, decipher_score_sign) %>%
+      distinct() %>%
+      dplyr::slice_head(n = slice_n) %>%
+      ungroup() %>%
+      left_join(decipher_scores_by_cluster_bound_clean, by = c("interaction"))
+  }
+
+  top_interactions <- decipher_top_interactions_by_receiver %>%
+    select(interaction) %>%
+    distinct() %>%
+    unlist(use.names = FALSE)
+
+  # Log-transform decipher scores
+  if (log_transform) {
+    decipher_scores_by_cluster_bound_enriched <- decipher_scores_by_cluster_bound_enriched %>%
+      mutate(decipher_score = case_when(
+        decipher_score < -1e-10 ~ -log(abs(decipher_score)),
+        decipher_score > 1e-10 ~ log(decipher_score),
+        TRUE ~ 0
+      ))
+  }
+
+  # Visualization ----
+  base_data <- decipher_scores_by_cluster_bound_enriched %>%
+    filter(interaction %in% top_interactions) %>%
+    mutate(size = 1)
+
+  # Define color scales and limits
+  color_scale <- scale_color_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0)
+
+  base_plot <- ggplot(base_data, aes(x = receiver_cluster, y = interaction)) +
+    geom_point(aes(size = abs(decipher_score), fill = decipher_score), shape = 21, color = "black", stroke = 0.3) +
+    color_scale +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          legend.position = "bottom") +
+    labs(x = "Receiver Cluster", y = "", title = "Decipher Prioritized Interactions")+
+    guides(
+        fill = guide_colorbar(order = 1),  # Gradient legend on top
+        size = guide_legend(order = 2)     # Size legend below it
+    )
+
+  # Ligand Expression Plot
+  ligand_plot <- ggplot(base_data, aes(x = receiver_cluster, y = interaction)) +
+    geom_point(aes(size = abs(ligand.diff.expr), fill = ligand.diff.expr), shape = 21, color = "black", stroke = 0.3) +
+    color_scale +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position = "bottom") +
+    labs(x = "Receiver Cluster", y = "Interaction", title = "Ligand Expression")+
+    guides(
+        fill = guide_colorbar(order = 1),  # Gradient legend on top
+        size = guide_legend(order = 2)     # Size legend below it
+    )
+
+  # Receptor Expression Plot
+  receptor_plot <- ggplot(base_data, aes(x = receiver_cluster, y = interaction)) +
+    geom_point(aes(size = abs(receptor.diff.expr), fill = receptor.diff.expr), shape = 21, color = "black", stroke = 0.3) +
+    color_scale +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position = "bottom") +
+    labs(x = "Receiver Cluster", y = "", title = "Receptor Expression")+
+    guides(
+        fill = guide_colorbar(order = 1),  # Gradient legend on top
+        size = guide_legend(order = 2)     # Size legend below it
+    )
+
+  # Combine the plots into a grid layout
+  final_plot <- ligand_plot + base_plot + receptor_plot + plot_layout(ncol = 3)
+
+  # Save or return
+  output_plot_path <- file.path(dataset_path, "figures", paste0(output_filename, ".png"))
+
+  if (return_plot_object) {
+    return(final_plot)
+  } else {
+    ggsave(output_plot_path, plot = final_plot, width = 16, height = 8, dpi = 300)
+  }
+}
+
+plotDecipherPrioritizedMap_v4 <- function(dataset_path, receiver_cell_type = NULL, output_filename, log_transform, slice_n = 5, return_plot_object = FALSE) {
+  library(ggplot2)
+  library(patchwork)  # For multi-plot alignment
+  
+  decipher_path <- file.path(dataset_path, "data")
+
+  # Read data ----
+  lr_markers_by_cluster <- readRDS(file.path(decipher_path, "lr_markers_by_cluster.rds"))
+  feature_statistics <- readRDS(file.path(decipher_path, "feature_statistics.rds"))
+  decipher_scores_by_cluster <- readRDS(file.path(decipher_path, "decipher_scores_by_cluster.rds"))
+  L_set <- readRDS(file.path(decipher_path, "L_set.rds"))
+
+  ct_lr_markers <- getLigandReceptorDiffExprMarkersByCt(lr_markers_by_cluster)
+  decipher_scores_by_cluster_bound <- bind_rows(decipher_scores_by_cluster)
+
+  # Normalize feature statistics ----
+  normalized_feature_statistics <- feature_statistics %>%
+    mutate(normalized.counts = sum.counts / n.cell) %>%
+    group_by(condition, feature) %>%
+    mutate(total.normalized.counts = sum(normalized.counts)) %>%
+    ungroup() %>%
+    mutate(frac.normalized.counts.features.condition = normalized.counts / total.normalized.counts)
+
+  # Enrich decipher results ----
+  decipher_scores_by_cluster_bound_enriched <- decipher_scores_by_cluster_bound %>%
+    select(interaction, receiver_cluster, decipher_score) %>%
+    tidyr::complete(interaction, receiver_cluster) %>%
+    mutate(decipher_score = tidyr::replace_na(decipher_score, 0),
+           sender_cluster = "mixed") %>%
+    left_join(select(L_set, ligand, receptor, interaction), by = "interaction") %>%
+    left_join(ct_lr_markers[, c("cluster", "gene", "avg_log2FC")], by = c("receiver_cluster" = "cluster", "ligand" = "gene")) %>%
+    rename(ligand.diff.expr = avg_log2FC) %>%
+    left_join(ct_lr_markers[, c("cluster", "gene", "avg_log2FC")], by = c("receiver_cluster" = "cluster", "receptor" = "gene")) %>%
+    rename(receptor.diff.expr = avg_log2FC) %>%
+    mutate(ligand.diff.expr = replaceNAw0(ligand.diff.expr),
+           receptor.diff.expr = replaceNAw0(receptor.diff.expr),
+           condition = "case") %>%
+    left_join(select(normalized_feature_statistics, cluster, feature, condition, frac.normalized.counts.features.condition), by = c("receiver_cluster" = "cluster", "ligand" = "feature", "condition")) %>%
+    rename(ligand.frac = frac.normalized.counts.features.condition) %>%
+    left_join(select(normalized_feature_statistics, cluster, feature, condition, frac.normalized.counts.features.condition), by = c("receiver_cluster" = "cluster", "receptor" = "feature", "condition")) %>%
+    rename(receptor.frac = frac.normalized.counts.features.condition)
+
+  # Top interactions ----
+  decipher_scores_by_cluster_bound_clean <- decipher_scores_by_cluster_bound %>%
+    mutate(interaction = paste(ligand, receptor, sep = "-")) %>%
+    rename(receiver = receiver_cluster, sender = sender_cluster, prioritization_score = decipher_score) %>%
+    select(interaction, ligand, receptor, receiver, prioritization_score) %>%
+    arrange(prioritization_score) %>%
+    mutate(decipher_score_sign = if_else(prioritization_score >= 0, "positive", "negative"))
+
+  if (is.null(receiver_cell_type)) {
+    decipher_top_interactions_by_receiver <- decipher_scores_by_cluster_bound_clean %>%
+      group_by(decipher_score_sign) %>%
+      arrange(desc(abs(prioritization_score))) %>%
+      select(interaction, decipher_score_sign) %>%
+      distinct() %>%
+      dplyr::slice_head(n = slice_n) %>%
+      ungroup() %>%
+      left_join(decipher_scores_by_cluster_bound_clean, by = c("interaction"))
+  } else {
+    decipher_top_interactions_by_receiver <- decipher_scores_by_cluster_bound_clean %>%
+      filter(receiver == receiver_cell_type) %>%
+      group_by(decipher_score_sign) %>%
+      arrange(desc(abs(prioritization_score))) %>%
+      select(interaction, decipher_score_sign) %>%
+      distinct() %>%
+      dplyr::slice_head(n = slice_n) %>%
+      ungroup() %>%
+      left_join(decipher_scores_by_cluster_bound_clean, by = c("interaction"))
+  }
+
+  top_interactions <- decipher_top_interactions_by_receiver %>%
+    select(interaction) %>%
+    distinct() %>%
+    unlist(use.names = FALSE)
+
+  # Define color scale
+  color_scale <- scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0)
+
+  # Ligand (Sender) Expression Plot
+  ligand_plot <- ggplot(decipher_scores_by_cluster_bound_enriched, aes(x = receiver_cluster, y = interaction)) +
+    geom_point(aes(size = abs(ligand.diff.expr), fill = ligand.diff.expr), shape = 21, color = "black", stroke = 0.3) +
+    color_scale +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    labs(x = "Sender Cluster", y = "Interaction", title = "Ligand Expression") +
+    guides(fill = guide_colorbar(order = 1), size = guide_legend(order = 2))
+
+  # Decipher Score Plot (Center)
+  decipher_plot <- ggplot(decipher_scores_by_cluster_bound_enriched, aes(x = receiver_cluster, y = interaction)) +
+    geom_point(aes(size = abs(decipher_score), fill = decipher_score), shape = 21, color = "black", stroke = 0.3) +
+    color_scale +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), axis.title.y = element_blank(), axis.text.y = element_blank()) +
+    labs(x = "", y = "", title = "Decipher Score") +
+    guides(fill = "none", size = "none")  # Hide redundant legends
+
+  # Receptor (Receiver) Expression Plot
+  receptor_plot <- ggplot(decipher_scores_by_cluster_bound_enriched, aes(x = receiver_cluster, y = interaction)) +
+    geom_point(aes(size = abs(receptor.diff.expr), fill = receptor.diff.expr), shape = 21, color = "black", stroke = 0.3) +
+    color_scale +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), axis.title.y = element_blank(), axis.text.y = element_blank()) +
+    labs(x = "Receiver Cluster", y = "", title = "Receptor Expression") +
+    guides(fill = "none", size = "none")  # Hide redundant legends
+
+  # Combine the plots into a single layout
+  final_plot <- ligand_plot + decipher_plot + receptor_plot + 
+    plot_layout(ncol = 3, guides = "collect") & 
+    theme(legend.position = "bottom", legend.box = "vertical")  # Stack color and size legends
+
+  # Save or return
+  output_plot_path <- file.path(dataset_path, "figures", paste0(output_filename, ".png"))
+
+  if (return_plot_object) {
+    return(final_plot)
+  } else {
+    ggsave(output_plot_path, plot = final_plot, width = 16, height = 8, dpi = 300)
+  }
+}

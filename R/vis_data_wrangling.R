@@ -978,7 +978,7 @@ getPredictionsResponsesForMethods <- function(results_to_compare, cytosig_signif
 #' @importFrom graphics png dev.off plot lines text
 #' @importFrom utils file.path paste
 #' @importFrom pROC roc auc
-plotROCAndExtractAUC <- function(predictions,responses,output_figures_filepath){
+plotROCAndExtractAUC <- function(predictions,responses,output_figures_filepath,dataset_name){
   # Calculate the max threshold
   #max_threshold <- floor(max(abs(responses$Decipher)))
   max_threshold <- floor(max(responses$Decipher))
