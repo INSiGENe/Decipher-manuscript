@@ -463,6 +463,15 @@ writeH5ADObjects <- function(seurat_object, pre_processing_path) {
 
   # Process each cluster found in the Seurat object
   for (this_cluster in unique(seurat_object$cluster)) {
+    #check if file already exists
+    h5ad_file_path <- file.path(h5ad_dir_path, paste0(this_cluster, ".h5ad"))
+
+    # Skip if the file already exists
+    if (file.exists(h5ad_file_path)) {
+      message("Skipping ", this_cluster, " — h5ad file already exists.")
+      next
+    }
+    
     # Subset the Seurat object for the current cluster
     seurat_object_this_cluster <- seurat_object[,which(seurat_object$cluster == this_cluster),seed=NULL]
 
@@ -476,7 +485,7 @@ writeH5ADObjects <- function(seurat_object, pre_processing_path) {
 
     # Write the SCE object to an h5ad file
     zellkonverter::writeH5AD(sce.object,
-                             file.path(h5ad_dir_path, paste(this_cluster, ".h5ad", sep = "")),
+                             h5ad_file_path,
                              X_name = "counts")
   }
 }

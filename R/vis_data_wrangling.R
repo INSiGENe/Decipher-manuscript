@@ -196,6 +196,9 @@ count_overlaps <- function(i, data) {
 #' @importFrom dplyr rename select mutate
 #' @importFrom stats setNames
 generateComparisonObjectFromNicheNet <- function(nichenetObject){
+
+  if (is.null(nichenetObject)) return(NULL)
+
   # Load the required library
   library(dplyr)
 
@@ -279,6 +282,9 @@ renameDecipherScore <- function(df) {
 #' @import dplyr
 #' @importFrom stats desc
 preProcessNATMI <- function(natmi_df){
+  #NULL check
+  if (is.null(natmi_df)) return(NULL)
+
   result <- natmi_df %>%
     #filter
     filter(Log2.transformed.fold.change.of.edge.expression.weight != Inf,
@@ -328,6 +334,9 @@ preProcessNATMI <- function(natmi_df){
 #' @import dplyr
 #' @importFrom stats desc
 preProcessConnectome <- function(connectome_df){
+  #NULL check
+  if (is.null(connectome_df)) return(NULL)
+
   result <- connectome_df%>%
     #filter
     filter(score!=Inf) %>%
@@ -377,6 +386,10 @@ preProcessConnectome <- function(connectome_df){
 #' @importFrom dplyr mutate rename select arrange
 #' @importFrom stats desc
 preProcessLIANA <- function(liana_df){
+
+  #NULL check
+  if (is.null(liana_df)) return(NULL)
+
   result <-  liana_df %>%
     # add interaction column
     mutate(interaction = paste(ligand, receptor, sep = "-")) %>%
@@ -396,6 +409,39 @@ preProcessLIANA <- function(liana_df){
   return(result)
 
 }
+
+
+preProcessDecipher <- function(decipher_results) {
+  if (is.null(decipher_results)) return(NULL)
+
+  decipher_bound <- bind_rows(decipher_results)
+
+  result <- decipher_bound %>%
+    mutate(interaction = paste(ligand, receptor, sep = "-")) %>%
+    rename(
+      receiver = receiver_cluster,
+      sender = sender_cluster,
+      prioritization_score = decipher_score
+    )
+
+  result <- scale_prioritization_score(result, "prioritization_score")
+  return(result)
+}
+
+preProcessNicheNet <- function(nichenet_prior_table_all_clusters) {
+  if (is.null(nichenet_prior_table_all_clusters)) return(NULL)
+
+  nichenet_bound <- bind_rows(nichenet_prior_table_all_clusters)
+
+  result <- nichenet_bound %>%
+    mutate(interaction = paste(ligand, receptor, sep = "-"))
+
+  result <- scale_prioritization_score(result, "prioritization_score")
+  return(result)
+}
+
+
+
 
 #' Prepare Data for Correlation Analysis
 #'
@@ -689,6 +735,8 @@ summarizeZScores <- function(z_score_files,z_score_folder,mapping_table){
 #' @importFrom dplyr select rename mutate split
 #' @importFrom base paste return
 prepareLianaForCytosigComparison <- function(liana_df){
+  if (is.null(liana_df)) return(NULL)
+
   liana_df <-liana_df %>%
     select(ligand,receptor,source,target,interaction_stat)%>%
     rename(
@@ -726,6 +774,7 @@ prepareLianaForCytosigComparison <- function(liana_df){
 #' @importFrom dplyr filter select rename mutate split
 #' @importFrom base paste return
 prepareConnectomeForCytosigComparison <- function(connectome_df){
+  if (is.null(connectome_df)) return(NULL)
   connectome_df <-connectome_df %>%
     filter(score!=Inf & score!=-Inf)%>%
     select(ligand,receptor,source,target,score)%>%
@@ -764,6 +813,7 @@ prepareConnectomeForCytosigComparison <- function(connectome_df){
 #' @importFrom dplyr filter rename mutate split
 #' @importFrom base paste return
 prepareNatmiForCytosigComparison <- function(natmi_df){
+  if (is.null(natmi_df)) return(NULL)
   natmi_df <- natmi_df %>%
     filter(Log2.transformed.fold.change.of.edge.expression.weight != Inf,
            Log2.transformed.fold.change.of.edge.expression.weight!= -Inf) %>%
@@ -1016,6 +1066,7 @@ plotROCAndExtractAUC <- function(predictions,responses,output_figures_filepath,d
 
       # Add text for AUC
       auc_value <- round(auc(roc_curve), 3)
+      n_true <- sum(binary_responses)
       #text(0.85, 1-(i-1)*0.1, paste(method, ": AUC = ", auc_value, sep=""), col=colors[i])
       text(0.3, 0.4-(i-1)*0.1, paste(method, " AUC = ", auc_value, sep=""), col=colors[i],cex=1.1)
 
@@ -1026,7 +1077,8 @@ plotROCAndExtractAUC <- function(predictions,responses,output_figures_filepath,d
         auc = numeric()
       )
 
-      auc_methods[[method]] <- auc_value
+      #auc_methods[[method]] <- auc_value
+      auc_methods[[method]] <- list(auc = auc_value, n_true = n_true)
     }
     auc_for_meta[[as.character(this_threshold)]] <- auc_methods
     dev.off()

@@ -1,0 +1,222 @@
+{
+  "SkinAtlas_AD": {
+    "CellOracle": {
+      "data_folder": "results/SkinAtlas_AD",
+      "species": "human",
+      "cluster_column": "cluster"
+    },
+    "connectome": {
+      "var1": "connectome_value1",
+      "var2": "connectome_value2",
+      "var3": "connectome_value3"
+    },
+    "nicheNet": {
+      "var1": "nicheNet_value1",
+      "var2": "nicheNet_value2",
+      "var3": "nicheNet_value3"
+    }
+  },
+  "dataset2": {
+    "connectome": {
+      "var1": "connectome_valueA",
+      "var2": "connectome_valueB",
+      "var3": "connectome_valueC"
+    },
+    "nicheNet": {
+      "var1": "nicheNet_valueA",
+      "var2": "nicheNet_valueB",
+      "var3": "nicheNet_valueC"
+    }
+  },
+
+
+
+
+  "cz_rcc": {
+    "dataset_description":{
+      "repository": "cellxgene",
+      "download_url": "https://datasets.cellxgene.cziscience.com/bf28d870-0750-443d-bb54-ec664b8f40c3.h5ad",
+      "description": "Single-cell transcriptomic datasets of Renal cell carcinoma patients",
+      "abbreviation": "cz_rcc"
+    },
+    "pre_processing":{
+      "input_path": "data/cz_rcc",
+      "output_path": "data/cz_rcc",
+      "step": "preprocessing",
+      "subset_logic": {
+        "disease": ["nonpapillary renal cell carcinoma", "normal"]
+      },
+      "min_genes_per_cell": 200
+    },
+    "pre_processing_for_analysis": {
+      "input_path": "data/cz_rcc/preprocessing",
+      "output_path": "results/cz_rcc",
+      "cluster_meta_field": "cell_type",
+      "condition_meta_field": "disease",
+      "individual_meta_field": "donor_id",
+      "case_condition": "nonpapillary renal cell carcinoma",
+      "control_condition": "normal"
+    },
+    "cytosig": {
+      "output_path": "results/cz_rcc"
+    }
+  },
+
+
+
+  "cz_placenta_infection": {
+    "dataset_description":{
+      "repository": "cellxgene",
+      "download_url": "https://datasets.cellxgene.cziscience.com/50bbe1a2-5f27-47f5-a809-046459a4ae5e.h5ad",
+      "description": "Acute response to pathogens in the early human placenta at single-cell resolution",
+      "abbreviation": "cz_placenta_infection"
+    },
+    "pre_processing":{
+      "input_path": "data/cz_placenta_infection",
+      "output_path": "data/cz_placenta_infection",
+      "step": "preprocessing",
+      "subset_logic": {
+        "disease": ["listeriosis", "normal"]
+      },
+      "min_genes_per_cell": 200
+    },
+    "pre_processing_for_analysis": {
+      "input_path": "data/cz_placenta_infection/preprocessing",
+      "output_path": "results/cz_placenta_infection",
+      "cluster_meta_field": "cell_type",
+      "condition_meta_field": "disease",
+      "individual_meta_field": "donor_id",
+      "case_condition": "listeriosis",
+      "control_condition": "normal"
+    },
+    "cytosig": {
+      "output_path": "results/cz_placenta_infection"
+    }
+  },
+
+
+
+
+  "cz_human_kidney_v1.5": {
+    "dataset_description":{
+      "repository": "cellxgene",
+      "download_url": "https://datasets.cellxgene.cziscience.com/f5b6d620-76df-45c5-9524-e5631be0e44a.h5ad",
+      "description": "Single-cell RNA-seq of the Adult Human Kidney (Version 1.5)",
+      "abbreviation": "cz_human_kidney_v1.5"
+    },
+    "pre_processing":{
+      "input_path": "data/cz_human_kidney_v1.5",
+      "output_path": "data/cz_human_kidney_v1.5",
+      "step": "preprocessing",
+      "subset_logic": {
+        "disease": ["chronic kidney disease", "normal"]
+      },
+      "min_genes_per_cell": 200
+    },
+    "pre_processing_for_analysis": {
+      "input_path": "data/cz_human_kidney_v1.5/preprocessing",
+      "output_path": "results/cz_human_kidney_v1.5",
+      "cluster_meta_field": "cell_type",
+      "condition_meta_field": "disease",
+      "individual_meta_field": "donor_id",
+      "case_condition": "chronic kidney disease",
+      "control_condition": "normal"
+    },
+    "cytosig": {
+      "output_path": "results/cz_human_kidney_v1.5"
+    }
+  },
+
+
+
+  "cz_periheart": {
+    "dataset_description":{
+      "repository": "cellxgene",
+      "download_url": "https://datasets.cellxgene.cziscience.com/66c82e1b-e3ce-48dc-b1db-52546dbd4e44.h5ad",
+      "description": "Transcriptomic and spatial dissection of human ex vivo right atrial tissue reveals proinflammatory microvascular changes in ischemic heart disease Human Cell Atlas (HCA) The CAREBANK study has enrolled patients undergoing open-heart cardiac surgery (coronary bypass surgery, operations for valvular heart disease and ascending aorta) since February 2016 at Turku University Hospital and the PERIHEART study since 2012 at Kuopio University Hospital. All patients gave their written informed consent prior to surgery. Publication (PeriHeart)",
+      "abbreviation": "cz_periheart"
+    },
+    "pre_processing":{
+      "input_path": "data/cz_periheart",
+      "output_path": "data/cz_periheart",
+      "step": "preprocessing",
+      "subset_logic": {
+        "disease": ["atrial fibrillation", "normal"]
+      },
+      "min_genes_per_cell": 200
+    },
+    "pre_processing_for_analysis": {
+      "input_path": "data/cz_periheart/preprocessing",
+      "output_path": "results/cz_periheart",
+      "cluster_meta_field": "cell_type",
+      "condition_meta_field": "disease",
+      "individual_meta_field": "donor_id",
+      "case_condition": "atrial fibrillation",
+      "control_condition": "normal"
+    },
+    "cytosig": {
+      "output_path": "results/cz_periheart"
+    }
+  },
+
+
+  "cz_carebank": {
+    "dataset_description":{
+      "repository": "cellxgene",
+      "download_url": "https://datasets.cellxgene.cziscience.com/e67f1a92-0371-4657-b15e-a4934f9ab733.h5ad",
+      "description": "Transcriptomic and spatial dissection of human ex vivo right atrial tissue reveals proinflammatory microvascular changes in ischemic heart disease Human Cell Atlas (HCA) The CAREBANK study has enrolled patients undergoing open-heart cardiac surgery (coronary bypass surgery, operations for valvular heart disease and ascending aorta) since February 2016 at Turku University Hospital and the PERIHEART study since 2012 at Kuopio University Hospital. All patients gave their written informed consent prior to surgery. Publication (carebank)",
+      "abbreviation": "cz_carebank"
+    },
+    "pre_processing":{
+      "input_path": "data/cz_carebank",
+      "output_path": "data/cz_carebank",
+      "step": "preprocessing",
+      "subset_logic": {
+        "disease": ["atrial fibrillation", "normal"]
+      },
+      "min_genes_per_cell": 200
+    },
+    "pre_processing_for_analysis": {
+      "input_path": "data/cz_carebank/preprocessing",
+      "output_path": "results/cz_carebank",
+      "cluster_meta_field": "cell_type",
+      "condition_meta_field": "disease",
+      "individual_meta_field": "donor_id",
+      "case_condition": "atrial fibrillation",
+      "control_condition": "normal"
+    },
+    "cytosig": {
+      "output_path": "results/cz_carebank"
+    }
+  },
+  
+  "cz_influenza": {
+    "dataset_description":{
+      "repository": "cellxgene",
+      "download_url": "https://datasets.cellxgene.cziscience.com/5f4efede-b295-4be4-aded-eb8b9a946382.h5ad",
+      "description": "Immunophenotyping of COVID-19 and influenza highlights the role of type I interferons in development of severe COVID-19",
+      "abbreviation": "cz_influenza"
+    },
+    "pre_processing":{
+      "input_path": "data/cz_influenza",
+      "output_path": "data/cz_influenza",
+      "step": "preprocessing",
+      "subset_logic": {
+        "disease": ["influenza", "normal"]
+      },
+      "min_genes_per_cell": 200
+    },
+    "pre_processing_for_analysis": {
+      "input_path": "data/cz_influenza/preprocessing",
+      "output_path": "results/cz_influenza",
+      "cluster_meta_field": "cell_type",
+      "condition_meta_field": "disease",
+      "individual_meta_field": "donor_id",
+      "case_condition": "influenza",
+      "control_condition": "normal"
+    },
+    "cytosig": {
+      "output_path": "results/cz_influenza"
+    }
+  }
+}

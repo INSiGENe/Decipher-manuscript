@@ -1,29 +1,31 @@
-
-#activate celloracle env in a net terminal window and run
-#change to analysis directory
-python3 scripts/sepsis_1_cell_oracle.py
-
-#activate natmi env
-bash scripts/sepsis_5_natmi_analysis.sh
-
-#activate liana env
-python3 scripts/sepsis_6_liana_plus_analysis.py
-
-
-
-
-#building docker images
+#################################
+####### Build Docker images ############
+#################################
 docker build -t decipherc2c-docker:1.0.5 -f Dockerfile_decipherc2c_docker_1.0.5 .
 docker build -t manuscript_pre_processing:1.0.3 -f Dockerfile_manuscript_pre_processing .
 
-#pre-processing
-# Where we store the renv cache *oBut my issue is that the only thing that changes within these two scripts...n the host* 
-# (could be any host path of your choice)
+#################################
+####### Download datasets ############
+#################################
+mkdir -p data/cz_influenza && \
+wget -O data/cz_influenza/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/5f4efede-b295-4be4-aded-eb8b9a946382.h5ad"
+
+
+#################################
+####### Convert anndata objects to R-based objects (Seurat) ############
+#################################
+docker run -it -m 60g --memory-swap 62g -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
+python3 scripts/preprocess_ann_object.py dataset_key
+
+#################################
+####### Process Initial Seurat object for downstream analyses ############
+#################################
 export RENV_PATHS_CACHE_HOST=/opt/local/renv/cache
 # The path *inside* the container that we will mount it to.
 export RENV_PATHS_CACHE_CONTAINER=/renv/cache
 docker run -it --rm \
-    --memory=56g --memory-swap=60g \
+    --memory=180g --memory-swap=185g \
     -e "RENV_PATHS_CACHE=${RENV_PATHS_CACHE_CONTAINER}" \
     -v "${RENV_PATHS_CACHE_HOST}:${RENV_PATHS_CACHE_CONTAINER}" \
     -v "$(pwd):/app" \
@@ -31,7 +33,15 @@ docker run -it --rm \
     manuscript_pre_processing:1.0.3 \
     bash
     
-source("scripts/")
+Rscript scripts/preprocess_object_for_analysis.R dataset_key
+
+#################################
+####### Run cytosig analysis ############
+#################################
+docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intelligence-suite
+bash scripts/cytosig_run.sh dataset_key
+
+
 
 #running on a c6a.4xlarge AWS EC2 instance
 #takes about three hours to run all the stuff below, it's key to split the cpu cores efficiently as 
@@ -48,7 +58,6 @@ docker run -it -m 38g --memory-swap 41g -v "$(pwd):/workspace" -w /workspace cel
 taskset -c 10-18 python3 scripts/lupus/lupus_1_cell_oracle_feb_2025.py #done, almost three hours
 taskset -c 0-3 python cell_oracle_mar_2025.py SkinAtlas_AD CellOracle
 docker run -it -m 60g --memory-swap 62g -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
-
 
 #Decipher
 sudo docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5
@@ -123,3 +132,9 @@ bash scripts/lupus/lupus_7_cytosig_analysis_feb_2025.sh #running
 bash scripts/sepsis/sepsis_7_cytosig_analysis_feb_2025.sh #running
 bash scripts/tnbc/tnbc_7_cytosig_analysis_feb_2025.sh
 
+
+
+docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intelligence-suite
+bash scripts/cytosig_run.sh cz_placenta_infection #done
+bash scripts/cytosig_run.sh cz_rcc #running
+bash scripts/cytosig_run.sh cz_human_kidney_v1.5  #running
