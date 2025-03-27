@@ -668,8 +668,146 @@ for (ds in names(datasets)) {
   mapping_table <- read.csv(file.path(reference_filepath,"cytosig_mapping_table_ligands_genes.csv"),header=TRUE)
   # Load and process cytosig significance
   cytosig_significance[[ds]] <- summarizeZScores(z_score_files, z_score_folder, mapping_table)
-
 }
+
+#################################
+####### Cytosig prep data ############
+#################################
+
+library(gplots)
+
+# Filter datasets with non-empty heatmaps
+valid <- list()
+all_ligands <- c()
+for (dataset in names(cytosig_significance)) {
+  dataset_path <- datasets[[dataset]]
+  decipher_filepath <- file.path(dataset_path, "data")
+  df <- cytosig_significance[[dataset]]
+  seurat_object_oi <- readRDS(file.path(decipher_filepath,"pseudobulk_seurat.rds"))
+  # Keep only genes that exist in Seurat object
+  valid_genes <- rownames(seurat_object_oi)
+  valid_clusters <- unique(seurat_object_oi$cluster)
+  df_unique <- df %>%
+    filter(gene %in% valid_genes) %>%
+    select(-gene) %>%
+    distinct()  # Removes rows with identical ligand + all values
+
+  # Keep only columns (i.e., cell types) that match valid clusters
+  df_unique <- df_unique %>%
+    select(ligand, all_of(valid_clusters))
+
+  mat <- df_unique %>%
+    tibble::column_to_rownames(var = "ligand") %>%
+    as.matrix()
+    
+  row_mask <- apply(abs(mat), 1, max) > 2
+  col_mask <- apply(abs(mat), 2, max) > 2
+  mat_filt <- mat[row_mask, col_mask, drop = FALSE]
+  if (nrow(mat_filt) > 0 && ncol(mat_filt) > 0) {
+    valid[[dataset]] <- mat_filt
+    all_ligands <- union(all_ligands, rownames(mat_filt))  # keep building union
+
+  }
+}
+
+for (dataset in names(valid)) {
+  mat <- valid[[dataset]]
+
+  # Create a completed matrix with all ligands as rows
+  missing_ligands <- setdiff(all_ligands, rownames(mat))
+  if (length(missing_ligands) > 0) {
+    padding <- matrix(0, nrow = length(missing_ligands), ncol = ncol(mat),
+                      dimnames = list(missing_ligands, colnames(mat)))
+    mat <- rbind(mat, padding)
+  }
+
+  # Sort by ligand name to ensure row alignment across plots
+  mat <- mat[sort(rownames(mat)), , drop = FALSE]
+  valid[[dataset]] <- mat
+}
+
+#################################
+####### Cytosig heatmap (single and with colour bar) ############
+#################################
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(patchwork)
+
+combined_mat <- do.call(cbind, lapply(names(valid), function(dataset) {
+  mat <- valid[[dataset]]
+  colnames(mat) <- paste(dataset, colnames(mat), sep = "_")
+  return(mat)
+}))
+
+df_long <- as.data.frame(combined_mat) %>%
+  tibble::rownames_to_column("ligand") %>%
+  tidyr::pivot_longer(-ligand, names_to = "dataset_celltype", values_to = "z") %>%
+  mutate(dataset = sub("_.*$", "", dataset_celltype))
+
+df_long <- df_long %>%
+  mutate(
+    ligand = factor(ligand, levels = sort(unique(ligand))),
+    dataset_celltype = factor(dataset_celltype, levels = unique(dataset_celltype))
+  )
+
+df_long <- df_long %>%
+  mutate(
+    formatted_label = gsub("_minus_", "-", dataset_celltype),
+    formatted_label = gsub("_plus_", "+", formatted_label),
+    formatted_label = ifelse(nchar(formatted_label) > 20,
+                             paste0(substr(formatted_label, 1, 17), "..."),
+                             formatted_label),
+    formatted_label = factor(formatted_label, levels = unique(formatted_label))
+  )
+
+# Dataset strip
+dataset_strip <- df_long %>%
+  distinct(dataset_celltype, dataset) %>%
+  mutate(y = "Dataset")
+
+dataset_strip <- df_long %>%
+  distinct(formatted_label, dataset)
+
+strip_plot <- ggplot(dataset_strip, aes(x = formatted_label, y = "Dataset", fill = dataset)) +
+  geom_tile(width = 1) +
+  labs(fill = "Dataset") +
+  theme_void() +
+  theme(
+    legend.position = "bottom",
+    plot.margin = margin(0, 0, 0, 0)
+  )
+
+heatmap_plot <- ggplot(df_long, aes(x = formatted_label, y = ligand, fill = z)) +
+  geom_tile(width = 0.96,color = "grey95", size = 0.1) +  # narrower tiles
+    scale_fill_gradient2(
+    low = "#4B6C8C",      # steel blue
+    mid = "white",
+    high = "#C44E52",     # deep metallic red
+    midpoint = 0,
+    name = "Z-score"
+)+  # cooler palette
+  labs(x = NULL, y = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold", size = 7),
+    axis.text.y = element_text(face = "bold", size = 8),
+    panel.grid = element_blank(),
+    legend.position = "bottom",
+    legend.key.height = unit(0.3, "cm")  # thinner color bar
+  )
+
+
+library(patchwork)
+combined_plot <- strip_plot / heatmap_plot +
+  plot_layout(heights = c(0.4, 5), guides = "collect") &
+  theme(legend.position = "bottom")
+
+
+
+ggsave("cytosig_final_heatmap.png",
+       combined_plot, width = 14, height = 8, dpi = 300)
+
 
 #################################
 ####### ROC Curves ############
@@ -784,64 +922,10 @@ p<- ggplot(results_df, aes(x = method, y = value, color = method)) +
 ggsave("beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
 
 
+
 #################################
-####### Cytosig heatmaps ############
+####### Old Cytosig code ########
 #################################
-
-library(gplots)
-
-# Filter datasets with non-empty heatmaps
-valid <- list()
-all_ligands <- c()
-for (dataset in names(cytosig_significance)) {
-  dataset_path <- datasets[[dataset]]
-  decipher_filepath <- file.path(dataset_path, "data")
-  df <- cytosig_significance[[dataset]]
-  seurat_object_oi <- readRDS(file.path(decipher_filepath,"pseudobulk_seurat.rds"))
-  # Keep only genes that exist in Seurat object
-  valid_genes <- rownames(seurat_object_oi)
-  valid_clusters <- unique(seurat_object_oi$cluster)
-  df_unique <- df %>%
-    filter(gene %in% valid_genes) %>%
-    select(-gene) %>%
-    distinct()  # Removes rows with identical ligand + all values
-
-  # Keep only columns (i.e., cell types) that match valid clusters
-  df_unique <- df_unique %>%
-    select(ligand, all_of(valid_clusters))
-
-  mat <- df_unique %>%
-    tibble::column_to_rownames(var = "ligand") %>%
-    as.matrix()
-    
-  row_mask <- apply(abs(mat), 1, max) > 2
-  col_mask <- apply(abs(mat), 2, max) > 2
-  mat_filt <- mat[row_mask, col_mask, drop = FALSE]
-  if (nrow(mat_filt) > 0 && ncol(mat_filt) > 0) {
-    valid[[dataset]] <- mat_filt
-    all_ligands <- union(all_ligands, rownames(mat_filt))  # keep building union
-
-  }
-}
-
-for (dataset in names(valid)) {
-  mat <- valid[[dataset]]
-
-  # Create a completed matrix with all ligands as rows
-  missing_ligands <- setdiff(all_ligands, rownames(mat))
-  if (length(missing_ligands) > 0) {
-    padding <- matrix(0, nrow = length(missing_ligands), ncol = ncol(mat),
-                      dimnames = list(missing_ligands, colnames(mat)))
-    mat <- rbind(mat, padding)
-  }
-
-  # Sort by ligand name to ensure row alignment across plots
-  mat <- mat[sort(rownames(mat)), , drop = FALSE]
-  valid[[dataset]] <- mat
-}
-
-
-
 plots <- list()
 
 for (dataset in names(valid)) {
@@ -870,93 +954,6 @@ ggsave("cytosig_heatmaps_combined_geom_tile_padded.png",
        width = 4 * length(plots),
        height = 6,
        dpi = 300)
-
-
-
-
-#################################
-####### Cytosig heatmap (single and with colour bar) ############
-#################################
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-library(patchwork)
-
-combined_mat <- do.call(cbind, lapply(names(valid), function(dataset) {
-  mat <- valid[[dataset]]
-  colnames(mat) <- paste(dataset, colnames(mat), sep = "_")
-  return(mat)
-}))
-
-df_long <- as.data.frame(combined_mat) %>%
-  tibble::rownames_to_column("ligand") %>%
-  tidyr::pivot_longer(-ligand, names_to = "dataset_celltype", values_to = "z") %>%
-  mutate(dataset = sub("_.*$", "", dataset_celltype))
-
-df_long <- df_long %>%
-  mutate(
-    ligand = factor(ligand, levels = sort(unique(ligand))),
-    dataset_celltype = factor(dataset_celltype, levels = unique(dataset_celltype))
-  )
-
-df_long <- df_long %>%
-  mutate(
-    formatted_label = gsub("_minus_", "-", dataset_celltype),
-    formatted_label = gsub("_plus_", "+", formatted_label),
-    formatted_label = ifelse(nchar(formatted_label) > 20,
-                             paste0(substr(formatted_label, 1, 17), "..."),
-                             formatted_label),
-    formatted_label = factor(formatted_label, levels = unique(formatted_label))
-  )
-
-# Dataset strip
-dataset_strip <- df_long %>%
-  distinct(dataset_celltype, dataset) %>%
-  mutate(y = "Dataset")
-
-dataset_strip <- df_long %>%
-  distinct(formatted_label, dataset)
-
-strip_plot <- ggplot(dataset_strip, aes(x = formatted_label, y = "Dataset", fill = dataset)) +
-  geom_tile(width = 1) +
-  labs(fill = "Dataset") +
-  theme_void() +
-  theme(
-    legend.position = "bottom",
-    plot.margin = margin(0, 0, 0, 0)
-  )
-
-heatmap_plot <- ggplot(df_long, aes(x = formatted_label, y = ligand, fill = z)) +
-  geom_tile(width = 0.96,color = "grey95", size = 0.1) +  # narrower tiles
-    scale_fill_gradient2(
-    low = "#4B6C8C",      # steel blue
-    mid = "white",
-    high = "#C44E52",     # deep metallic red
-    midpoint = 0,
-    name = "Z-score"
-)+  # cooler palette
-  labs(x = NULL, y = NULL) +
-  theme_minimal(base_size = 12) +
-  theme(
-    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold", size = 7),
-    axis.text.y = element_text(face = "bold", size = 8),
-    panel.grid = element_blank(),
-    legend.position = "bottom",
-    legend.key.height = unit(0.3, "cm")  # thinner color bar
-  )
-
-
-
-
-library(patchwork)
-combined_plot <- strip_plot / heatmap_plot +
-  plot_layout(heights = c(0.4, 5), guides = "collect") &
-  theme(legend.position = "bottom")
-
-
-
-ggsave("cytosig_final_heatmap.png",
-       combined_plot, width = 14, height = 8, dpi = 300)
 
 
 

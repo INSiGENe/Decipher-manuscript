@@ -11,6 +11,27 @@ mkdir -p data/cz_influenza && \
 wget -O data/cz_influenza/dataset.h5ad \
 "https://datasets.cellxgene.cziscience.com/5f4efede-b295-4be4-aded-eb8b9a946382.h5ad"
 
+mkdir -p data/cz_placenta_infection && \
+wget -O data/cz_placenta_infection/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/50bbe1a2-5f27-47f5-a809-046459a4ae5e.h5ad"
+
+
+mkdir -p data/human_kidney_v1.5 && \
+wget -O data/human_kidney_v1.5/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/f5b6d620-76df-45c5-9524-e5631be0e44a.h5ad"
+
+mkdir -p data/cz_periheart && \
+wget -O data/cz_periheart/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/66c82e1b-e3ce-48dc-b1db-52546dbd4e44.h5ad"
+
+mkdir -p data/cz_carebank && \
+wget -O data/cz_carebank/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/e67f1a92-0371-4657-b15e-a4934f9ab733.h5ad"
+
+mkdir -p data/cz_rcc && \
+wget -O data/cz_rcc/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/bf28d870-0750-443d-bb54-ec664b8f40c3.h5ad"
+
 
 #################################
 ####### Convert anndata objects to R-based objects (Seurat) ############
@@ -121,7 +142,9 @@ docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace eba
     python3 scripts/lupus/lupus_6_liana_plus_analysis_feb_2025.py #done
 
 
-#cytosig
+#################################
+####### Cytosig run and process data ############
+#################################
 docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intelligence-suite
 bash scripts/5yr_pic/5yr_pic_7_cytosig_analysis_feb_2025.sh #done
 bash scripts/BCG/bcg_7_cytosig_analysis_feb_2025.sh #running
@@ -138,3 +161,7 @@ docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intel
 bash scripts/cytosig_run.sh cz_placenta_infection #done
 bash scripts/cytosig_run.sh cz_rcc #running
 bash scripts/cytosig_run.sh cz_human_kidney_v1.5  #running
+
+
+python3 scripts/cytosig_run.sh cz_influenza
+python3 scripts/cytosig_clean.py cz_influenza
