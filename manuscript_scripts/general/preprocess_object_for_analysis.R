@@ -202,9 +202,9 @@ if (!file.exists(seurat_object_rds_path)) {
   cell_names <- read.csv(file.path(input_path, "cell_names.csv"))
 
   # Use dynamic column selection
-  rownames(matrix) <- get_column(gene_names, c("X0", "name", "gene", "gene_name","index","gene_ids"))
-  colnames(matrix) <- get_column(cell_names, c("X0", "name", "barcode", "cell_id","index","cellId"))
-  rownames(meta_data) <- get_column(meta_data, c("X", "barcode","cellId"))
+  rownames(matrix) <- get_column(gene_names, c("X0", "name", "gene", "gene_name","index","gene_ids","ensembl_id"))
+  colnames(matrix) <- get_column(cell_names, c("X0", "name", "barcode","barcodes", "cell_id","index","cellId", "cell","index"))
+  rownames(meta_data) <- get_column(meta_data, c("X", "barcode","barcodes","cellId","cell","index"))
 
   # Convert Ensembl IDs to HGNC gene symbols
   # Generate or load mapping
@@ -260,6 +260,32 @@ seurat_object_oi <- readRDS(seurat_object_rds_path)
 
 Idents(seurat_object_oi) <- seurat_object_oi$cluster
 
+if (dataset_key == "cz_dev_gut_crohns") {
+  message("Shortening cell names for cz_dev_gut_crohns")
+  
+  # Extract cell names and batch info
+  old_cells <- colnames(seurat_object_oi)
+  batches <- seurat_object_oi$batch
+
+  # Create shorter batch IDs
+  unique_batches <- unique(batches)
+  short_batch_map <- setNames(
+    paste0("B", seq_along(unique_batches)),
+    unique_batches
+  )
+
+  # Replace batch part in cell names
+  new_cells <- vapply(seq_along(old_cells), function(i) {
+    cell_base <- sub("-[0-9]+STDY[0-9]+$", "", old_cells[i])
+    paste0(cell_base, "-", short_batch_map[[batches[i]]])
+  }, character(1))
+
+  # Set new cell names and ensure uniqueness
+  colnames(seurat_object_oi) <- make.unique(new_cells)
+}
+
+seurat_object_oi$original_cell_name <- old_cells
+
 for(this_cluster in unique(seurat_object_oi$cluster)){
 
   cytosig_cluster_path <- file.path(cytosig_path,this_cluster)
@@ -295,17 +321,22 @@ for(this_cluster in unique(seurat_object_oi$cluster)){
   log_transformed_counts <- log2(normalized_counts+1)
   rm(normalized_counts)
 
-  # Extract the data for the control condition ("NE")
+  # Extract the data for the control condition
   control_cells <- which(seurat_object_oi_this_cluster@meta.data$condition == control_condition)
-  control_data <- log_transformed_counts[,control_cells]
+  case_cells <- which(seurat_object_oi_this_cluster@meta.data$condition == case_condition)
 
-  # Calculate the mean expression for each gene
+  # Skip cluster if there are not enough cells in either group
+  if (length(control_cells) < 2 || length(case_cells) < 2) {
+    message("Skipping ", this_cluster, " — not enough cells in control or case condition.")
+    next
+  }
+
+  control_data <- log_transformed_counts[,control_cells]
   control_mean_expression <- rowMeans(control_data)
   rm(control_data)
   gc()
 
-  # Extract the data for the experimental condition ("E")
-  case_cells <- which(seurat_object_oi_this_cluster@meta.data$condition == case_condition)
+  # Extract the data for the experimental condition
   case_data <- log_transformed_counts[,case_cells]
 
   # Calculate the differential expression profile by subtracting the control mean from the experimental data

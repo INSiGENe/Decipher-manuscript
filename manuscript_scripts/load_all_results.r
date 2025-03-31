@@ -61,7 +61,12 @@ datasets <- list(
   "lupus"  = "results/lupus",
   "sepsis"   = "results/sepsis",
   "tnbc"  = "results/TNBC",
-  "cz_placenta" = "results/cz_placenta_infection"
+  "cz_placenta" = "results/cz_placenta_infection",
+  "cz_influenza" = "results/cz_influenza",
+  "cz_afib_macrophages"	= "results/cz_afib_macrophages",
+  "cz_hpap_t1d_islets" = "results/cz_hpap_t1d_islets",
+  "cz_ra_pbmc" = "results/cz_ra_pbmc"
+
 )
 
 
@@ -654,6 +659,8 @@ plotDecipherPrioritizedMap_v4(dataset_path,slice_n=6,output_filename="test_v4",l
 #################################
 #load cytosig data
 cytosig_significance   <- list() 
+#cells_per_cluster <- list()  # New list to store cell counts per cluster
+
 for (ds in names(datasets)) {
   dataset_path <- datasets[[ds]]
   pre_processing_filepath <- file.path(dataset_path, "pre_processing")
@@ -664,9 +671,17 @@ for (ds in names(datasets)) {
   p_value_folder <- file.path(cytosig_filepath,"p_value/")
   z_score_files <- list.files(z_score_folder)
   p_value_files <- list.files(p_value_folder)
-  seurat_object_oi <- readRDS(file.path(pre_processing_filepath,"seurat_object_oi.rds"))
+  
+  #seurat_object_oi <- readRDS(file.path(pre_processing_filepath,"seurat_object_oi.rds"))
+
+  # Record number of cells per cluster
+  #cluster_counts <- table(seurat_object_oi@meta.data$cluster)
+  #cells_per_cluster[[ds]] <- as.data.frame(cluster_counts)
+
+  # Load mapping table
   mapping_table <- read.csv(file.path(reference_filepath,"cytosig_mapping_table_ligands_genes.csv"),header=TRUE)
-  # Load and process cytosig significance
+
+  # Process Cytosig significance
   cytosig_significance[[ds]] <- summarizeZScores(z_score_files, z_score_folder, mapping_table)
 }
 
@@ -679,22 +694,23 @@ library(gplots)
 # Filter datasets with non-empty heatmaps
 valid <- list()
 all_ligands <- c()
+all_cytosig_results <- list()
 for (dataset in names(cytosig_significance)) {
   dataset_path <- datasets[[dataset]]
   decipher_filepath <- file.path(dataset_path, "data")
   df <- cytosig_significance[[dataset]]
-  seurat_object_oi <- readRDS(file.path(decipher_filepath,"pseudobulk_seurat.rds"))
+  #seurat_object_oi <- readRDS(file.path(decipher_filepath,"pseudobulk_seurat.rds"))
   # Keep only genes that exist in Seurat object
-  valid_genes <- rownames(seurat_object_oi)
-  valid_clusters <- unique(seurat_object_oi$cluster)
+  #valid_genes <- rownames(seurat_object_oi)
+  #valid_clusters <- unique(seurat_object_oi$cluster)
   df_unique <- df %>%
-    filter(gene %in% valid_genes) %>%
+  #  filter(gene %in% valid_genes) %>%
     select(-gene) %>%
     distinct()  # Removes rows with identical ligand + all values
 
   # Keep only columns (i.e., cell types) that match valid clusters
-  df_unique <- df_unique %>%
-    select(ligand, all_of(valid_clusters))
+  #df_unique <- df_unique %>%
+  #  select(ligand, all_of(valid_clusters))
 
   mat <- df_unique %>%
     tibble::column_to_rownames(var = "ligand") %>%
@@ -705,6 +721,7 @@ for (dataset in names(cytosig_significance)) {
   mat_filt <- mat[row_mask, col_mask, drop = FALSE]
   if (nrow(mat_filt) > 0 && ncol(mat_filt) > 0) {
     valid[[dataset]] <- mat_filt
+    all_cytosig_results[[dataset]] <- mat
     all_ligands <- union(all_ligands, rownames(mat_filt))  # keep building union
 
   }
@@ -755,9 +772,9 @@ df_long <- df_long %>%
   mutate(
     formatted_label = gsub("_minus_", "-", dataset_celltype),
     formatted_label = gsub("_plus_", "+", formatted_label),
-    formatted_label = ifelse(nchar(formatted_label) > 20,
-                             paste0(substr(formatted_label, 1, 17), "..."),
-                             formatted_label),
+    #formatted_label = ifelse(nchar(formatted_label) > 20,
+    #                         paste0(substr(formatted_label, 1, 17), "..."),
+    #                         formatted_label),
     formatted_label = factor(formatted_label, levels = unique(formatted_label))
   )
 
@@ -807,6 +824,95 @@ combined_plot <- strip_plot / heatmap_plot +
 
 ggsave("cytosig_final_heatmap.png",
        combined_plot, width = 14, height = 8, dpi = 300)
+
+#################################
+# Initialize an empty list to collect data frames for each dataset
+combined_list <- list()
+
+# Loop through each dataset
+for (ds in names(all_cytosig_results)) {
+  z_scores <- all_cytosig_results[[ds]]                        # Matrix: ligands as rows, clusters as columns
+  cluster_sizes <- cells_per_cluster[[ds]]       # Data frame with Var1 = cluster name, Freq = n_cells
+
+  # Convert z-scores matrix to long format
+  z_long <- reshape2::melt(z_scores, varnames = c("ligand", "cluster"), value.name = "z_score")
+
+  # Add cell count information by joining with cluster_sizes
+  colnames(cluster_sizes) <- c("cluster", "n_cells")
+  merged <- merge(z_long, cluster_sizes, by = "cluster")
+
+  # Add dataset column
+  merged$dataset <- ds
+
+  # Append to list
+  combined_list[[ds]] <- merged
+}
+
+# Combine all datasets into a single data frame
+combined_df <- do.call(rbind, combined_list)
+
+# Reorder columns
+combined_df <- combined_df[, c("dataset", "cluster", "ligand", "z_score", "n_cells")]
+library(dplyr)
+library(tidyr)
+
+# Count ligands with |z_score| > 2
+ligand_counts <- combined_df %>%
+  filter(abs(z_score) > 2) %>%
+  group_by(dataset, cluster) %>%
+  summarise(n_ligands_above_2 = n(), .groups = "drop")
+
+# Get all dataset–cluster combinations with cell counts
+all_clusters <- combined_df %>%
+  distinct(dataset, cluster, n_cells)
+
+# Merge and fill in zeros where no ligands pass the threshold
+final_df <- all_clusters %>%
+  left_join(ligand_counts, by = c("dataset", "cluster")) %>%
+  mutate(n_ligands_above_2 = replace_na(n_ligands_above_2, 0))
+
+library(ggplot2)
+
+# Plot
+p <- ggplot(final_df, aes(x = n_cells, y = n_ligands_above_2)) +
+  geom_point(alpha = 0.7) +
+  labs(
+    x = "Number of Cells",
+    y = "Number of Ligands with |z-score| > 2",
+    title = "Ligand Activity vs Cell Abundance"
+  ) +
+  theme_minimal()
+
+# Save to file
+ggsave("ligand_vs_cells_plot.png", plot = p, width = 7, height = 5, dpi = 300)
+
+
+library(ggplot2)
+library(dplyr)
+
+# Create bins of size 1000
+final_df <- final_df %>%
+  mutate(cell_bin = cut(n_cells,
+                        breaks = seq(0, max(n_cells, na.rm = TRUE) + 1000, by = 1000),
+                        include.lowest = TRUE,
+                        right = FALSE,
+                        labels = paste(seq(0, max(n_cells, na.rm = TRUE), by = 1000),
+                                       seq(999, max(n_cells, na.rm = TRUE) + 999, by = 1000),
+                                       sep = "-")))
+
+# Plot
+p <- ggplot(final_df, aes(x = cell_bin, y = n_ligands_above_2)) +
+  geom_boxplot(outlier.alpha = 0.3) +
+  labs(
+    x = "Number of Cells (Binned)",
+    y = "Number of Ligands with |z-score| > 2",
+    title = "Ligand Activity by Cell Count Bin"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Save plot
+ggsave("ligand_vs_cells_boxplot.png", plot = p, width = 8, height = 5, dpi = 300)
 
 
 #################################

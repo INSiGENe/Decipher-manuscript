@@ -31,9 +31,15 @@ do
     input_path="${dir}/differential_profile.tsv.gz"
     output_path="${dir}/output"
 
+    # Check if any CytoSig output file exists
+    if [ -f "${dir}/output.Coef" ]; then
+        echo "Skipping $folder_name — output already exists."
+        continue
+    fi
+
     echo "Running CytoSig on $folder_name"
     CytoSig_run.py -i "$input_path" -o "$output_path" -e 1
 done
 
 # Run follow-up processing step
-python3 scripts/cytosig_clean.py dataset_key
+python3 scripts/cytosig_clean.py ${dataset_key}

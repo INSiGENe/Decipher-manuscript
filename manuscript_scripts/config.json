@@ -217,6 +217,174 @@
     },
     "cytosig": {
       "output_path": "results/cz_influenza"
+    },
+    "cell_oracle": {
+      "data_folder": "results/cz_influenza",
+      "species": "human"
     }
-  }
+  },
+
+  "cz_afib_macrophages": {
+    "dataset_description":{
+      "repository": "cellxgene",
+      "download_url": "https://datasets.cellxgene.cziscience.com/bca7945f-69e7-4bab-92d3-90e6af99c7ac.h5ad",
+      "description": "Recruited macrophages elicit atrial fibrillation",
+      "abbreviation": "cz_afib_macrophages",
+      "url": "https://cellxgene.cziscience.com/collections/eeba7193-4d32-46bd-a21b-089936d60601"
+    },
+    "pre_processing":{
+      "input_path": "data/cz_afib_macrophages",
+      "output_path": "data/cz_afib_macrophages",
+      "step": "preprocessing",
+      "subset_logic": {
+        "disease": ["atrial fibrillation", "normal"]
+      },
+      "min_genes_per_cell": 200
+    },
+    "pre_processing_for_analysis": {
+      "input_path": "data/cz_afib_macrophages/preprocessing",
+      "output_path": "results/cz_afib_macrophages",
+      "cluster_meta_field": "cell_type",
+      "condition_meta_field": "disease",
+      "individual_meta_field": "donor_id",
+      "case_condition": "atrial fibrillation",
+      "control_condition": "normal"
+    },
+    "cytosig": {
+      "output_path": "results/cz_afib_macrophages"
+    }
+  },
+  
+  "cz_hpap_t1d_islets": {
+      "dataset_description":{
+        "repository": "cellxgene",
+        "download_url": "https://datasets.cellxgene.cziscience.com/f89a618b-fe4b-404e-bd39-7c574529b1f5.h5ad",
+        "description": "Multiomics single-cell analysis of human pancreatic islets reveals novel cellular states in health and type 1 diabetes",
+        "abbreviation": "cz_hpap_t1d_islets",
+        "url": "https://cellxgene.cziscience.com/collections/51544e44-293b-4c2b-8c26-560678423380"
+      },
+      "pre_processing":{
+        "input_path": "data/cz_hpap_t1d_islets",
+        "output_path": "data/cz_hpap_t1d_islets",
+        "step": "preprocessing",
+        "subset_logic": {
+          "disease": ["type 1 diabetes mellitus", "normal"]
+        },
+        "min_genes_per_cell": 200
+      },
+      "pre_processing_for_analysis": {
+        "input_path": "data/cz_hpap_t1d_islets/preprocessing",
+        "output_path": "results/cz_hpap_t1d_islets",
+        "cluster_meta_field": "cell_type",
+        "condition_meta_field": "disease",
+        "individual_meta_field": "donor_id",
+        "case_condition": "type 1 diabetes mellitus",
+        "control_condition": "normal"
+      },
+      "cytosig": {
+        "output_path": "results/cz_hpap_t1d_islets"
+      },
+      "cell_oracle": {
+        "data_folder": "results/cz_hpap_t1d_islets",
+        "species": "human"
+      }
+    },
+    "cz_dev_gut_crohns": {
+      "dataset_description":{
+        "repository": "cellxgene",
+        "download_url": "https://datasets.cellxgene.cziscience.com/518edb4f-1e86-4af3-99e4-0a599a94e9fe.h5ad",
+        "description": "Single-Cell Sequencing of Developing Human Gut Reveals Transcriptional Links to Childhood Crohn’s Disease",
+        "abbreviation": "cz_dev_gut_crohns",
+        "url": "https://cellxgene.cziscience.com/collections/17481d16-ee44-49e5-bcf0-28c0780d8c4a"
+      },
+      "pre_processing":{
+        "input_path": "data/cz_dev_gut_crohns",
+        "output_path": "data/cz_dev_gut_crohns",
+        "step": "preprocessing",
+        "subset_logic": {
+          "disease": ["Crohn disease", "normal"]
+        },
+        "min_genes_per_cell": 200
+      },
+      "pre_processing_for_analysis": {
+        "input_path": "data/cz_dev_gut_crohns/preprocessing",
+        "output_path": "results/cz_dev_gut_crohns",
+        "cluster_meta_field": "cell_type",
+        "condition_meta_field": "disease",
+        "individual_meta_field": "donor_id",
+        "case_condition": "Crohn disease",
+        "control_condition": "normal"
+      },
+      "cytosig": {
+        "output_path": "results/cz_dev_gut_crohns"
+      },
+      "cell_oracle": {
+        "data_folder": "results/cz_dev_gut_crohns",
+        "species": "human"
+      }
+    },
+
+
+    "cz_hnscc_hpv": {
+      "dataset_description":{
+        "repository": "cellxgene",
+        "download_url": "https://datasets.cellxgene.cziscience.com/85981f97-aaa8-4c45-b920-7522727ea58c.h5ad",
+        "description": "Characterisation of human papillomavirus (HPV)-positive (immune hot) and HPV-negative (immune cold) head and neck tumors by single cell RNA sequencing",
+        "abbreviation": "cz_hnscc_hpv",
+        "url": "https://cellxgene.cziscience.com/collections/3c34e6f1-6827-47dd-8e19-9edcd461893f"
+      },
+      "pre_processing":{
+        "input_path": "data/cz_hnscc_hpv",
+        "output_path": "data/cz_hnscc_hpv",
+        "step": "preprocessing",
+        "subset_logic": {
+          "disease": ["oropharynx squamous cell carcinoma", "normal"]
+        },
+        "min_genes_per_cell": 200
+      },
+      "pre_processing_for_analysis": {
+        "input_path": "data/cz_hnscc_hpv/preprocessing",
+        "output_path": "results/cz_hnscc_hpv",
+        "cluster_meta_field": "cell_type",
+        "condition_meta_field": "disease",
+        "individual_meta_field": "donor_id",
+        "case_condition": "oropharynx squamous cell carcinoma",
+        "control_condition": "normal"
+      },
+      "cytosig": {
+        "output_path": "results/cz_hnscc_hpv"
+      }
+    },
+
+
+    "cz_ra_pbmc": {
+      "dataset_description":{
+        "repository": "cellxgene",
+        "download_url": "https://datasets.cellxgene.cziscience.com/ac9c13da-7134-4d09-8086-d0933cbdba41.h5ad",
+        "description": "Single-cell RNA-seq analysis reveals cell subsets and gene signatures associated with Rheumatoid Arthritis Disease Activity",
+        "abbreviation": "cz_ra_pbmc",
+        "url": "https://cellxgene.cziscience.com/collections/e1a9ca56-f2ee-435d-980a-4f49ab7a952b"
+      },
+      "pre_processing":{
+        "input_path": "data/cz_ra_pbmc",
+        "output_path": "data/cz_ra_pbmc",
+        "step": "preprocessing",
+        "subset_logic": {
+          "disease": ["rheumatoid arthritis", "normal"]
+        },
+        "min_genes_per_cell": 200
+      },
+      "pre_processing_for_analysis": {
+        "input_path": "data/cz_ra_pbmc/preprocessing",
+        "output_path": "results/cz_ra_pbmc",
+        "cluster_meta_field": "cell_type",
+        "condition_meta_field": "disease",
+        "individual_meta_field": "donor_id",
+        "case_condition": "rheumatoid arthritis",
+        "control_condition": "normal"
+      },
+      "cytosig": {
+        "output_path": "results/cz_ra_pbmc"
+      }
+    }
 }

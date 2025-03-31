@@ -7,10 +7,6 @@ docker build -t manuscript_pre_processing:1.0.3 -f Dockerfile_manuscript_pre_pro
 #################################
 ####### Download datasets ############
 #################################
-mkdir -p data/cz_influenza && \
-wget -O data/cz_influenza/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/5f4efede-b295-4be4-aded-eb8b9a946382.h5ad"
-
 mkdir -p data/cz_placenta_infection && \
 wget -O data/cz_placenta_infection/dataset.h5ad \
 "https://datasets.cellxgene.cziscience.com/50bbe1a2-5f27-47f5-a809-046459a4ae5e.h5ad"
@@ -32,12 +28,42 @@ mkdir -p data/cz_rcc && \
 wget -O data/cz_rcc/dataset.h5ad \
 "https://datasets.cellxgene.cziscience.com/bf28d870-0750-443d-bb54-ec664b8f40c3.h5ad"
 
+mkdir -p data/cz_rcc && \
+wget -O data/cz_rcc/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/bf28d870-0750-443d-bb54-ec664b8f40c3.h5ad"
+
+mkdir -p data/cz_influenza && \
+wget -O data/cz_influenza/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/5f4efede-b295-4be4-aded-eb8b9a946382.h5ad"
+
+mkdir -p data/cz_afib_macrophages && \
+wget -O data/cz_afib_macrophages/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/bca7945f-69e7-4bab-92d3-90e6af99c7ac.h5ad"
+
+mkdir -p data/cz_hpap_t1d_islets && \
+wget -O data/cz_hpap_t1d_islets/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/f89a618b-fe4b-404e-bd39-7c574529b1f5.h5ad"
+
+mkdir -p data/cz_dev_gut_crohns && \
+wget -O data/cz_dev_gut_crohns/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/518edb4f-1e86-4af3-99e4-0a599a94e9fe.h5ad"
+
+mkdir -p data/cz_hnscc_hpv && \
+wget -O data/cz_hnscc_hpv/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/85981f97-aaa8-4c45-b920-7522727ea58c.h5ad"
+
+mkdir -p data/cz_ra_pbmc && \
+wget -O data/cz_ra_pbmc/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/ac9c13da-7134-4d09-8086-d0933cbdba41.h5ad"
+
 
 #################################
 ####### Convert anndata objects to R-based objects (Seurat) ############
 #################################
 docker run -it -m 60g --memory-swap 62g -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
 python3 scripts/preprocess_ann_object.py dataset_key
+#example
+python3 scripts/preprocess_ann_object.py cz_ra_pbmc
 
 #################################
 ####### Process Initial Seurat object for downstream analyses ############
@@ -54,15 +80,41 @@ docker run -it --rm \
     manuscript_pre_processing:1.0.3 \
     bash
     
-Rscript scripts/preprocess_object_for_analysis.R dataset_key
+Rscript scripts/preprocess_object_for_analysis.R cz_dev_gut_crohns
+
+#################################
+####### Move results to analysis folder ############
+#################################
+sudo mv data/pre_processing_test/results/dataset_key data/Manuscript_jan_2025/results/
+
+#example
+sudo mv pre_processing_test/results/cz_dev_gut_crohns Manuscript_jan_2025/results/
 
 #################################
 ####### Run cytosig analysis ############
 #################################
+cd Manuscript_jan_2025
 docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intelligence-suite
 bash scripts/cytosig_run.sh dataset_key
 
+#example
+bash scripts/cytosig_run.sh cz_ra_pbmc
 
+#################################
+####### Run CellOracle analysis ############
+#################################
+docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
+taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py dataset_key
+
+#example
+taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py cz_influenza
+
+
+
+#################################
+####### Run Decipher analysis ############
+#################################
+sudo docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5
 
 #running on a c6a.4xlarge AWS EC2 instance
 #takes about three hours to run all the stuff below, it's key to split the cpu cores efficiently as 
