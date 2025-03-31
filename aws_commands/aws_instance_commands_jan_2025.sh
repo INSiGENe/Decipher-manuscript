@@ -108,6 +108,9 @@ taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py dataset_key
 
 #example
 taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py cz_influenza
+taskset -c 4-7 python3 scripts/cell_oracle_apr_2025.py cz_dev_gut_crohns
+taskset -c 8-11 python3 scripts/cell_oracle_apr_2025.py cz_hpap_t1d_islets
+
 
 
 
