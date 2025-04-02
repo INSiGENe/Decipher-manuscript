@@ -61,7 +61,17 @@ for file in glob.glob(os.path.join(h5ad_folder,"*.h5ad")):
     adata = sc.read_h5ad(file)
 
     cluster_name = adata.obs["cluster"].unique()[0]
-  
+    output_file = os.path.join(output_data_path, "GRN", f"{cluster_name}.csv")
+
+    if os.path.exists(output_file):
+        print(f"GRN for {cluster_name} already exists. Skipping.")
+        continue
+    
+    # 1) Skip if too few cells
+    if adata.shape[0] < 100:
+        print(f"Cluster '{cluster_name}' has only {adata.shape[0]} cells (< {100}). Skipping.")
+        continue
+
     # Only consider genes with more than 1 count
     sc.pp.filter_genes(adata, min_counts=1)
 
@@ -76,6 +86,11 @@ for file in glob.glob(os.path.join(h5ad_folder,"*.h5ad")):
 
     # Subset the genes
     adata = adata[:, filter_result.gene_subset]
+
+    # 2) Skip if too few genes
+    if adata.n_vars < 999:
+        print(f"Cluster '{cluster_name}' has only {adata.n_vars} genes (< {999}). Skipping.")
+        continue
 
     # Renormalize after filtering
     sc.pp.normalize_per_cell(adata)

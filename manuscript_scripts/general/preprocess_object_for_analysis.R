@@ -282,15 +282,14 @@ if (dataset_key == "cz_dev_gut_crohns") {
 
   # Set new cell names and ensure uniqueness
   colnames(seurat_object_oi) <- make.unique(new_cells)
-}
 
-seurat_object_oi$original_cell_name <- old_cells
+  seurat_object_oi$original_cell_name <- old_cells
+}
 
 for(this_cluster in unique(seurat_object_oi$cluster)){
 
   cytosig_cluster_path <- file.path(cytosig_path,this_cluster)
-  dir.create(cytosig_cluster_path,recursive = TRUE)
-
+  
   output_file <- file.path(cytosig_cluster_path, "differential_profile.tsv.gz")
 
   if (file.exists(output_file)) {
@@ -346,6 +345,7 @@ for(this_cluster in unique(seurat_object_oi$cluster)){
   gc()
 
   # Write the differential profile to a tab-separated .gz file
+  dir.create(cytosig_cluster_path,recursive = TRUE)
   gz1 <- gzfile(file.path(cytosig_cluster_path,"differential_profile.tsv.gz"), "w")
   write.table(differential_profile, gz1, sep = "\t", col.names = NA, quote = FALSE)
   close(gz1)

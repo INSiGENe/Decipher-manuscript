@@ -1,3 +1,4 @@
+cd projects/Manuscript_jan_2025
 #################################
 ####### Build Docker images ############
 #################################
@@ -56,14 +57,19 @@ mkdir -p data/cz_ra_pbmc && \
 wget -O data/cz_ra_pbmc/dataset.h5ad \
 "https://datasets.cellxgene.cziscience.com/ac9c13da-7134-4d09-8086-d0933cbdba41.h5ad"
 
+mkdir -p data/cz_cf_bronchial_biopsy && \
+wget -O data/cz_cf_bronchial_biopsy/dataset.h5ad \
+"https://datasets.cellxgene.cziscience.com/a6657cae-5daa-45cd-b1b4-cf08a07d3a7e.h5ad"
+
+
 
 #################################
 ####### Convert anndata objects to R-based objects (Seurat) ############
 #################################
-docker run -it -m 60g --memory-swap 62g -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
+docker run -it -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
 python3 scripts/preprocess_ann_object.py dataset_key
 #example
-python3 scripts/preprocess_ann_object.py cz_ra_pbmc
+python3 scripts/preprocess_ann_object.py cz_cf_bronchial_biopsy
 
 #################################
 ####### Process Initial Seurat object for downstream analyses ############
@@ -80,7 +86,7 @@ docker run -it --rm \
     manuscript_pre_processing:1.0.3 \
     bash
     
-Rscript scripts/preprocess_object_for_analysis.R cz_dev_gut_crohns
+Rscript scripts/preprocess_object_for_analysis.R cz_cf_bronchial_biopsy
 
 #################################
 ####### Move results to analysis folder ############
@@ -88,7 +94,7 @@ Rscript scripts/preprocess_object_for_analysis.R cz_dev_gut_crohns
 sudo mv data/pre_processing_test/results/dataset_key data/Manuscript_jan_2025/results/
 
 #example
-sudo mv pre_processing_test/results/cz_dev_gut_crohns Manuscript_jan_2025/results/
+sudo mv pre_processing_test/results/cz_cf_bronchial_biopsy Manuscript_jan_2025/results/
 
 #################################
 ####### Run cytosig analysis ############
@@ -98,18 +104,75 @@ docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intel
 bash scripts/cytosig_run.sh dataset_key
 
 #example
-bash scripts/cytosig_run.sh cz_ra_pbmc
+bash scripts/cytosig_run.sh cz_cf_bronchial_biopsy
 
 #################################
 ####### Run CellOracle analysis ############
 #################################
-docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
+docker run -it -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
 taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py dataset_key
 
 #example
-taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py cz_influenza
-taskset -c 4-7 python3 scripts/cell_oracle_apr_2025.py cz_dev_gut_crohns
-taskset -c 8-11 python3 scripts/cell_oracle_apr_2025.py cz_hpap_t1d_islets
+taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py cz_cf_bronchial_biopsy
+
+
+#################################
+####### Decipher ############
+#################################
+docker run -it -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5 bash
+Rscript scripts/decipher_pipeline_v1_modularized.R dataset_key
+
+#example
+Rscript scripts/decipher_pipeline_v1_modularized.R cz_human_kidney_v1.5
+
+
+#################################
+####### Connectome ############
+#################################
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/connectome:latest bash
+Rscript scripts/connectome_analysis.R cz_cf_bronchial_biopsy
+
+#################################
+####### NicheNet ############
+#################################
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest bash
+Rscript scripts/nichenet_analysis.R cz_cf_bronchial_biopsy
+
+#################################
+####### NATMI ############
+#################################
+docker run -it -v "$(pwd):/workspace" -w /workspace asrhou/natmi  
+bash scripts/natmi_analysis.sh cz_cf_bronchial_biopsy
+
+#################################
+############# LIANA+ ############
+#################################
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus bash
+python3 scripts/liana_plus_analysis.py cz_cf_bronchial_biopsy
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

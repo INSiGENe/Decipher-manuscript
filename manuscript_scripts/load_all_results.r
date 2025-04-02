@@ -61,14 +61,17 @@ datasets <- list(
   "lupus"  = "results/lupus",
   "sepsis"   = "results/sepsis",
   "tnbc"  = "results/TNBC",
-  "cz_placenta" = "results/cz_placenta_infection",
   "cz_influenza" = "results/cz_influenza",
-  "cz_afib_macrophages"	= "results/cz_afib_macrophages",
   "cz_hpap_t1d_islets" = "results/cz_hpap_t1d_islets",
-  "cz_ra_pbmc" = "results/cz_ra_pbmc"
-
+  "cz_hnscc_hpv" = "results/cz_hnscc_hpv",
+  "cz_human_kidney_1.5" = "results/cz_human_kidney_1.5"
 )
 
+#"cz_ra_pbmc" = "results/cz_ra_pbmc",
+#"cz_cz_human_kidney_v1.5" = "results/cz_human_kidney_v1.5"
+#"cz_afib_macrophages"	= "results/cz_afib_macrophages"
+#"cz_placenta" = "results/cz_placenta_infection"
+#"cz_dev_gut_crohns" = "results/cz_dev_gut_crohns"
 
 # Initialize empty lists for the three outputs
 results_preprocessed   <- list()  # will store results_to_compare_full for each dataset
@@ -699,18 +702,18 @@ for (dataset in names(cytosig_significance)) {
   dataset_path <- datasets[[dataset]]
   decipher_filepath <- file.path(dataset_path, "data")
   df <- cytosig_significance[[dataset]]
-  #seurat_object_oi <- readRDS(file.path(decipher_filepath,"pseudobulk_seurat.rds"))
+  seurat_object_oi <- readRDS(file.path(decipher_filepath,"pseudobulk_seurat.rds"))
   # Keep only genes that exist in Seurat object
-  #valid_genes <- rownames(seurat_object_oi)
-  #valid_clusters <- unique(seurat_object_oi$cluster)
+  valid_genes <- rownames(seurat_object_oi)
+  valid_clusters <- unique(seurat_object_oi$cluster)
   df_unique <- df %>%
-  #  filter(gene %in% valid_genes) %>%
+    filter(gene %in% valid_genes) %>%
     select(-gene) %>%
     distinct()  # Removes rows with identical ligand + all values
 
   # Keep only columns (i.e., cell types) that match valid clusters
-  #df_unique <- df_unique %>%
-  #  select(ligand, all_of(valid_clusters))
+  df_unique <- df_unique %>%
+    select(ligand, all_of(valid_clusters))
 
   mat <- df_unique %>%
     tibble::column_to_rownames(var = "ligand") %>%
@@ -974,7 +977,9 @@ library(dplyr)
 library(tidyr)
 library(purrr)
 library(ggplot2)
-library(ggbeeswarm)
+# If not installed yet:
+# install.packages("ggbeeswarm")
+#library(ggbeeswarm)
 library(dplyr)
 
 results_df <- map_dfr(names(auc_scores_by_datset), function(dataset) {
@@ -996,11 +1001,9 @@ results_df <- map_dfr(names(auc_scores_by_datset), function(dataset) {
   })
 })
 
+
 results_df <- results_df %>% filter(threshold == 2)  %>%
   mutate(flag = ifelse(n_true < 10, "*", ""))
-
-# If not installed yet:
-# install.packages("ggbeeswarm")
 
 # Reorder methods by median if desired
 results_df$method <- reorder(results_df$method, results_df$value, FUN = median)
@@ -1009,22 +1012,124 @@ results_df$method <- reorder(results_df$method, results_df$value, FUN = median)
 flagged_points <- filter(results_df, flag == "*")
 
 # Plot
-p<- ggplot(results_df, aes(x = method, y = value, color = method)) +
-  geom_beeswarm(size = 3.8, alpha = 0.75, priority = "density") +  # larger dots
+results_df$flagged <- results_df$flag == "*"
+
+# Function: Create a custom color scale for flagged points.
+# For each method, assign:
+#   - A darker color when flagged (flagged == TRUE)
+#   - The base color when not flagged (flagged == FALSE)
+create_flag_color_scale <- function(methods) {
+  # Get a base color for each method using a hue palette.
+  base_cols <- scales::hue_pal()(length(methods))
+  names(base_cols) <- methods
+  
+  # Helper to darken a given color.
+  darker <- function(col) {
+    adjustcolor(col, red.f = 0.6, green.f = 0.6, blue.f = 0.6)
+  }
+  
+  # For each method, return a vector with:
+  #   - A darker color (flagged)
+  #   - The base color (not flagged)
+  color_values <- unlist(lapply(methods, function(m) {
+    c(darker(base_cols[m]), base_cols[m])
+  }))
+  
+  # Name the colors to match the values produced by interaction(method, flagged).
+  # That is, names like "MethodName.TRUE" and "MethodName.FALSE".
+  names(color_values) <- unlist(lapply(methods, function(m) {
+    c(paste0(m, ".TRUE"), paste0(m, ".FALSE"))
+  }))
+  
+  return(color_values)
+}
+
+# Construct the plot:
+#   - Use geom_line() to connect points that belong to the same dataset.
+#   - Use geom_point() for plotting the points (overlap is fine here).
+p <- ggplot(results_df, aes(x = method, y = value)) +
+  # Connect points from the same dataset. The 'group' aesthetic uses the 'dataset' column.
+  geom_line(aes(group = dataset), color = "gray", size = 1) +
+  
+  # Plot the points.
+  # The color is determined by interaction(method, flagged), which we control with our custom scale.
+  geom_point(aes(color = interaction(method, flagged)), size = 4, alpha = 1) +
+  
+  # Apply the custom manual color scale.
+  scale_color_manual(values = create_flag_color_scale(unique(results_df$method))) +
+  
+  # Add a segment for the median per method.
   stat_summary(fun = median, geom = "segment", 
                aes(xend = after_stat(x), yend = after_stat(y)), 
                size = 2.5, color = "black") +
+  
+  # Add a horizontal dashed line at y = 0.5.
   geom_hline(yintercept = 0.5, linetype = "dashed", color = "red") +
-  geom_text(data = flagged_points,
-            aes(label = "*"), 
-            color = "black", 
-            size = 5,
-            vjust = 0.5, hjust = 0.5,
-            fontface = "bold") +  # aligns directly over point
+  
+  # Label the axes.
   labs(y = "AUROC target prediction", x = NULL) +
+  
+  # Use a minimal theme with some tweaks.
   theme_minimal(base_size = 14) +
-  theme(legend.position = "none",axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+  theme(legend.position = "none", 
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
+# Save the plot.
+ggsave("beeswarm_auc_plot_points_lines.png", plot = p, width = 4, height = 6, dpi = 300)
+
+
+
+
+# Function: Create a custom color scale for flagged points
+# For each method, we want two colors:
+# - A darker version when flagged (flag = TRUE)
+# - The regular color when not flagged (flag = FALSE)
+create_flag_color_scale <- function(methods) {
+  # Get one base color for each method using a hue palette
+  base_cols <- scales::hue_pal()(length(methods))
+  names(base_cols) <- methods
+  
+  # Define a helper function to darken a color
+  darker <- function(col) {
+    adjustcolor(col, red.f = 0.6, green.f = 0.6, blue.f = 0.6)
+  }
+  
+  # For each method, assign a darker color when flagged and the base color when not flagged
+  color_values <- unlist(lapply(methods, function(m) {
+    c(darker(base_cols[m]), base_cols[m])
+  }))
+  
+  # Names must match the values produced by interaction(method, flagged)
+  # This will produce names like "MethodName.TRUE" and "MethodName.FALSE"
+  names(color_values) <- unlist(lapply(methods, function(m) {
+    c(paste0(m, ".TRUE"), paste0(m, ".FALSE"))
+  }))
+  
+  return(color_values)
+}
+
+# Use the custom color scale in your ggplot code:
+# 'results_df' must have columns: method, value, and flagged (with either "*" or empty)
+p <- ggplot(results_df, aes(x = method, y = value)) +
+  # Plot the beeswarm points with jittering based on the computed positions
+  geom_beeswarm(aes(color = interaction(method, flagged)),
+                size = 4, priority = "random", cex = 3, alpha = 1) +
+  # Apply the manual color scale using our custom function
+  scale_color_manual(values = create_flag_color_scale(unique(results_df$method))) +
+  # Add a segment for the median values per method
+  stat_summary(fun = median, geom = "segment", 
+               aes(xend = after_stat(x), yend = after_stat(y)), 
+               size = 2.5, color = "black") +
+  # Add a horizontal dashed red line at y = 0.5
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "red") +
+  # Label the axes
+  labs(y = "AUROC target prediction", x = NULL) +
+  # Use a minimal theme and adjust text
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+# Save the plot to a file
 ggsave("beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
 
 
