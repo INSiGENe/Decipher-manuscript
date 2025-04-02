@@ -64,7 +64,8 @@ datasets <- list(
   "cz_influenza" = "results/cz_influenza",
   "cz_hpap_t1d_islets" = "results/cz_hpap_t1d_islets",
   "cz_hnscc_hpv" = "results/cz_hnscc_hpv",
-  "cz_human_kidney_1.5" = "results/cz_human_kidney_1.5"
+  "cz_human_kidney_v1.5" = "results/cz_human_kidney_v1.5",
+  "cz_cf_bronchial_biopsy" = "results/cz_cf_bronchial_biopsy"
 )
 
 #"cz_ra_pbmc" = "results/cz_ra_pbmc",
@@ -1077,6 +1078,34 @@ p <- ggplot(results_df, aes(x = method, y = value)) +
 # Save the plot.
 ggsave("beeswarm_auc_plot_points_lines.png", plot = p, width = 4, height = 6, dpi = 300)
 
+library(ggbeeswarm)  # Make sure it's installed
+
+p <- ggplot(results_df, aes(x = method, y = value)) +
+  geom_line(aes(group = dataset), color = "gray", size = 1, alpha = 0.3) +
+  
+  # Use geom_beeswarm instead of geom_point
+  geom_beeswarm(
+    aes(color = interaction(method, flagged)),
+    size = 3.5, 
+    cex = 5,
+    priority = "density", 
+    groupOnX = TRUE
+  ) +
+  
+  scale_color_manual(values = create_flag_color_scale(unique(results_df$method))) +
+  
+  stat_summary(fun = median, geom = "segment", 
+               aes(xend = after_stat(x), yend = after_stat(y)), 
+               size = 2.5, color = "black") +
+  
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "red") +
+  
+  labs(y = "AUROC target prediction", x = NULL) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+ggsave("beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
 
 
 

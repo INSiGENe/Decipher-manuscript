@@ -45,6 +45,14 @@ replace_clean_with_original <- function(df, seurat_obj) {
   return(df)
 }
 
+safe_differential_connectome <- function(ref, test) {
+  common_edges <- intersect(ref$edge, test$edge)
+  ref_filt <- ref %>% filter(edge %in% common_edges)
+  test_filt <- test %>% filter(edge %in% common_edges)
+  DifferentialConnectome(connect.ref = ref_filt, connect.test = test_filt)
+}
+
+
 ############
 #data and analysis ----
 ############
@@ -135,9 +143,15 @@ seuratObj.con.list[[control_condition]] <- Connectome::CreateConnectome(
   custom.list = L.set.for.Connectome)
 
 ## Compute Differential Connectome ----
-seuratObj.con.diff <- DifferentialConnectome(
-  connect.ref = seuratObj.con.list[[control_condition]], 
-  connect.test = seuratObj.con.list[[case_condition]])
+if(dataset_key == "cz_cf_bronchial_biopsy") {
+  seuratObj.con.diff <- safe_differential_connectome(
+                                                    seuratObj.con.list[[control_condition]],
+                                                    seuratObj.con.list[[case_condition]])
+} else {
+  seuratObj.con.diff <- DifferentialConnectome(
+                                                connect.ref = seuratObj.con.list[[control_condition]], 
+                                                connect.test = seuratObj.con.list[[case_condition]])
+}
 
 ## Restore Original Cluster Names ----
 seuratObj.con.diff <- replace_clean_with_original(seuratObj.con.diff, seuratObj)

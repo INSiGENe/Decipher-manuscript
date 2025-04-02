@@ -62,6 +62,67 @@ wget -O data/cz_cf_bronchial_biopsy/dataset.h5ad \
 "https://datasets.cellxgene.cziscience.com/a6657cae-5daa-45cd-b1b4-cf08a07d3a7e.h5ad"
 
 
+#severe-mild covid
+#!/bin/bash
+
+# Parent directory name
+parent_dir="data/SevMilCOVID"
+mkdir -p "$parent_dir"
+
+# Base URL
+base_url="https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE155673&format=file&file="
+
+# Only real RNA samples available in GEO
+samples=(cov01 cov02 cov03 cov04 cov07 cov08 cov09 cov10 cov11 cov12 cov17 cov18)
+
+# Loop from cov01 to cov18
+for sample_id in "${samples[@]}"; do
+  folder="${parent_dir}/${sample_id}"
+  mkdir -p "$folder"
+
+  for suffix in "barcodes.tsv.gz" "matrix.mtx.gz"; do
+    filename="GSE155673_${sample_id}_${suffix}"
+    url="${base_url}${filename}"
+    outpath="${folder}/${filename}"
+
+    echo "Downloading $filename into $folder"
+    curl -s -L "$url" -o "$outpath"
+
+    # Check if it downloaded a valid gzip
+    if file "$outpath" | grep -qv "gzip compressed data"; then
+      echo "❌ $filename not valid. Removing."
+      rm "$outpath"
+    fi
+  done
+done
+
+
+# common Files to download
+files=(
+  "GSE155673_barcodes.tsv.gz"
+  "GSE155673_features.tsv.gz"
+  "GSE155673_totalseq_a_hto.csv.gz"
+)
+
+# Download each file into the parent directory
+for filename in "${files[@]}"; do
+  url="${base_url}${filename}"
+  echo "Downloading $filename into $parent_dir"
+  curl -s -L "$url" -o "${parent_dir}/${filename}"
+done
+
+cd data/SevMildCOVID
+
+# Unzip all .gz files in the root directory and delete the .gz files
+echo "Unzipping root-level files..."
+gunzip *.gz
+
+# Loop through each subfolder starting with 'cov' and unzip files inside, deleting .gz files
+for d in cov*/; do
+  echo "Unzipping files in $d..."
+  gunzip "${d}"*.gz
+done
+
 
 #################################
 ####### Convert anndata objects to R-based objects (Seurat) ############
@@ -123,7 +184,7 @@ docker run -it -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5 bas
 Rscript scripts/decipher_pipeline_v1_modularized.R dataset_key
 
 #example
-Rscript scripts/decipher_pipeline_v1_modularized.R cz_human_kidney_v1.5
+Rscript scripts/decipher_pipeline_v1_modularized.R cz_cf_bronchial_biopsy
 
 
 #################################
