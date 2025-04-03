@@ -146,26 +146,32 @@ docker run -it --rm \
     -w /app \
     manuscript_pre_processing:1.0.3 \
     bash
-    
-Rscript scripts/preprocess_object_for_analysis.R cz_cf_bronchial_biopsy
+
+#run custom pre-processing if exists first, this sets it up for preprocess_object_for_analysis
+#SevMilCovid (Severe and Moderate Covid-19 datasets)
+Rscript scripts/custom_pre_processing_SevMilCovid.r SevCOVID
+Rscript scripts/custom_pre_processing_SevMilCovid.r MilCOVID
+
+#then run
+Rscript scripts/preprocess_object_for_analysis.R dataset_key
 
 #################################
 ####### Move results to analysis folder ############
 #################################
-sudo mv data/pre_processing_test/results/dataset_key data/Manuscript_jan_2025/results/
+sudo mv pre_processing_test/results/dataset_key Manuscript_jan_2025/results/
 
 #example
-sudo mv pre_processing_test/results/cz_cf_bronchial_biopsy Manuscript_jan_2025/results/
+sudo mv pre_processing_test/results/MilCOVID Manuscript_jan_2025/results/
 
 #################################
 ####### Run cytosig analysis ############
 #################################
-cd Manuscript_jan_2025
+cd projects/Manuscript_jan_2025
 docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intelligence-suite
 bash scripts/cytosig_run.sh dataset_key
 
 #example
-bash scripts/cytosig_run.sh cz_cf_bronchial_biopsy
+bash scripts/cytosig_run.sh SevCOVID
 
 #################################
 ####### Run CellOracle analysis ############
@@ -174,7 +180,8 @@ docker run -it -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproduc
 taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py dataset_key
 
 #example
-taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py cz_cf_bronchial_biopsy
+taskset -c 0-1 python3 scripts/cell_oracle_apr_2025.py SevCOVID
+taskset -c 2-3 python3 scripts/cell_oracle_apr_2025.py MilCOVID
 
 
 #################################
@@ -184,14 +191,14 @@ docker run -it -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5 bas
 Rscript scripts/decipher_pipeline_v1_modularized.R dataset_key
 
 #example
-Rscript scripts/decipher_pipeline_v1_modularized.R cz_cf_bronchial_biopsy
+Rscript scripts/decipher_pipeline_v1_modularized.R SevCOVID
 
 
 #################################
 ####### Connectome ############
 #################################
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/connectome:latest bash
-Rscript scripts/connectome_analysis.R cz_cf_bronchial_biopsy
+Rscript scripts/connectome_analysis.R MilCOVID
 
 #################################
 ####### NicheNet ############

@@ -673,5 +673,131 @@
         "groupby": "cluster",
         "condition_key": "condition"
       }
+  },
+
+  "SevCOVID": {
+    "dataset_description":{
+      "repository": "cellxgene",
+      "download_url": "https://datasets.cellxgene.cziscience.com/a6657cae-5daa-45cd-b1b4-cf08a07d3a7e.h5ad",
+      "description": "Cystic Fibrosis and healthy control biopsy",
+      "abbreviation": "cz_cf_bronchial_biopsy",
+      "url": "https://cellxgene.cziscience.com/collections/54004c5c-af08-4693-a606-73871b6ef989"
+    },
+    "custom_pre_processing":{
+      "input_path": "data/SevMilCOVID",
+      "output_path": "results/SevCOVID/pre_processing",
+      "cluster_meta_field": "mapped_cluster",
+      "condition_meta_field": "severity_group",
+      "individual_meta_field": "orig.ident",
+      "case_condition": "Severe",
+      "control_condition": "Healthy"
+    },
+    "pre_processing_for_analysis": {
+      "input_path": "data/SevCOVID/preprocessing",
+      "output_path": "results/SevCOVID",
+      "cluster_meta_field": "mapped_cluster",
+      "condition_meta_field": "severity_group",
+      "individual_meta_field": "orig.ident",
+      "case_condition": "Severe",
+      "control_condition": "Healthy"
+    },
+    "cytosig": {
+      "output_path": "results/SevCOVID"
+    },
+    "cell_oracle": {
+      "data_folder": "results/SevCOVID",
+      "species": "human"
+    },
+    "Decipher_analysis": {
+      "min_cells_per_cluster_condition": 100,
+      "species": "human",
+      "dataset_path": "results/SevCOVID",
+      "condition_name": "severity_group",
+      "case_condition": "Severe",
+      "control_condition": "Healthy",
+      "k_parameter": null,
+      "min_meta_cells_parameter": 100
+    },
+    "Connectome_analysis": {
+      "this_species":"human",
+      "case_condition":"Severe", 
+      "control_condition":"Healthy", 
+      "dataset_path":"results/SevCOVID"
+    },
+    "NicheNet_analysis": {
+      "case_condition": "Severe",
+      "control_condition": "Healthy",
+      "dataset_path": "results/SevCOVID",
+      "this_species": "human"
+    },
+    "liana_plus_analysis":{
+        "dataset_path": "results/SevCOVID",
+        "sample_key": "orig.ident",
+        "groupby": "mapped_cluster",
+        "condition_key": "severity_group"
+      }
+  },
+
+  "MilCOVID": {
+    "dataset_description":{
+      "repository": "cellxgene",
+      "download_url": "https://datasets.cellxgene.cziscience.com/a6657cae-5daa-45cd-b1b4-cf08a07d3a7e.h5ad",
+      "description": "Cystic Fibrosis and healthy control biopsy",
+      "abbreviation": "cz_cf_bronchial_biopsy",
+      "url": "https://cellxgene.cziscience.com/collections/54004c5c-af08-4693-a606-73871b6ef989"
+    },
+    "custom_pre_processing":{
+      "input_path": "data/SevMilCOVID",
+      "output_path": "results/MilCOVID/pre_processing",
+      "cluster_meta_field": "mapped_cluster",
+      "condition_meta_field": "severity_group",
+      "individual_meta_field": "orig.ident",
+      "case_condition": "Moderate",
+      "control_condition": "Healthy"
+    },
+    "pre_processing_for_analysis": {
+      "input_path": "data/MilCOVID/preprocessing",
+      "output_path": "results/MilCOVID",
+      "cluster_meta_field": "mapped_cluster",
+      "condition_meta_field": "severity_group",
+      "individual_meta_field": "orig.ident",
+      "case_condition": "Moderate",
+      "control_condition": "Healthy"
+    },
+    "cytosig": {
+      "output_path": "results/MilCOVID"
+    },
+    "cell_oracle": {
+      "data_folder": "results/MilCOVID",
+      "species": "human"
+    },
+    "Decipher_analysis": {
+      "min_cells_per_cluster_condition": 100,
+      "species": "human",
+      "dataset_path": "results/MilCOVID",
+      "condition_name": "severity_group",
+      "case_condition": "Moderate",
+      "control_condition": "Healthy",
+      "k_parameter": null,
+      "min_meta_cells_parameter": 100
+    },
+    "Connectome_analysis": {
+      "this_species":"human",
+      "case_condition":"Moderate", 
+      "control_condition":"Healthy", 
+      "dataset_path":"results/MilCOVID"
+    },
+    "NicheNet_analysis": {
+      "case_condition": "Moderate",
+      "control_condition": "Healthy",
+      "dataset_path": "results/MilCOVID",
+      "this_species": "human"
+    },
+    "liana_plus_analysis":{
+        "dataset_path": "results/MilCOVID",
+        "sample_key": "orig.ident",
+        "groupby": "mapped_cluster",
+        "condition_key": "severity_group"
+      }
   }
 }
