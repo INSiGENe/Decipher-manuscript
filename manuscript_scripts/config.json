@@ -198,7 +198,7 @@
       "condition_name": "condition",
       "case_condition": "chronic kidney disease",
       "control_condition": "normal",
-      "k_parameter": null,
+      "k_parameter": 2,
       "min_meta_cells_parameter": 100
     },
     "Connectome_analysis": {
@@ -323,7 +323,7 @@
       "condition_name": "condition",
       "case_condition": "influenza",
       "control_condition": "normal",
-      "k_parameter": null,
+      "k_parameter": 1,
       "min_meta_cells_parameter": 100
     },
     "Connectome_analysis": {
@@ -425,7 +425,7 @@
         "condition_name": "condition",
         "case_condition": "type 1 diabetes mellitus",
         "control_condition": "normal",
-        "k_parameter": null,
+        "k_parameter": 1,
         "min_meta_cells_parameter": 100
       },
       "Connectome_analysis": {
@@ -492,7 +492,7 @@
         "condition_name": "condition",
         "case_condition": "Crohn disease",
         "control_condition": "normal",
-        "k_parameter": null,
+        "k_parameter": 1,
         "min_meta_cells_parameter": 100
       },
       "Connectome_analysis": {
@@ -556,7 +556,7 @@
         "condition_name": "condition",
         "case_condition": "oropharynx squamous cell carcinoma",
         "control_condition": "normal",
-        "k_parameter": null,
+        "k_parameter": 1,
         "min_meta_cells_parameter": 100
       },
       "Connectome_analysis": {
@@ -715,7 +715,7 @@
       "condition_name": "severity_group",
       "case_condition": "Severe",
       "control_condition": "Healthy",
-      "k_parameter": null,
+      "k_parameter": 1,
       "min_meta_cells_parameter": 100
     },
     "Connectome_analysis": {
@@ -778,7 +778,7 @@
       "condition_name": "severity_group",
       "case_condition": "Moderate",
       "control_condition": "Healthy",
-      "k_parameter": null,
+      "k_parameter": 1,
       "min_meta_cells_parameter": 100
     },
     "Connectome_analysis": {

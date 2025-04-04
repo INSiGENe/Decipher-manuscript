@@ -1,0 +1,125 @@
+library(Seurat)
+library(dplyr)
+library(tibble)
+
+# Location of each dataset's Seurat object
+datasets <- list(
+  "SevCOVID" = "results/SevCOVID",
+  "MilCOVID" = "results/MilCOVID"
+)
+
+# Define which groups to compare in each dataset
+# e.g. SevCOVID => 'Severe' vs 'Healthy'; MilCOVID => 'Moderate' vs 'Healthy'
+comparisons <- list(
+  SevCOVID = list(case = "Severe",   control = "Healthy", up_col = "Severe_Up", down_col = "Severe_Down"),
+  MilCOVID = list(case = "Moderate", control = "Healthy", up_col = "Mild_Up",   down_col = "Mild_Down")
+)
+
+# Log FC threshold
+logfc_threshold <- log2(1.2)
+
+# Data frames to store results from each dataset
+df_sev   <- NULL   # will hold Cluster, Severe_Up, Severe_Down
+df_mild  <- NULL   # will hold Cluster, Mild_Up, Mild_Down
+
+for (dataset_name in names(datasets)) {
+  dataset_path <- datasets[[dataset_name]]
+  seurat_path <- file.path(dataset_path, "pre_processing", "seurat_object_oi.rds")
+  
+  if (!file.exists(seurat_path)) {
+    warning(paste("File not found:", seurat_path))
+    next
+  }
+  
+  # Read Seurat object
+  seurat_obj <- readRDS(seurat_path)
+  # Make sure 'severity_group' is present
+  if (!"severity_group" %in% colnames(seurat_obj@meta.data)) {
+    stop("Missing 'severity_group' column in metadata for ", dataset_name)
+  }
+  
+  # Extract which comparison to run
+  comp_info <- comparisons[[dataset_name]]
+  case_group    <- comp_info$case
+  control_group <- comp_info$control
+  col_up   <- comp_info$up_col   # e.g. "Severe_Up" or "Mild_Up"
+  col_down <- comp_info$down_col # e.g. "Severe_Down" or "Mild_Down"
+  
+  # Get clusters
+  seurat_obj$cluster <- as.character(seurat_obj$cluster)
+  clusters <- unique(seurat_obj$cluster)
+  
+  # Will store cluster-level results here
+  result_list <- list()
+
+  for (cluster in clusters) {
+    # Subset by cluster
+    cells_of_cluster <- WhichCells(seurat_obj, cells = rownames(seurat_obj@meta.data)[seurat_obj$cluster == cluster])
+    if (length(cells_of_cluster) < 2) next
+    
+    subset_obj <- subset(seurat_obj, cells = cells_of_cluster)
+    Idents(subset_obj) <- subset_obj$severity_group
+    
+    # Must have both 'case_group' and 'control_group' in the identity
+    if (!all(c(case_group, control_group) %in% levels(Idents(subset_obj)))) {
+      next
+    }
+    
+    # Run DE with Seurat's Wilcoxon + logFC threshold
+    markers <- FindMarkers(
+      subset_obj,
+      ident.1 = case_group,
+      ident.2 = control_group,
+      test.use = "wilcox",
+      logfc.threshold = logfc_threshold,
+      min.pct = 0.1,         # optional, can remove if you want no expression filter
+      random.seed = 123
+    )
+    
+    if (!nrow(markers)) {
+      # no genes pass threshold
+      result_list[[cluster]] <- tibble(
+        Cluster = cluster,
+        !!col_up := 0,
+        !!col_down := 0
+      )
+      next
+    }
+    
+    # Markers has avg_log2FC (positive => up in ident.1)
+    # We only have genes with abs(avg_log2FC) >= logfc_threshold at this point.
+    # Tally up vs. down
+    up_count   <- sum(markers$avg_log2FC > 0)
+    down_count <- sum(markers$avg_log2FC < 0)
+    
+    result_list[[cluster]] <- tibble(
+      Cluster = cluster,
+      !!col_up := up_count,
+      !!col_down := down_count
+    )
+  }
+  
+  # Combine cluster-wise results for this dataset
+  result_df <- bind_rows(result_list)
+  
+  # Store in df_sev or df_mild depending on dataset
+  if (dataset_name == "SevCOVID") {
+    df_sev <- result_df
+  } else {
+    df_mild <- result_df
+  }
+}
+
+# Combine both data frames by 'Cluster'
+final_res <- full_join(df_sev, df_mild, by = "Cluster")
+
+# If some clusters were absent in one dataset, fill with zeros
+final_res[is.na(final_res)] <- 0
+
+# Sort by cluster name (optional)
+final_res <- final_res[order(final_res$Cluster), ]
+
+# Write out the final CSV
+write.csv(final_res, "final_deg_table.csv")
+
+message("Done! Wrote final_deg_table.csv with columns: Cluster, Severe_Up, Severe_Down, Mild_Up, Mild_Down.")

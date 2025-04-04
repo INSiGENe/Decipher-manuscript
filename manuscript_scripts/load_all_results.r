@@ -65,7 +65,9 @@ datasets <- list(
   "cz_hpap_t1d_islets" = "results/cz_hpap_t1d_islets",
   "cz_hnscc_hpv" = "results/cz_hnscc_hpv",
   "cz_human_kidney_v1.5" = "results/cz_human_kidney_v1.5",
-  "cz_cf_bronchial_biopsy" = "results/cz_cf_bronchial_biopsy"
+  "cz_cf_bronchial_biopsy" = "results/cz_cf_bronchial_biopsy",
+  "SevCOVID" = "results/SevCOVID",
+  "MilCOVID" = "results/MilCOVID"
 )
 
 #"cz_ra_pbmc" = "results/cz_ra_pbmc",
@@ -1107,7 +1109,88 @@ p <- ggplot(results_df, aes(x = method, y = value)) +
 
 ggsave("beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
 
+#boxplot 
+p <- ggplot(results_df, aes(x = method, y = value)) +
+  geom_line(aes(group = dataset), color = "gray", size = 1, alpha = 0.3) +
+  
+  # Add boxplot layer
+  geom_boxplot(outlier.shape = NA, width = 0.25, alpha = 0.4, color = "black", fill = "lightgray") +
+  
+  # Beeswarm points
+  geom_beeswarm(
+    aes(color = interaction(method, flagged)),
+    size = 3.5, 
+    cex = 5,
+    priority = "density", 
+    groupOnX = TRUE
+  ) +
+  
+  scale_color_manual(values = create_flag_color_scale(unique(results_df$method))) +
+  
+  stat_summary(fun = median, geom = "segment", 
+               aes(xend = after_stat(x), yend = after_stat(y)), 
+               size = 2.5, color = "black") +
+  
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "red") +
+  
+  labs(y = "AUROC target prediction", x = NULL) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
+ggsave("boxplot_beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
+
+
+#color line by variance
+library(dplyr)
+
+# Calculate variance (or std dev) for each method
+dataset_var <- results_df %>%
+  group_by(dataset) %>%
+  summarize(variance = var(value, na.rm = TRUE), .groups = "drop")
+
+# Decide thresholds — top 3 lowest and 1-2 highest variance
+dataset_var <- dataset_var %>%
+  mutate(var_rank = rank(variance, ties.method = "first"))
+
+# Color rules
+metdataset_varhod_var <- dataset_var %>%
+  mutate(line_color = case_when(
+    var_rank <= 3 ~ "green",     # Most consistent
+    var_rank >= (n() - 1) ~ "red",  # Most inconsistent
+    TRUE ~ "gray"
+  ))
+results_df <- results_df %>%
+  left_join(metdataset_varhod_var %>% select(dataset, line_color), by = "dataset")
+p <- ggplot(results_df, aes(x = method, y = value)) +
+  geom_line(aes(group = dataset, color = line_color), size = 1, alpha = 0.6) +
+  
+  geom_boxplot(outlier.shape = NA, width = 0.25, alpha = 0.4, color = "black", fill = "lightgray") +
+  
+  geom_beeswarm(
+    aes(color = interaction(method, flagged)),
+    size = 3.5, 
+    cex = 5,
+    priority = "density", 
+    groupOnX = TRUE
+  ) +
+  
+  scale_color_manual(
+    values = c("green" = "green", "red" = "red", "gray" = "gray"),
+    guide = "none"
+  ) +
+  
+  stat_summary(fun = median, geom = "segment", 
+               aes(xend = after_stat(x), yend = after_stat(y)), 
+               size = 2.5, color = "black") +
+  
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "red") +
+  
+  labs(y = "AUROC target prediction", x = NULL) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+ggsave("variance_w_boxplot_beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
 
 # Function: Create a custom color scale for flagged points
 # For each method, we want two colors:

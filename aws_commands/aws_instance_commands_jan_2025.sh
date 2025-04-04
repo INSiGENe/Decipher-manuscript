@@ -191,7 +191,7 @@ docker run -it -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5 bas
 Rscript scripts/decipher_pipeline_v1_modularized.R dataset_key
 
 #example
-Rscript scripts/decipher_pipeline_v1_modularized.R SevCOVID
+Rscript scripts/decipher_pipeline_v1_modularized.R cz_dev_gut_crohns
 
 
 #################################
@@ -204,7 +204,7 @@ Rscript scripts/connectome_analysis.R MilCOVID
 ####### NicheNet ############
 #################################
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest bash
-Rscript scripts/nichenet_analysis.R cz_cf_bronchial_biopsy
+Rscript scripts/nichenet_analysis.R MilCOVID
 
 #################################
 ####### NATMI ############
