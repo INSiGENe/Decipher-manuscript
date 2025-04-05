@@ -982,7 +982,7 @@ library(purrr)
 library(ggplot2)
 # If not installed yet:
 # install.packages("ggbeeswarm")
-#library(ggbeeswarm)
+library(ggbeeswarm)
 library(dplyr)
 
 results_df <- map_dfr(names(auc_scores_by_datset), function(dataset) {
@@ -1080,8 +1080,7 @@ p <- ggplot(results_df, aes(x = method, y = value)) +
 # Save the plot.
 ggsave("beeswarm_auc_plot_points_lines.png", plot = p, width = 4, height = 6, dpi = 300)
 
-library(ggbeeswarm)  # Make sure it's installed
-
+#another type
 p <- ggplot(results_df, aes(x = method, y = value)) +
   geom_line(aes(group = dataset), color = "gray", size = 1, alpha = 0.3) +
   

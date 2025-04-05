@@ -96,6 +96,12 @@ for cell_group in pdata.obs[groupby].unique():
     else:
         continue
 
+    # Check number of replicates per condition
+    replicate_counts = ctdata.obs.groupby(condition_key)[sample_key].nunique()
+    if replicate_counts.min() < 2:
+        print(f"Skipping {cell_group}: not enough replicates")
+        continue
+
     # Build DESeq2 object
     # NOTE: this data is actually paired, so one could consider fitting the patient label as a confounder
     dds = DeseqDataSet(
@@ -151,3 +157,5 @@ lr_res.head()
 
 
 lr_res.to_csv(os.path.join(output_data_path,"liana_p_interaction_results.csv"))
+
+print("✅ LIANA+ interaction analysis complete. Results saved to liana_p_interaction_results.csv.")
