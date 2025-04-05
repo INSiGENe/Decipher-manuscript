@@ -210,13 +210,13 @@ Rscript scripts/nichenet_analysis.R MilCOVID
 ####### NATMI ############
 #################################
 docker run -it -v "$(pwd):/workspace" -w /workspace asrhou/natmi  
-bash scripts/natmi_analysis.sh cz_cf_bronchial_biopsy
+bash scripts/natmi_analysis.sh SevCOVID
 
 #################################
 ############# LIANA+ ############
 #################################
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus bash
-python3 scripts/liana_plus_analysis.py cz_cf_bronchial_biopsy
+python3 scripts/liana_plus_analysis.py SevCOVID
 
 
 

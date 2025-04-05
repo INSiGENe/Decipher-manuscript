@@ -734,7 +734,7 @@
         "dataset_path": "results/SevCOVID",
         "sample_key": "orig.ident",
         "groupby": "mapped_cluster",
-        "condition_key": "severity_group"
+        "condition_key": "condition"
       }
   },
 
@@ -797,7 +797,7 @@
         "dataset_path": "results/MilCOVID",
         "sample_key": "orig.ident",
         "groupby": "mapped_cluster",
-        "condition_key": "severity_group"
+        "condition_key": "condition"
       }
   }
 }
