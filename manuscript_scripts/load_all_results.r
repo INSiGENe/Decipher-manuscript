@@ -828,7 +828,7 @@ combined_plot <- strip_plot / heatmap_plot +
 
 
 
-ggsave("cytosig_final_heatmap.png",
+ggsave("figures/cytosig_final_heatmap.png",
        combined_plot, width = 14, height = 8, dpi = 300)
 
 #################################
@@ -890,7 +890,7 @@ p <- ggplot(final_df, aes(x = n_cells, y = n_ligands_above_2)) +
   theme_minimal()
 
 # Save to file
-ggsave("ligand_vs_cells_plot.png", plot = p, width = 7, height = 5, dpi = 300)
+ggsave("figures/ligand_vs_cells_plot.png", plot = p, width = 7, height = 5, dpi = 300)
 
 
 library(ggplot2)
@@ -1078,7 +1078,7 @@ p <- ggplot(results_df, aes(x = method, y = value)) +
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 # Save the plot.
-ggsave("beeswarm_auc_plot_points_lines.png", plot = p, width = 4, height = 6, dpi = 300)
+ggsave("figures/beeswarm_auc_plot_points_lines.png", plot = p, width = 4, height = 6, dpi = 300)
 
 #another type
 p <- ggplot(results_df, aes(x = method, y = value)) +
@@ -1106,7 +1106,7 @@ p <- ggplot(results_df, aes(x = method, y = value)) +
   theme(legend.position = "none", 
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
-ggsave("beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
+ggsave("figures/beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
 
 #boxplot 
 p <- ggplot(results_df, aes(x = method, y = value)) +
@@ -1137,7 +1137,7 @@ p <- ggplot(results_df, aes(x = method, y = value)) +
   theme(legend.position = "none", 
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
-ggsave("boxplot_beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
+ggsave("figures/boxplot_beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
 
 
 #color line by variance
@@ -1189,7 +1189,7 @@ p <- ggplot(results_df, aes(x = method, y = value)) +
   theme_minimal(base_size = 14) +
   theme(legend.position = "none", 
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-ggsave("variance_w_boxplot_beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
+ggsave("figures/variance_w_boxplot_beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
 
 # Function: Create a custom color scale for flagged points
 # For each method, we want two colors:
@@ -1271,7 +1271,7 @@ for (dataset in names(valid)) {
 combined_plot <- wrap_plots(plots, nrow = 1) +
   plot_annotation(title = "Cytosig Z-Score Heatmaps (Filtered |z| > 2)")
 
-ggsave("cytosig_heatmaps_combined_geom_tile_padded.png",
+ggsave("figures/cytosig_heatmaps_combined_geom_tile_padded.png",
        plot = combined_plot,
        width = 4 * length(plots),
        height = 6,
@@ -1375,3 +1375,965 @@ VCAN-CD44 from Mono to B
 TNFSF13B-TNFSF13C rom B to B
 SLAMF7-SLAMF7 from Mono, CD4 and NK to Mono and NK
 MRC-FPC9 from Mono to B, CD4 and NK
+
+
+#################
+# experimenting with gemini
+# Ensure necessary libraries are loaded
+library(ggplot2)
+library(dplyr)     # Or library(data.table) if you prefer
+library(purrr)     # For map functions
+library(stringr)   # For string manipulation if needed
+library(patchwork) # For combining plots (optional)
+library(ggridges)  # For density ridgeline plots
+
+# --- Assume your previous code has run and populated 'results_preprocessed' ---
+
+# Combine results into a single dataframe for plotting
+all_scores_list <- imap(results_preprocessed, ~{
+  # For each dataset, iterate through its methods
+  dataset_name <- .y
+  methods_list <- .x
+
+  # Map over the methods within the current dataset
+  imap_dfr(methods_list, ~{
+    method_name <- .y
+    method_data <- .x
+
+    if (!is.null(method_data) && nrow(method_data) > 0 && "prioritization_score" %in% names(method_data)) {
+      # Select the score and add dataset/method identifiers
+      method_data %>%
+        select(prioritization_score) %>%
+        mutate(
+          method = method_name,
+          dataset = dataset_name
+        )
+    } else {
+      # Return an empty tibble/dataframe if data is missing or invalid
+      tibble(prioritization_score = numeric(0), method = character(0), dataset = character(0))
+    }
+  })
+})
+
+# Combine the list of dataframes into one single dataframe
+combined_scores_df <- bind_rows(all_scores_list)
+
+# Optional: Check the structure and summary
+# print(head(combined_scores_df))
+# print(summary(combined_scores_df))
+# print(table(combined_scores_df$dataset, combined_scores_df$method))
+
+# Optional: Remove datasets/methods with zero rows if any slipped through
+combined_scores_df <- combined_scores_df %>% filter(!is.na(prioritization_score))
+
+# --- Plotting Options ---
+
+# Define a consistent color scheme (adjust colors as needed)
+method_colors <- c(
+  "Decipher" = "#1f77b4",
+  "NicheNet" = "#ff7f0e",
+  "LIANA+" = "#2ca02c",
+  "Connectome" = "#d62728",
+  "NATMI" = "#9467bd"
+  # Add more if needed
+)
+
+# Option 1: Violin Plots, Faceted by Dataset
+# Good for comparing methods within each specific biological context.
+# Using scales = "free_y" allows each facet to have its own y-axis range,
+# which is essential if score scales differ vastly between datasets.
+plot_violin_by_dataset <- ggplot(combined_scores_df, aes(x = method, y = prioritization_score, fill = method)) +
+  geom_violin(trim = FALSE, scale = "width") + # trim=FALSE keeps tails, scale="width" makes violins have same max width
+  geom_boxplot(width = 0.1, fill = "white", outlier.shape = NA, coef = 0) + # Add boxplot inside, hide outliers as violin shows density
+  scale_fill_manual(values = method_colors) +
+  facet_wrap(~ dataset, scales = "free_y", ncol = 4) + # Adjust ncol as needed
+  theme_bw(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    strip.background = element_rect(fill = "grey90"),
+    legend.position = "bottom" # Or "none" if redundant
+  ) +
+  labs(
+    title = "Distribution of Interaction Scores by Method (Faceted by Dataset)",
+    x = "Method",
+    y = "Interaction Prioritization Score",
+    fill = "Method"
+  )
+
+#print(plot_violin_by_dataset)
+ggsave("figures/violin_scores_by_dataset.png", plot_violin_by_dataset, width = 14, height = 10) # Adjust size
+
+# Option 2: Density Plots, Faceted by Dataset
+# Good for seeing the shape of the distribution more clearly.
+# Using scales = "free" allows both x and y axes to adapt per facet.
+plot_density_by_dataset <- ggplot(combined_scores_df, aes(x = prioritization_score, fill = method, color = method)) +
+  geom_density(alpha = 0.5) + # Use alpha for transparency if densities overlap
+  scale_fill_manual(values = method_colors) +
+  scale_color_manual(values = method_colors) +
+  facet_wrap(~ dataset, scales = "free", ncol = 4) + # Use 'free' if x-axis ranges also vary significantly
+  theme_bw(base_size = 12) +
+  theme(
+    strip.background = element_rect(fill = "grey90"),
+    legend.position = "bottom"
+  ) +
+  labs(
+    title = "Density of Interaction Scores by Method (Faceted by Dataset)",
+    x = "Interaction Prioritization Score",
+    y = "Density",
+    fill = "Method",
+    color = "Method"
+  )
+
+#print(plot_density_by_dataset)
+ggsave("figures/density_scores_by_dataset.png", plot_density_by_dataset, width = 14, height = 10)
+
+# Option 3: Ridgeline Density Plots, Faceted by Dataset
+# Can be very effective for comparing multiple distributions, especially shapes.
+plot_ridgeline_by_dataset <- ggplot(combined_scores_df, aes(x = prioritization_score, y = method, fill = method)) +
+  ggridges::geom_density_ridges(alpha = 0.7, scale = 1.5, rel_min_height = 0.01) + # Adjust scale for overlap, rel_min_height removes tiny tails
+  scale_fill_manual(values = method_colors) +
+  facet_wrap(~ dataset, scales = "free_x", ncol = 4) + # Free x-axis is common here
+  theme_bw(base_size = 12) +
+  theme(
+    strip.background = element_rect(fill = "grey90"),
+    legend.position = "none" # Often redundant as y-axis labels methods
+  ) +
+  labs(
+    title = "Ridgeline Density of Interaction Scores by Method (Faceted by Dataset)",
+    x = "Interaction Prioritization Score",
+    y = "Method",
+    fill = "Method"
+  ) +
+  coord_cartesian(clip = "off") # Allows labels to slightly overflow if needed
+
+#print(plot_ridgeline_by_dataset)
+ggsave("figures/ridgeline_scores_by_dataset.png", plot_ridgeline_by_dataset, width = 14, height = 10)
+
+
+# --- Addressing Log Scales ---
+# If your scores span many orders of magnitude OR are heavily skewed,
+# plotting on a log scale might be beneficial.
+
+# Check score ranges
+ summary(combined_scores_df$prioritization_score)
+# If scores include zero or negative values, use a pseudo-log or add a constant.
+# Example: Using pseudo-log for density plot x-axis
+# Note: Requires the 'scales' package
+ library(scales)
+ plot_density_log_x <- ggplot(combined_scores_df, aes(x = prioritization_score, fill = method, color = method)) +
+   geom_density(alpha = 0.5) +
+   scale_fill_manual(values = method_colors) +
+   scale_color_manual(values = method_colors) +
+   scale_x_continuous(trans = scales::pseudo_log_trans(sigma = 0.1), # Adjust sigma as needed
+                      breaks = c(0, 0.1, 1, 10, 100, max(combined_scores_df$prioritization_score, na.rm=TRUE))) + # Adjust breaks
+   facet_wrap(~ dataset, scales = "free", ncol = 4) +
+   theme_bw(base_size = 12) +
+   theme(strip.background = element_rect(fill = "grey90"), legend.position = "bottom") +
+   labs(title = "Density of Interaction Scores (Pseudo-Log Scale)")
+# print(plot_density_log_x)
+ggsave("figures/plot_density_log_x.png", plot_density_log_x, width = 14, height = 10)
+
+# Example: Using log10 for violin plot y-axis (if all scores > 0)
+# Need to filter scores <= 0 or add a small constant first if necessary
+# combined_scores_positive <- combined_scores_df %>% filter(prioritization_score > 0)
+# plot_violin_log_y <- ggplot(combined_scores_positive, aes(x = method, y = prioritization_score, fill = method)) +
+#   geom_violin(trim = FALSE, scale = "width") +
+#   geom_boxplot(width = 0.1, fill = "white", outlier.shape = NA, coef = 0) +
+#   scale_fill_manual(values = method_colors) +
+#   scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x),
+#                 labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+#   facet_wrap(~ dataset, scales = "free_y", ncol = 4) +
+#   theme_bw(base_size = 12) +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8), ...) +
+#   labs(title = "Distribution of Interaction Scores (Log10 Scale)", ...)
+# print(plot_violin_log_y)
+
+# Option 1: Violin Plots, Faceted by Dataset (Linear Scale - Recommended as primary)
+plot_violin_by_dataset_linear <- ggplot(combined_scores_df, aes(x = method, y = prioritization_score, fill = method)) +
+  geom_violin(trim = FALSE, scale = "width") +
+  geom_boxplot(width = 0.1, fill = "white", outlier.shape = NA, coef = 0) + # coef=0 shows whiskers extending to min/max
+  scale_fill_manual(values = method_colors) +
+  facet_wrap(~ dataset, scales = "free_y", ncol = 4) + # *** free_y is crucial ***
+  theme_bw(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    strip.background = element_rect(fill = "grey90"),
+    legend.position = "bottom"
+  ) +
+  labs(
+    title = "Distribution of Interaction Scores by Method (Linear Scale)",
+    subtitle = "Faceted by Dataset (Note: Y-axes vary between facets)",
+    x = "Method",
+    y = "Interaction Prioritization Score",
+    fill = "Method"
+  )
+
+#print(plot_violin_by_dataset_linear)
+ggsave("figures/violin_scores_by_dataset_linear.png", plot_violin_by_dataset_linear, width = 14, height = 10)
+
+# Option 2: Density Plots, Faceted by Dataset (Pseudo-Log Scale)
+library(scales) # Make sure scales package is loaded
+
+plot_density_by_dataset_pseudolog <- ggplot(combined_scores_df, aes(x = prioritization_score, fill = method, color = method)) +
+  geom_density(alpha = 0.5) +
+  scale_fill_manual(values = method_colors) +
+  scale_color_manual(values = method_colors) +
+  # Apply pseudo-log transformation to the x-axis
+  scale_x_continuous(
+      trans = scales::pseudo_log_trans(sigma = 0.1, base = 10), # Adjust sigma if needed (controls linear part around 0)
+      # Define breaks manually for better readability on pseudo-log scale
+      breaks = c(-10, -1, 0, 1, 10, 100) # Adjust breaks based on your data range and interest
+  ) +
+  facet_wrap(~ dataset, scales = "free", ncol = 4) + # free allows density axis (y) and transformed x-axis to adapt
+  theme_bw(base_size = 12) +
+  theme(
+    strip.background = element_rect(fill = "grey90"),
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8) # Angle might be needed for breaks
+  ) +
+  labs(
+    title = "Density of Interaction Scores by Method (Pseudo-Log Scale)",
+    subtitle = "Faceted by Dataset (Note: Axes vary between facets)",
+    x = "Interaction Prioritization Score (Pseudo-Log Scale)",
+    y = "Density",
+    fill = "Method",
+    color = "Method"
+  )
+
+#print(plot_density_by_dataset_pseudolog)
+ggsave("figures/density_scores_by_dataset_pseudolog.png", plot_density_by_dataset_pseudolog, width = 14, height = 10)
+
+# Option 3: Ridgeline Plots (Pseudo-Log Scale) - Often very effective
+plot_ridgeline_by_dataset_pseudolog <- ggplot(combined_scores_df, aes(x = prioritization_score, y = method, fill = method)) +
+  ggridges::geom_density_ridges(alpha = 0.7, scale = 1.5, rel_min_height = 0.01) +
+  scale_fill_manual(values = method_colors) +
+  # Apply pseudo-log transformation to the x-axis
+  scale_x_continuous(
+      trans = scales::pseudo_log_trans(sigma = 0.1, base = 10),
+      breaks = c(-10, -1, 0, 1, 10, 100) # Adjust breaks
+  ) +
+  facet_wrap(~ dataset, scales = "free_x", ncol = 4) + # free_x allows transformed x-axis to adapt
+  theme_bw(base_size = 12) +
+  theme(
+    strip.background = element_rect(fill = "grey90"),
+    legend.position = "none"
+  ) +
+  labs(
+    title = "Ridgeline Density of Interaction Scores by Method (Pseudo-Log Scale)",
+    subtitle = "Faceted by Dataset (Note: X-axes vary between facets)",
+    x = "Interaction Prioritization Score (Pseudo-Log Scale)",
+    y = "Method",
+    fill = "Method"
+  ) +
+  coord_cartesian(clip = "off")
+
+#print(plot_ridgeline_by_dataset_pseudolog)
+ggsave("figures/ridgeline_scores_by_dataset_pseudolog.png", plot_ridgeline_by_dataset_pseudolog, width = 14, height = 10)
+
+
+
+# Ensure necessary libraries are loaded: ggplot2, dplyr, scales, ggridges
+
+# (Assuming combined_scores_df and method_colors are already created)
+
+plot_ridgeline_overlaid_datasets <- ggplot(combined_scores_df,
+                                          aes(x = prioritization_score,
+                                              y = method,
+                                              # Define fill by method
+                                              fill = method,
+                                              # Group by the combination of method AND dataset
+                                              # This ensures a separate ridge is drawn for each dataset within each method's y-position
+                                              group = interaction(method, dataset))) +
+  # Use lower alpha for more transparency; adjust scale if ridges overlap too much vertically
+  ggridges::geom_density_ridges(alpha = 0.15,  # Significantly reduced alpha
+                                  scale = 1.5,   # Adjust vertical scaling if needed (smaller value reduces overlap)
+                                  rel_min_height = 0.01) + # Remove tiny tails
+  scale_fill_manual(values = method_colors) + # Use consistent colors
+  # Apply pseudo-log transformation to the common x-axis
+  scale_x_continuous(
+      trans = scales::pseudo_log_trans(sigma = 0.1, base = 10), # Same transformation
+      breaks = c(-10, -1, 0, 1, 10, 100) # Same breaks
+      # You might want to manually set x-axis limits if the auto-range isn't ideal
+      # limits = c(-20, 110)
+  ) +
+  theme_bw(base_size = 12) +
+  theme(
+    # Ensure legend is shown
+    legend.position = "bottom" 
+  ) +
+  labs(
+    title = "Overlaid Ridgeline Densities of Interaction Scores by Method",
+    subtitle = "Each ridge represents one dataset (15 datasets overlaid per method)",
+    x = "Interaction Prioritization Score (Pseudo-Log Scale)",
+    y = "Method",
+    fill = "Method" # Legend title
+  ) +
+  coord_cartesian(clip = "off") # Keep allowing drawing outside plot area slightly if needed
+
+print(plot_ridgeline_overlaid_datasets)
+
+# Adjust dimensions for saving - might need more height than width now
+ggsave("figures/ridgeline_scores_overlaid_datasets.png", plot_ridgeline_overlaid_datasets, width = 10, height = 5.5) # Adjust as needed
+
+#n3xt iteration
+# Ensure necessary libraries are loaded: ggplot2, dplyr, scales, ggridges
+
+# (Assuming combined_scores_df and method_colors are already created)
+
+# --- Modification 1: Set Method Order ---
+# Define the desired order for methods on the y-axis, with Decipher first
+# The order here determines the order in the legend and calculation,
+# but we use rev() below for plotting order.
+desired_method_order <- c("Decipher", "NicheNet", "LIANA+", "NATMI", "Connectome")
+
+# Convert the 'method' column to a factor with the specified levels.
+# We use rev() because ggplot plots factors bottom-up on the y-axis.
+# To have "Decipher" at the top visually, it needs to be the last level.
+combined_scores_df <- combined_scores_df %>%
+  mutate(method = factor(method, levels = rev(desired_method_order)))
+
+# --- Generate the Plot ---
+plot_ridgeline_overlaid_datasets_custom <- ggplot(combined_scores_df,
+                                              aes(x = prioritization_score,
+                                                  y = method, # method is now an ordered factor
+                                                  fill = method,
+                                                  group = interaction(method, dataset))) +
+  ggridges::geom_density_ridges(alpha = 0.15,
+                                  scale = 1.5,
+                                  rel_min_height = 0.01) +
+  # Use consistent colors; ensure names in method_colors match factor levels
+  # The 'name' argument sets the legend title. Ensure 'breaks' match the desired order if needed.
+  scale_fill_manual(values = method_colors, name = "Method", breaks = desired_method_order) +
+  scale_x_continuous(
+      trans = scales::pseudo_log_trans(sigma = 0.1, base = 10),
+      breaks = c(-10, -1, 0, 1, 10, 100)
+  ) +
+  theme_bw(base_size = 12) +
+  theme(
+    # --- Modification 3: Move Legend ---
+    legend.position = "right" # Set legend position to the right
+  ) +
+  labs(
+    # --- Modification 2: Remove Subtitle ---
+    title = "Overlaid Ridgeline Densities of Interaction Scores by Method",
+    # subtitle = "..." # Subtitle line removed
+    x = "Interaction Prioritization Score (Pseudo-Log Scale)",
+    y = "Method",
+    fill = "Method" # Setting legend title here also works
+  ) +
+  coord_cartesian(clip = "off") # Keep allowing drawing outside plot area slightly if needed
+
+print(plot_ridgeline_overlaid_datasets_custom)
+
+# Adjust dimensions for saving - might need less width now legend is on right
+ggsave("figures/ridgeline_scores_overlaid_datasets_custom.png", plot_ridgeline_overlaid_datasets_custom, width = 10, height = 2.5) # Adjusted width/height
+
+
+
+##########################
+#an overlap alternative
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(tidyr) # May not be needed depending on getSet, but good practice
+
+# --- Placeholder for getSet Function ---
+# This function needs to extract the top 'n' interaction identifiers
+# from the input object (which is results_for_correlation[[ds]][[method_name]]).
+# You MUST adapt this function based on the actual structure of your data.
+# Assumption: The input object is a dataframe-like structure, already sorted
+#             by rank, with a column named "interaction" containing the L-R pair ID.
+getSet <- function(method_result, n) {
+  # Basic Input Checks
+  if (is.null(method_result)) {
+    # warning("Input to getSet is NULL. Returning empty set.")
+    return(character(0))
+  }
+  # Check if it's dataframe-like and has rows
+  if (!is.data.frame(method_result) && !is(method_result, "DataFrame") && !is.matrix(method_result)) {
+     # If it's some other structure, maybe it's already a vector of interactions?
+     if(is.character(method_result)) {
+         return(head(method_result, n))
+     }
+     warning("Input to getSet is not a recognized dataframe-like structure or character vector. Returning empty set.")
+     return(character(0))
+  }
+   if (nrow(method_result) == 0) {
+    # warning("Input to getSet has 0 rows. Returning empty set.")
+    return(character(0))
+  }
+
+  # Check for 'interaction' column - Adapt column name if necessary!
+  interaction_col <- "interaction" # <--- CHANGE THIS if your column name is different
+  if (!interaction_col %in% colnames(method_result)) {
+     warning(paste("Column '", interaction_col, "' not found in data for a method. Returning empty set.", sep=""))
+     return(character(0))
+  }
+
+  # Extract top N interactions
+  # Ensure the column is character type
+  interactions <- as.character(method_result[[interaction_col]])
+  return(head(interactions, n))
+}
+
+
+# --- Helper function to calculate sizes of specific intersections ---
+# Input: list_input = named list of character vectors (sets) for 5 methods
+# Output: dataframe with Intersection_Name and Count
+calculate_specific_intersections <- function(list_input) {
+  method_names <- names(list_input)
+  expected_methods <- c("Decipher", "NicheNet", "LIANA+", "NATMI", "Connectome")
+
+  # Ensure all 5 methods are potentially present, use empty set if NULL or missing
+  sets <- list()
+  for(m in expected_methods) {
+    sets[[m]] <- if (!is.null(list_input[[m]]) && length(list_input[[m]]) > 0) list_input[[m]] else character(0)
+  }
+
+  # Assign to named variables for easier reading
+  D_set <- sets[["Decipher"]]
+  N_set <- sets[["NicheNet"]]
+  L_set <- sets[["LIANA+"]]
+  A_set <- sets[["NATMI"]] # A for NATMI
+  C_set <- sets[["Connectome"]]
+
+  # --- Set Operations ---
+  # Union of all sets NOT including the target method (for calculating uniques)
+  union_not_D <- Reduce(union, sets[c("NicheNet", "LIANA+", "NATMI", "Connectome")])
+  union_not_N <- Reduce(union, sets[c("Decipher", "LIANA+", "NATMI", "Connectome")])
+  union_not_L <- Reduce(union, sets[c("Decipher", "NicheNet", "NATMI", "Connectome")])
+  union_not_A <- Reduce(union, sets[c("Decipher", "NicheNet", "LIANA+", "Connectome")])
+  union_not_C <- Reduce(union, sets[c("Decipher", "NicheNet", "LIANA+", "NATMI")])
+
+  # Union of all sets NOT including the specific pairs (for calculating pair-only)
+  union_not_DL <- Reduce(union, sets[c("NicheNet", "NATMI", "Connectome")])
+  union_not_CA <- Reduce(union, sets[c("Decipher", "NicheNet", "LIANA+")])
+
+  results <- list()
+
+  # Calculate unique to each
+  results[["Unique: Decipher"]]   <- length(setdiff(D_set, union_not_D))
+  results[["Unique: NicheNet"]]   <- length(setdiff(N_set, union_not_N))
+  results[["Unique: LIANA+"]]     <- length(setdiff(L_set, union_not_L))
+  results[["Unique: NATMI"]]      <- length(setdiff(A_set, union_not_A))
+  results[["Unique: Connectome"]] <- length(setdiff(C_set, union_not_C))
+
+  # Calculate intersection for specific pairs (ONLY these two)
+  intersect_D_L <- intersect(D_set, L_set)
+  results[["Shared: Decipher & LIANA+"]] <- length(setdiff(intersect_D_L, union_not_DL))
+
+  intersect_C_A <- intersect(C_set, A_set)
+  results[["Shared: Connectome & NATMI"]] <- length(setdiff(intersect_C_A, union_not_CA))
+
+  # Calculate intersection for ALL methods
+  all_5 <- Reduce(intersect, sets)
+  results[["Shared: All"]] <- length(all_5)
+
+  # Convert list to dataframe
+  results_df <- data.frame(
+    Intersection_Name = names(results),
+    Count = unlist(results)
+  )
+  rownames(results_df) <- NULL # Clean up row names
+  return(results_df)
+}
+
+# --- Helper function to calculate sizes of ALL specific intersections ---
+# Input: list_input = named list of character vectors (sets) for 5 methods
+# Output: dataframe with Intersection_Name and Count for all 31 non-empty intersections
+calculate_all_intersections <- function(list_input) {
+  method_names <- names(list_input)
+  expected_methods <- c("Decipher", "NicheNet", "LIANA+", "NATMI", "Connectome")
+  n_methods <- length(expected_methods)
+
+  # Ensure all 5 methods are potentially present, use empty set if NULL or missing
+  sets <- list()
+  for(m in expected_methods) {
+    sets[[m]] <- if (!is.null(list_input[[m]]) && length(list_input[[m]]) > 0) list_input[[m]] else character(0)
+  }
+
+  # List to store results: Intersection Name -> Count
+  all_intersections_info <- list()
+
+  # Loop through all possible intersection sizes (k = 1 to 5)
+  for (k in 1:n_methods) {
+    # Generate all combinations (subsets) of method names of size k
+    combinations_k <- combn(expected_methods, k, simplify = FALSE)
+
+    # Process each combination (subset S)
+    for (subset_S in combinations_k) {
+      # Sort subset for consistent naming
+      subset_S_sorted <- sort(subset_S)
+      # Create the intersection name
+      intersection_name <- paste(subset_S_sorted, collapse = " & ")
+
+      # Identify methods NOT in the current subset (subset NotS)
+      subset_NotS <- setdiff(expected_methods, subset_S)
+
+      # --- Calculate the count for elements ONLY in subset_S ---
+
+      # 1. Find the intersection of all sets IN subset_S
+      # Need to handle case where subset_S has only 1 element
+      if (length(subset_S) == 1) {
+        intersect_S <- sets[[subset_S[[1]]]]
+      } else {
+        intersect_S <- Reduce(intersect, sets[subset_S])
+      }
+
+      # If the intersection is already empty, the specific count is 0
+      if (length(intersect_S) == 0) {
+        count <- 0
+      } else {
+        # 2. Find the union of all sets NOT in subset_S (if any)
+        union_NotS <- character(0) # Initialize as empty set
+        if (length(subset_NotS) > 0) {
+          union_NotS <- Reduce(union, sets[subset_NotS])
+        }
+
+        # 3. Find elements in intersect_S that are NOT in union_NotS
+        specific_intersect_S_elements <- setdiff(intersect_S, union_NotS)
+        count <- length(specific_intersect_S_elements)
+      }
+
+      # Store result
+      all_intersections_info[[intersection_name]] <- count
+    }
+  }
+
+  # Convert list to dataframe
+  results_df <- data.frame(
+    Intersection_Name = names(all_intersections_info),
+    Count = unlist(all_intersections_info)
+  )
+  rownames(results_df) <- NULL # Clean up row names
+  return(results_df)
+}
+
+
+# --- Main Calculation Loop ---
+
+# Define n_top for overlap calculation
+n_top <- 100
+# Define expected method names
+method_names_expected <- c("Decipher", "NicheNet", "LIANA+", "NATMI", "Connectome")
+# Initialize list to store results
+all_intersection_data <- list()
+
+# Ensure 'results_for_correlation' list is populated by your previous data loading loop
+if (!exists("results_for_correlation") || length(results_for_correlation) == 0) {
+    stop("The 'results_for_correlation' list was not found or is empty. ",
+         "Please ensure the data loading and preprocessing loop has run successfully.")
+}
+
+print(paste("Processing", length(results_for_correlation), "datasets for overlap analysis..."))
+
+# Loop through each dataset IN THE POPULATED results_for_correlation list
+dataset_names_to_process <- names(results_for_correlation)
+
+for (ds in dataset_names_to_process) {
+    print(paste("Calculating overlaps for:", ds))
+    dataset_results <- results_for_correlation[[ds]]
+
+    # Check if dataset_results entry is valid
+    if (is.null(dataset_results) || !is.list(dataset_results) || length(dataset_results) == 0) {
+        warning(paste("Skipping dataset", ds, "- entry in results_for_correlation is NULL, not a list, or empty."))
+        next # Skip to the next dataset
+    }
+
+    # Create the list_input (list of top N sets) for the current dataset
+    list_input_current_ds <- list()
+    available_methods_in_ds <- names(dataset_results)
+
+    for (method_name in method_names_expected) {
+        if (method_name %in% available_methods_in_ds) {
+             # Use tryCatch for robustness when calling getSet
+             list_input_current_ds[[method_name]] <- tryCatch({
+                  getSet(dataset_results[[method_name]], n_top)
+             }, error = function(e) {
+                  warning(paste("Error in getSet for", method_name, "in dataset", ds, ":", e$message))
+                  return(character(0)) # Return empty set on error
+             })
+        } else {
+            # Method results not found for this dataset in results_for_correlation
+             list_input_current_ds[[method_name]] <- character(0) # Use empty set
+             # Optional: Add a warning if you expect all methods in all datasets
+             # warning(paste("Method", method_name, "not found in results_for_correlation for dataset", ds))
+        }
+         # Sanity check the set length (optional)
+         # print(paste("  ", ds, "-", method_name, "set size:", length(list_input_current_ds[[method_name]])))
+    }
+
+    # Calculate specific intersections for the current dataset
+    dataset_summary <- tryCatch({
+         calculate_specific_intersections(list_input_current_ds)
+    }, error = function(e) {
+         warning(paste("Error calculating intersections for dataset", ds, ":", e$message))
+         return(NULL) # Return NULL on error
+    })
+
+    # Store results if calculation was successful
+    if (!is.null(dataset_summary)) {
+        dataset_summary$Dataset <- ds # Add dataset identifier
+        all_intersection_data[[ds]] <- dataset_summary
+    } else {
+         warning(paste("No intersection summary generated for dataset:", ds))
+    }
+}
+
+
+# --- Combine Results and Plot ---
+if (length(all_intersection_data) > 0) {
+    combined_intersection_df <- bind_rows(all_intersection_data)
+
+    # Define logical order for plotting intersections on the x-axis
+    intersection_order <- c(
+        "Unique: Decipher", "Unique: NicheNet", "Unique: LIANA+", "Unique: NATMI", "Unique: Connectome",
+        "Shared: Decipher & LIANA+", "Shared: Connectome & NATMI",
+        "Shared: All"
+    )
+
+    # Convert Intersection_Name to factor with specified order
+    combined_intersection_df <- combined_intersection_df %>%
+        filter(!is.na(Intersection_Name)) %>% # Remove rows if name is NA
+        mutate(Intersection_Name = factor(Intersection_Name, levels = intersection_order)) %>%
+        filter(!is.na(Intersection_Name)) # Remove rows where factor conversion failed (name not in levels)
+
+    if(nrow(combined_intersection_df) == 0) {
+        stop("No valid intersection data remained after filtering.")
+    }
+
+    print("Generating overlap summary plot...")
+    # --- Plotting ---
+    plot_overlap_summary <- ggplot(combined_intersection_df, aes(x = Intersection_Name, y = Count)) +
+      # Boxplot layer: fill by intersection type, hide legend as x-axis is clear
+      geom_boxplot(aes(fill = Intersection_Name), outlier.shape = NA, show.legend = FALSE) +
+      # Jitter layer: show individual data points (datasets)
+      geom_jitter(width = 0.25, height = 0, alpha = 0.6, size = 2, shape = 16) +
+      theme_bw(base_size = 12) +
+      theme(
+          axis.text.x = element_text(angle = 45, hjust = 1, size = 10), # Angled text for readability
+          panel.grid.major.x = element_blank(), # Cleaner look
+          panel.grid.minor.y = element_blank()  # Cleaner look
+      ) +
+      labs(
+          title = "Distribution of Specific Interaction Overlaps (Top 100)",
+          subtitle = paste("Across", length(unique(combined_intersection_df$Dataset)), "datasets"),
+          x = "Type of Overlap",
+          y = "Number of L-R Pairs"
+      )
+
+    print(plot_overlap_summary)
+
+    # Save the plot
+    ggsave("figures/overlap_specific_intersections_boxplot.png", plot = plot_overlap_summary, width = 9, height = 6, dpi = 300)
+    print("Overlap plot saved to figures/overlap_specific_intersections_boxplot.png")
+
+    # Save the combined data used for the plot
+    saveRDS(combined_intersection_df, file = "figures/overlap_specific_intersections_data.rds")
+    print("Overlap data saved to figures/overlap_specific_intersections_data.rds")
+
+} else {
+    warning("No intersection data was successfully calculated for any dataset. Cannot create plot.")
+}
+
+
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+# --- Placeholder for getSet Function ---
+# Make sure this function is correctly defined based on your data structure
+getSet <- function(method_result, n) {
+  if (is.null(method_result)) return(character(0))
+  if (!is.data.frame(method_result) && !is(method_result, "DataFrame") && !is.matrix(method_result)) {
+     if(is.character(method_result)) return(head(method_result, n))
+     warning("Input to getSet not recognized. Returning empty set.")
+     return(character(0))
+  }
+   if (nrow(method_result) == 0) return(character(0))
+  interaction_col <- "interaction" # <--- ADJUST IF NEEDED
+  if (!interaction_col %in% colnames(method_result)) {
+     warning(paste("Column '", interaction_col, "' not found. Returning empty set.", sep=""))
+     return(character(0))
+  }
+  interactions <- as.character(method_result[[interaction_col]])
+  return(head(interactions, n))
+}
+
+# --- Main Calculation Loop ---
+n_top <- 100
+method_names_expected <- c("Decipher", "NicheNet", "LIANA+", "NATMI", "Connectome")
+all_intersection_data <- list()
+
+# Ensure 'results_for_correlation' list is populated
+if (!exists("results_for_correlation") || length(results_for_correlation) == 0) {
+    stop("The 'results_for_correlation' list was not found or is empty.")
+}
+
+print(paste("Processing", length(results_for_correlation), "datasets for full overlap analysis..."))
+dataset_names_to_process <- names(results_for_correlation)
+
+for (ds in dataset_names_to_process) {
+    print(paste("Calculating overlaps for:", ds))
+    dataset_results <- results_for_correlation[[ds]]
+
+    if (is.null(dataset_results) || !is.list(dataset_results) || length(dataset_results) == 0) {
+        warning(paste("Skipping dataset", ds, "- invalid entry."))
+        next
+    }
+
+    list_input_current_ds <- list()
+    available_methods_in_ds <- names(dataset_results)
+    for (method_name in method_names_expected) {
+        if (method_name %in% available_methods_in_ds) {
+             list_input_current_ds[[method_name]] <- tryCatch({
+                  getSet(dataset_results[[method_name]], n_top)
+             }, error = function(e) {
+                  warning(paste("Error in getSet for", method_name, ds, ":", e$message)); return(character(0))
+             })
+        } else {
+             list_input_current_ds[[method_name]] <- character(0)
+        }
+    }
+
+    # *** Use the new function here ***
+    dataset_summary <- tryCatch({
+         calculate_all_intersections(list_input_current_ds) # Call the new function
+    }, error = function(e) {
+         warning(paste("Error calculating all intersections for", ds, ":", e$message)); return(NULL)
+    })
+
+    if (!is.null(dataset_summary)) {
+        dataset_summary$Dataset <- ds
+        all_intersection_data[[ds]] <- dataset_summary
+    } else {
+         warning(paste("No intersection summary generated for dataset:", ds))
+    }
+}
+
+# --- Combine Results and Plot ---
+if (length(all_intersection_data) > 0) {
+    combined_intersection_df <- bind_rows(all_intersection_data)
+
+    # --- Define Logical Order for Plotting (by Degree, then Name) ---
+    # Calculate degree (number of methods in the intersection)
+    combined_intersection_df <- combined_intersection_df %>%
+      mutate(Degree = sapply(strsplit(Intersection_Name, " & "), length))
+
+    # Order the dataframe to get factor levels easily
+    ordered_df <- combined_intersection_df %>%
+      arrange(desc(Degree), Intersection_Name) # Order by Degree (high to low), then alphabetically
+
+    # Get the unique names in the desired order
+    intersection_order_all <- unique(ordered_df$Intersection_Name)
+
+    # Apply the factor levels
+    combined_intersection_df <- combined_intersection_df %>%
+        mutate(Intersection_Name = factor(Intersection_Name, levels = intersection_order_all)) %>%
+        filter(!is.na(Intersection_Name)) # Clean up just in case
+
+    if(nrow(combined_intersection_df) == 0) {
+        stop("No valid intersection data remained after ordering.")
+    }
+
+    print("Generating full overlap summary plot...")
+    # --- Plotting ---
+    plot_overlap_full_summary <- ggplot(combined_intersection_df,
+                                        # Filter out intersections with 0 counts across all datasets? Maybe not.
+                                        # filter(Count > 0), # Optional: uncomment to only plot non-empty intersections
+                                        aes(x = Intersection_Name, y = Count)) +
+      geom_boxplot(aes(fill = factor(Degree)), outlier.shape = NA, show.legend = TRUE) + # Color by degree
+      geom_jitter(width = 0.25, height = 0, alpha = 0.4, size = 1.5, shape = 16) +
+      scale_fill_viridis_d(name = "Intersection Degree") + # Color scale for degree
+      theme_bw(base_size = 11) + # Slightly smaller base size might be needed
+      theme(
+          axis.text.x = element_text(angle = 60, hjust = 1, size = 8), # Steeper angle, smaller text
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          legend.position = "bottom" # Keep legend for degree coloring
+      ) +
+      labs(
+          title = "Distribution of All Specific Interaction Overlaps (Top 100)",
+          subtitle = paste("Across", length(unique(combined_intersection_df$Dataset)), "datasets"),
+          x = "Method(s) Defining Intersection",
+          y = "Number of L-R Pairs"
+      )
+
+    print(plot_overlap_full_summary)
+
+    # Save the plot - likely needs to be wide
+    ggsave("figures/overlap_all_intersections_boxplot.png", plot = plot_overlap_full_summary, width = 16, height = 7, dpi = 300) # Increased width
+    print("Full overlap plot saved to figures/overlap_all_intersections_boxplot.png")
+
+    # Save the combined data used for the plot
+    saveRDS(combined_intersection_df, file = "figures/overlap_all_intersections_data.rds")
+    print("Full overlap data saved to figures/overlap_all_intersections_data.rds")
+
+} else {
+    warning("No intersection data was successfully calculated for any dataset. Cannot create plot.")
+}
+
+# --- Add this filtering step after calculating medians and ordering ---
+
+# (Assuming combined_intersection_df and median_counts exist from previous step)
+
+# Define the threshold for median count
+median_threshold <- 0 # Or 1, or other small number
+
+# Filter the median counts table first
+median_counts_filtered <- median_counts %>%
+  filter(median_count > median_threshold)
+
+# Get the names of intersections meeting the threshold
+intersection_order_filtered <- median_counts_filtered$Intersection_Name
+
+# Filter the main dataframe AND apply factor levels
+combined_intersection_filtered_df <- combined_intersection_df %>%
+  filter(Intersection_Name %in% intersection_order_filtered) %>%
+  mutate(Intersection_Name = factor(Intersection_Name, levels = intersection_order_filtered)) %>%
+  filter(!is.na(Intersection_Name)) # Ensure factor conversion worked
+
+# --- Plotting (using the filtered data) ---
+if(nrow(combined_intersection_filtered_df) > 0) {
+
+  print(paste("Generating filtered overlap summary plot (Median Count >", median_threshold, ")..."))
+
+  # Recalculate Degree if needed for coloring
+  combined_intersection_filtered_df <- combined_intersection_filtered_df %>%
+        mutate(Degree = sapply(strsplit(as.character(Intersection_Name), " & "), length))
+
+
+  plot_overlap_filtered_summary <- ggplot(combined_intersection_filtered_df,
+                                            aes(x = Intersection_Name, y = Count)) +
+    geom_boxplot(aes(fill = factor(Degree)), outlier.shape = NA, show.legend = TRUE) +
+    geom_jitter(width = 0.25, height = 0, alpha = 0.4, size = 1.5, shape = 16) +
+    scale_fill_viridis_d(name = "Intersection Degree", guide = guide_legend(reverse = TRUE)) +
+    theme_bw(base_size = 11) +
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 9), # Adjust angle/size as needed
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        legend.position = "bottom"
+    ) +
+    labs(
+        title = "Distribution of Major Interaction Overlaps (Top 100)",
+        subtitle = paste("Across", length(unique(combined_intersection_filtered_df$Dataset)), "datasets (Intersections with Median Count >", median_threshold, ")"),
+        x = "Method(s) Defining Intersection (Ordered High-to-Low by Median)",
+        y = "Number of L-R Pairs"
+    )
+
+  print(plot_overlap_filtered_summary)
+
+  # Save the filtered plot
+  ggsave("figures/overlap_filtered_intersections_boxplot.png", plot = plot_overlap_filtered_summary, width = 10, height = 6, dpi = 300) # Adjust size
+  print("Filtered overlap plot saved.")
+
+} else {
+   warning("No intersections met the filtering threshold. No plot generated.")
+}
+
+
+#############################################
+##### ok let's try upsetR
+# Load necessary libraries
+library(dplyr)
+library(UpSetR) # Make sure UpSetR is installed install.packages("UpSetR")
+
+# --- Load or Ensure 'combined_intersection_df' is available ---
+# This dataframe should have columns: Intersection_Name, Count, Dataset, Degree
+# It MUST contain data for all 31 intersection types before median calculation.
+
+# Option 1: If it's already in your environment from the previous step (before filtering)
+if (!exists("combined_intersection_df")) {
+  # Option 2: Load it from the RDS file created earlier
+  rds_file_unfiltered <- "figures/overlap_all_intersections_data.rds" # Make sure this is the UNFILTERED one
+  if (file.exists(rds_file_unfiltered)) {
+    print(paste("Loading unfiltered data from:", rds_file_unfiltered))
+    combined_intersection_df <- readRDS(rds_file_unfiltered)
+    # Ensure Degree column exists if it wasn't saved before
+    if (!"Degree" %in% names(combined_intersection_df)) {
+       combined_intersection_df <- combined_intersection_df %>%
+        mutate(Degree = sapply(strsplit(as.character(Intersection_Name), " & "), length))
+    }
+  } else {
+    stop("Required dataframe 'combined_intersection_df' not found. ",
+         "Please ensure it's loaded or calculated (containing all 31 intersection types).")
+  }
+} else {
+    print("Using existing 'combined_intersection_df'. Ensure it was not filtered.")
+    # Ensure Degree column exists if needed
+    if (!"Degree" %in% names(combined_intersection_df)) {
+       combined_intersection_df <- combined_intersection_df %>%
+        mutate(Degree = sapply(strsplit(as.character(Intersection_Name), " & "), length))
+    }
+}
+
+# --- 1. Calculate Median Counts for ALL intersection types ---
+print("Calculating median counts for UpSetR input...")
+median_counts_all <- combined_intersection_df %>%
+  group_by(Intersection_Name) %>%
+  summarise(median_count = median(Count, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(median_count >= 0) # Keep zeros, remove NAs
+
+# --- 2. Prepare data for UpSetR's fromExpression ---
+# UpSetR expects intersection names with single '&' separators
+# and the value associated with each name is the size (median count here).
+
+# Check we have 31 intersections - if not, UpSetR might behave unexpectedly
+# or the calculation function might need debugging
+if(nrow(median_counts_all) != 31) {
+   warning(paste("Expected 31 intersection types, but found", nrow(median_counts_all),
+                 "after calculating medians. Proceeding, but results might be incomplete.",
+                 "Ensure 'calculate_all_intersections' ran correctly for all datasets."))
+}
+
+# Create the named vector
+upset_input_vector <- median_counts_all$median_count
+# Convert names from "A & B" format to "A&B" format
+names(upset_input_vector) <- gsub(" & ", "&", median_counts_all$Intersection_Name)
+
+# --- 3. Generate the UpSet plot ---
+print("Generating UpSet plot based on median intersection sizes...")
+
+# Use png() device for saving UpSet plots
+png("figures/overlap_upset_median_plot.png", width = 10, height = 6, units = "in", res = 300)
+
+# Create the plot
+upset(
+  fromExpression(upset_input_vector),  # Use the named vector of median counts
+  nsets = 5,                           # Number of methods (original sets)
+  order.by = "freq",                   # Order intersection bars by frequency (the median counts)
+  decreasing = TRUE,                   # Show highest bars first
+  mainbar.y.label = "Median Intersection Size", # Y-axis label for the main bar plot
+  sets.x.label = "Total Interactions in Top 100", # X-axis label for the set size plot
+  point.size = 2.8,                    # Size of points in the matrix
+  line.size = 1,                       # Size of lines in the matrix
+  mb.ratio = c(0.6, 0.4),              # Ratio main bar height to matrix height
+  text.scale = c(intersection_size=1.1, # Adjust text sizes
+                 tick_labels=1.1,
+                 set_size=1.1,
+                 main_bar_text=1.1,    # Use main_bar_text for y-axis label size if needed
+                 sets_names=1.1        # Use sets_names for set name size if needed
+                ),
+  # Optional: Show only intersections with median count > 0?
+  # min_size = 1, # If you only want combinations with median >= 1
+  # Keep empty intersections = TRUE/FALSE? Default usually shows non-empty.
+  # Optional: Hide the set size plot numbers if confusing (shows N=100)
+  # show.numbers = FALSE,
+  # Optional: Color specific intersections using queries
+   queries = list(
+      list(query = intersects, params = list("Decipher"), color = "orange", active = T),
+      list(query = intersects, params = list("Decipher", "LIANA+"), color = "orange", active = T),
+      list(query = intersects, params = list("Connectome", "Decipher"), color = "orange", active = T)
+   )
+)
+
+# Close the PNG device
+dev.off()
+
+print("UpSet plot saved to figures/overlap_upset_median_plot.png")
+
+# Optional: Save the median counts data used for the plot
+# saveRDS(median_counts_all, file = "figures/overlap_median_counts_data.rds")
