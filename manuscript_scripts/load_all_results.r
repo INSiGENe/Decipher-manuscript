@@ -67,7 +67,9 @@ datasets <- list(
   "cz_human_kidney_v1.5" = "results/cz_human_kidney_v1.5",
   "cz_cf_bronchial_biopsy" = "results/cz_cf_bronchial_biopsy",
   "SevCOVID" = "results/SevCOVID",
-  "MilCOVID" = "results/MilCOVID"
+  "MilCOVID" = "results/MilCOVID",
+  "SevCOVID_Azimuthl1" = "results/SevCOVID_Azimuthl1",
+  "MilCOVID_Azimuthl1" = "results/MilCOVID_Azimuthl1"
 )
 
 #"cz_ra_pbmc" = "results/cz_ra_pbmc",

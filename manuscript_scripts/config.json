@@ -679,7 +679,7 @@
 
   "SevCOVID": {
     "dataset_description":{
-      "repository": "cellxgene",
+      "repository": "GEO",
       "download_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE155673",
       "description": "Systems biological assessment of immunity to mild versus severe COVID-19 infection in humans",
       "abbreviation": "SevCOVID",
@@ -742,7 +742,7 @@
 
   "MilCOVID": {
     "dataset_description":{
-      "repository": "cellxgene",
+      "repository": "GEO",
       "download_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE155673",
       "description": "Systems biological assessment of immunity to mild versus severe COVID-19 infection in humans",
       "abbreviation": "MilCOVID",
@@ -799,6 +799,263 @@
         "dataset_path": "results/MilCOVID",
         "sample_key": "orig.ident",
         "groupby": "mapped_cluster",
+        "condition_key": "condition"
+      }
+  },
+
+
+  "SevCOVID_Azimuthl1": {
+    "dataset_description":{
+      "repository": "GEO",
+      "download_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE155673",
+      "description": "Systems biological assessment of immunity to mild versus severe COVID-19 infection in humans",
+      "abbreviation": "SevCOVID_Azimuthl1",
+      "url": "https://www.science.org/doi/10.1126/science.abc6261"
+    },
+    "custom_pre_processing":{
+      "input_path": "data/SevMilCOVID",
+      "output_path": "results/SevCOVID_Azimuthl1/pre_processing",
+      "cluster_meta_field": "predicted.celltype.l1",
+      "condition_meta_field": "severity_group",
+      "individual_meta_field": "orig.ident",
+      "case_condition": "Severe",
+      "control_condition": "Healthy"
+    },
+    "pre_processing_for_analysis": {
+      "input_path": "data/SevCOVID_Azimuthl1/preprocessing",
+      "output_path": "results/SevCOVID_Azimuthl1",
+      "cluster_meta_field": "predicted.celltype.l1",
+      "condition_meta_field": "severity_group",
+      "individual_meta_field": "orig.ident",
+      "case_condition": "Severe",
+      "control_condition": "Healthy"
+    },
+    "cytosig": {
+      "output_path": "results/SevCOVID_Azimuthl1"
+    },
+    "cell_oracle": {
+      "data_folder": "results/SevCOVID_Azimuthl1",
+      "species": "human"
+    },
+    "Decipher_analysis": {
+      "min_cells_per_cluster_condition": 100,
+      "species": "human",
+      "dataset_path": "results/SevCOVID_Azimuthl1",
+      "condition_name": "severity_group",
+      "case_condition": "Severe",
+      "control_condition": "Healthy",
+      "k_parameter": 1,
+      "min_meta_cells_parameter": 100
+    },
+    "Connectome_analysis": {
+      "this_species":"human",
+      "case_condition":"Severe", 
+      "control_condition":"Healthy", 
+      "dataset_path":"results/SevCOVID_Azimuthl1"
+    },
+    "NicheNet_analysis": {
+      "case_condition": "Severe",
+      "control_condition": "Healthy",
+      "dataset_path": "results/SevCOVID_Azimuthl1",
+      "this_species": "human"
+    },
+    "liana_plus_analysis":{
+        "dataset_path": "results/SevCOVID_Azimuthl1",
+        "sample_key": "orig.ident",
+        "groupby": "predicted.celltype.l1",
+        "condition_key": "condition"
+      }
+  },
+
+  "MilCOVID_Azimuthl1": {
+    "dataset_description":{
+      "repository": "GEO",
+      "download_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE155673",
+      "description": "Systems biological assessment of immunity to mild versus severe COVID-19 infection in humans",
+      "abbreviation": "MilCOVID_Azimuthl1",
+      "url": "https://www.science.org/doi/10.1126/science.abc6261"
+    },
+    "custom_pre_processing":{
+      "input_path": "data/SevMilCOVID",
+      "output_path": "results/MilCOVID_Azimuthl1/pre_processing",
+      "cluster_meta_field": "predicted.celltype.l1",
+      "condition_meta_field": "severity_group",
+      "individual_meta_field": "orig.ident",
+      "case_condition": "Moderate",
+      "control_condition": "Healthy"
+    },
+    "pre_processing_for_analysis": {
+      "input_path": "data/MilCOVID_Azimuthl1/preprocessing",
+      "output_path": "results/MilCOVID_Azimuthl1",
+      "cluster_meta_field": "predicted.celltype.l1",
+      "condition_meta_field": "severity_group",
+      "individual_meta_field": "orig.ident",
+      "case_condition": "Moderate",
+      "control_condition": "Healthy"
+    },
+    "cytosig": {
+      "output_path": "results/MilCOVID_Azimuthl1"
+    },
+    "cell_oracle": {
+      "data_folder": "results/MilCOVID_Azimuthl1",
+      "species": "human"
+    },
+    "Decipher_analysis": {
+      "min_cells_per_cluster_condition": 100,
+      "species": "human",
+      "dataset_path": "results/MilCOVID_Azimuthl1",
+      "condition_name": "severity_group",
+      "case_condition": "Moderate",
+      "control_condition": "Healthy",
+      "k_parameter": 1,
+      "min_meta_cells_parameter": 100
+    },
+    "Connectome_analysis": {
+      "this_species":"human",
+      "case_condition":"Moderate", 
+      "control_condition":"Healthy", 
+      "dataset_path":"results/MilCOVID_Azimuthl1"
+    },
+    "NicheNet_analysis": {
+      "case_condition": "Moderate",
+      "control_condition": "Healthy",
+      "dataset_path": "results/MilCOVID_Azimuthl1",
+      "this_species": "human"
+    },
+    "liana_plus_analysis":{
+        "dataset_path": "results/MilCOVID_Azimuthl1",
+        "sample_key": "orig.ident",
+        "groupby": "predicted.celltype.l1",
+        "condition_key": "condition"
+      }
+  },
+  
+
+
+  "SevCOVID_Azimuthl2": {
+    "dataset_description":{
+      "repository": "GEO",
+      "download_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE155673",
+      "description": "Systems biological assessment of immunity to mild versus severe COVID-19 infection in humans",
+      "abbreviation": "SevCOVID_Azimuthl2",
+      "url": "https://www.science.org/doi/10.1126/science.abc6261"
+    },
+    "custom_pre_processing":{
+      "input_path": "data/SevMilCOVID",
+      "output_path": "results/SevCOVID_Azimuthl2/pre_processing",
+      "cluster_meta_field": "predicted.celltype.l2",
+      "condition_meta_field": "severity_group",
+      "individual_meta_field": "orig.ident",
+      "case_condition": "Severe",
+      "control_condition": "Healthy"
+    },
+    "pre_processing_for_analysis": {
+      "input_path": "data/SevCOVID_Azimuthl2/preprocessing",
+      "output_path": "results/SevCOVID_Azimuthl2",
+      "cluster_meta_field": "predicted.celltype.l2",
+      "condition_meta_field": "severity_group",
+      "individual_meta_field": "orig.ident",
+      "case_condition": "Severe",
+      "control_condition": "Healthy"
+    },
+    "cytosig": {
+      "output_path": "results/SevCOVID_Azimuthl2"
+    },
+    "cell_oracle": {
+      "data_folder": "results/SevCOVID_Azimuthl2",
+      "species": "human"
+    },
+    "Decipher_analysis": {
+      "min_cells_per_cluster_condition": 100,
+      "species": "human",
+      "dataset_path": "results/SevCOVID_Azimuthl2",
+      "condition_name": "severity_group",
+      "case_condition": "Severe",
+      "control_condition": "Healthy",
+      "k_parameter": 1,
+      "min_meta_cells_parameter": 100
+    },
+    "Connectome_analysis": {
+      "this_species":"human",
+      "case_condition":"Severe", 
+      "control_condition":"Healthy", 
+      "dataset_path":"results/SevCOVID_Azimuthl2"
+    },
+    "NicheNet_analysis": {
+      "case_condition": "Severe",
+      "control_condition": "Healthy",
+      "dataset_path": "results/SevCOVID_Azimuthl2",
+      "this_species": "human"
+    },
+    "liana_plus_analysis":{
+        "dataset_path": "results/SevCOVID_Azimuthl2",
+        "sample_key": "orig.ident",
+        "groupby": "predicted.celltype.l2",
+        "condition_key": "condition"
+      }
+  },
+
+
+  
+  "MilCOVID_Azimuthl2": {
+    "dataset_description":{
+      "repository": "GEO",
+      "download_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE155673",
+      "description": "Systems biological assessment of immunity to mild versus severe COVID-19 infection in humans",
+      "abbreviation": "MilCOVID_Azimuthl2",
+      "url": "https://www.science.org/doi/10.1126/science.abc6261"
+    },
+    "custom_pre_processing":{
+      "input_path": "data/SevMilCOVID",
+      "output_path": "results/MilCOVID_Azimuthl2/pre_processing",
+      "cluster_meta_field": "predicted.celltype.l2",
+      "condition_meta_field": "severity_group",
+      "individual_meta_field": "orig.ident",
+      "case_condition": "Moderate",
+      "control_condition": "Healthy"
+    },
+    "pre_processing_for_analysis": {
+      "input_path": "data/MilCOVID_Azimuthl2/preprocessing",
+      "output_path": "results/MilCOVID_Azimuthl2",
+      "cluster_meta_field": "predicted.celltype.l2",
+      "condition_meta_field": "severity_group",
+      "individual_meta_field": "orig.ident",
+      "case_condition": "Moderate",
+      "control_condition": "Healthy"
+    },
+    "cytosig": {
+      "output_path": "results/MilCOVID_Azimuthl2"
+    },
+    "cell_oracle": {
+      "data_folder": "results/MilCOVID_Azimuthl2",
+      "species": "human"
+    },
+    "Decipher_analysis": {
+      "min_cells_per_cluster_condition": 100,
+      "species": "human",
+      "dataset_path": "results/MilCOVID_Azimuthl2",
+      "condition_name": "severity_group",
+      "case_condition": "Moderate",
+      "control_condition": "Healthy",
+      "k_parameter": 1,
+      "min_meta_cells_parameter": 100
+    },
+    "Connectome_analysis": {
+      "this_species":"human",
+      "case_condition":"Moderate", 
+      "control_condition":"Healthy", 
+      "dataset_path":"results/MilCOVID_Azimuthl2"
+    },
+    "NicheNet_analysis": {
+      "case_condition": "Moderate",
+      "control_condition": "Healthy",
+      "dataset_path": "results/MilCOVID_Azimuthl2",
+      "this_species": "human"
+    },
+    "liana_plus_analysis":{
+        "dataset_path": "results/MilCOVID_Azimuthl2",
+        "sample_key": "orig.ident",
+        "groupby": "predicted.celltype.l2",
         "condition_key": "condition"
       }
   }

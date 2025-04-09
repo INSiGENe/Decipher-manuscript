@@ -155,8 +155,16 @@ docker run -it --rm \
 Rscript scripts/custom_pre_processing_SevMilCovid.r SevCOVID
 Rscript scripts/custom_pre_processing_SevMilCovid.r MilCOVID
 
+Rscript scripts/custom_pre_processing_SevMilCovid_Azimuth.r SevCOVID_Azimuthl1
+Rscript scripts/custom_pre_processing_SevMilCovid_Azimuth.r MilCOVID_Azimuthl1
+
+Rscript scripts/custom_pre_processing_SevMilCovid_Azimuth.r SevCOVID_Azimuthl2
+Rscript scripts/custom_pre_processing_SevMilCovid_Azimuth.r MilCOVID_Azimuthl2
+
+
 #then run
 Rscript scripts/preprocess_object_for_analysis.R dataset_key
+
 
 #################################
 ####### Move results to analysis folder ############
@@ -164,7 +172,7 @@ Rscript scripts/preprocess_object_for_analysis.R dataset_key
 sudo mv pre_processing_test/results/dataset_key Manuscript_jan_2025/results/
 
 #example
-sudo mv pre_processing_test/results/MilCOVID Manuscript_jan_2025/results/
+sudo mv pre_processing_test/results/MilCOVID_Azimuthl2 Manuscript_jan_2025/results/
 
 #################################
 ####### Run cytosig analysis ############
@@ -174,7 +182,7 @@ docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intel
 bash scripts/cytosig_run.sh dataset_key
 
 #example
-bash scripts/cytosig_run.sh SevCOVID
+bash scripts/cytosig_run.sh MilCOVID_Azimuthl2
 
 #################################
 ####### Run CellOracle analysis ############
@@ -183,8 +191,8 @@ docker run -it -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproduc
 taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py dataset_key
 
 #example
-taskset -c 0-1 python3 scripts/cell_oracle_apr_2025.py SevCOVID
-taskset -c 2-3 python3 scripts/cell_oracle_apr_2025.py MilCOVID
+taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py SevCOVID_Azimuthl2
+taskset -c 4-7 python3 scripts/cell_oracle_apr_2025.py MilCOVID_Azimuthl2
 
 
 #################################
@@ -194,32 +202,32 @@ docker run -it -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5 bas
 Rscript scripts/decipher_pipeline_v1_modularized.R dataset_key
 
 #example
-Rscript scripts/decipher_pipeline_v1_modularized.R cz_dev_gut_crohns
+Rscript scripts/decipher_pipeline_v1_modularized.R MilCOVID_Azimuthl1
 
 
 #################################
 ####### Connectome ############
 #################################
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/connectome:latest bash
-Rscript scripts/connectome_analysis.R MilCOVID
+Rscript scripts/connectome_analysis.R MilCOVID_Azimuthl2
 
 #################################
 ####### NicheNet ############
 #################################
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest bash
-Rscript scripts/nichenet_analysis.R MilCOVID
+Rscript scripts/nichenet_analysis.R MilCOVID_Azimuthl1
 
 #################################
 ####### NATMI ############
 #################################
 docker run -it -v "$(pwd):/workspace" -w /workspace asrhou/natmi  
-bash scripts/natmi_analysis.sh SevCOVID
+bash scripts/natmi_analysis.sh MilCOVID_Azimuthl1
 
 #################################
 ############# LIANA+ ############
 #################################
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus bash
-python3 scripts/liana_plus_analysis.py SevCOVID
+python3 scripts/liana_plus_analysis.py SevCOVID_Azimuthl1
 
 
 

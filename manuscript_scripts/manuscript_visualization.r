@@ -1443,7 +1443,7 @@ output_folder_name <- "figures"
 
 # Define the specific cell types (receiver cells) you want to analyze
 # Example using B cell types from file 1:
-selected_receiver_cells <- c("CDC1","NK","EOS","B","CDC2","CD4","NC_MONO")
+selected_receiver_cells <- c( "B", "CD4_T", "CD8_T",    "DC",  "Mono",    "NK", "other" )
 # Example using CD8 T cell types from file 3:
 # selected_receiver_cells <- c("Naive_CD8", "CM_CD8", "EM_CD8", "Activ_CTL", "CTL_CD8", "GZMK_CD8", "ISG_CTL_CD8")
 # Example using NK cell types from file 1:
@@ -1458,8 +1458,8 @@ clusters_per_group_in_output <- 2 # Adjust as needed (e.g., 1, 2, 3)
 # Define condition names and the subfolders where their data resides
 # The names ('younger', 'older') will be used throughout the script
 conditions <- c(
-  younger = "MilCOVID", # Folder name for younger data
-  older = "SevCOVID"    # Folder name for older data
+  younger = "MilCOVID_Azimuthl1", # Folder name for younger data
+  older = "SevCOVID_Azimuthl1"    # Folder name for older data
 )
 
 # -----------------------------------------------------------------------------
@@ -1651,84 +1651,84 @@ generate_sorted_plots <- function(selected_receiver_cells, regulon_deltas_list, 
 
     # Create plot sorted by 'younger'
 
-        # Determine top N TFs based on 'younger' condition
-        heatmap_data_filtered_younger <- heatmap_data_full %>%
-          filter(Comparison == "younger" & !is.na(DeltaPagoda)) %>%
-          arrange(desc(abs(DeltaPagoda))) %>% # Sort by absolute value first to get strongest effects
-          #arrange(desc(DeltaPagoda)) %>% # Alternative: Sort by signed value
-          slice_head(n = top_n) %>% # Take top N based on chosen sort
-          arrange(DeltaPagoda) # Arrange for y-axis order (ascending is common)
+      # Determine top N TFs based on 'younger' condition
+      heatmap_data_filtered_younger <- heatmap_data_full %>%
+        filter(Comparison == "younger" & !is.na(DeltaPagoda)) %>%
+        arrange(desc(abs(DeltaPagoda))) %>% # Sort by absolute value first to get strongest effects
+        #arrange(desc(DeltaPagoda)) %>% # Alternative: Sort by signed value
+        slice_head(n = top_n) %>% # Take top N based on chosen sort
+        arrange(DeltaPagoda) # Arrange for y-axis order (ascending is common)
 
-        # Get the ordered list of TFs
-        ordered_tfs_younger <- heatmap_data_filtered_younger$TF
+      # Get the ordered list of TFs
+      ordered_tfs_younger <- heatmap_data_filtered_younger$TF
 
-        if(length(ordered_tfs_younger) > 0) {
-            # Filter the full data to include only these TFs
-            plot_data_younger_sorted <- heatmap_data_full %>%
-              filter(TF %in% ordered_tfs_younger) %>%
-              mutate(
-                TF = factor(TF, levels = ordered_tfs_younger), # Set factor levels for y-axis order
-                Comparison = factor(Comparison, levels = condition_names) # Ensure consistent x-axis order
-              )
+      if(length(ordered_tfs_younger) > 0) {
+          # Filter the full data to include only these TFs
+          plot_data_younger_sorted <- heatmap_data_full %>%
+            filter(TF %in% ordered_tfs_younger) %>%
+            mutate(
+              TF = factor(TF, levels = ordered_tfs_younger), # Set factor levels for y-axis order
+              Comparison = factor(Comparison, levels = condition_names) # Ensure consistent x-axis order
+            )
 
-            # Generate the ggplot object
-            plots[[selected_ct]][["younger_sorted"]] <- ggplot(plot_data_younger_sorted, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
-              geom_tile(color = "white", linewidth = 0.5) + # Added line thickness
-              scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, na.value = "grey80", name = "TF Activity\nDelta", limits = c(-absolute_max, absolute_max)) +
-              theme_minimal(base_size = 14) + # Increased base size
-              theme(
-                axis.text.x = element_text(size = rel(1.1)), # Relative sizing
-                axis.text.y = element_text(size = rel(0.9)),
-                axis.title = element_blank(),
-                panel.grid = element_blank(),
-                legend.position = "bottom",
-                plot.title = element_text(size = rel(1.2), face = "bold", hjust = 0.5) # Centered title
-              ) +
-              ggtitle(paste("Top", top_n, "Regulons (Sorted by Younger)"))
-        } else {
-            warning("No regulons passed filtering for 'younger_sorted' plot in ", selected_ct)
-            plots[[selected_ct]][["younger_sorted"]] <- NULL # Indicate missing plot
-        }
-    }
+          # Generate the ggplot object
+          plots[[selected_ct]][["younger_sorted"]] <- ggplot(plot_data_younger_sorted, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
+            geom_tile(color = "white", linewidth = 0.5) + # Added line thickness
+            scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, na.value = "grey80", name = "TF Activity\nDelta", limits = c(-absolute_max, absolute_max)) +
+            theme_minimal(base_size = 14) + # Increased base size
+            theme(
+              axis.text.x = element_text(size = rel(1.1)), # Relative sizing
+              axis.text.y = element_text(size = rel(0.9)),
+              axis.title = element_blank(),
+              panel.grid = element_blank(),
+              legend.position = "bottom",
+              plot.title = element_text(size = rel(1.2), face = "bold", hjust = 0.5) # Centered title
+            ) +
+            ggtitle(paste("Top", top_n, "Regulons (Sorted by Younger)"))
+      } else {
+          warning("No regulons passed filtering for 'younger_sorted' plot in ", selected_ct)
+          plots[[selected_ct]][["younger_sorted"]] <- NULL # Indicate missing plot
+      }
+  }
 
-    # Create plot sorted by 'older'
-        # Determine top N TFs based on 'older' condition
-        heatmap_data_filtered_older <- heatmap_data_full %>%
-          filter(Comparison == "older" & !is.na(DeltaPagoda)) %>%
-          arrange(desc(abs(DeltaPagoda))) %>% # Sort by absolute value
-          #arrange(desc(DeltaPagoda)) %>% # Alternative: sort by signed value
-          slice_head(n = top_n) %>%
-          arrange(DeltaPagoda) # Arrange for y-axis
+  # Create plot sorted by 'older'
+  # Determine top N TFs based on 'older' condition
+  heatmap_data_filtered_older <- heatmap_data_full %>%
+    filter(Comparison == "older" & !is.na(DeltaPagoda)) %>%
+    arrange(desc(abs(DeltaPagoda))) %>% # Sort by absolute value
+    #arrange(desc(DeltaPagoda)) %>% # Alternative: sort by signed value
+    slice_head(n = top_n) %>%
+    arrange(DeltaPagoda) # Arrange for y-axis
 
-        ordered_tfs_older <- heatmap_data_filtered_older$TF
+  ordered_tfs_older <- heatmap_data_filtered_older$TF
 
-        if(length(ordered_tfs_older) > 0) {
-            # Filter the full data to include only these TFs
-            plot_data_older_sorted <- heatmap_data_full %>%
-              filter(TF %in% ordered_tfs_older) %>%
-              mutate(
-                TF = factor(TF, levels = ordered_tfs_older),
-                Comparison = factor(Comparison, levels = condition_names)
-              )
+  if(length(ordered_tfs_older) > 0) {
+      # Filter the full data to include only these TFs
+      plot_data_older_sorted <- heatmap_data_full %>%
+        filter(TF %in% ordered_tfs_older) %>%
+        mutate(
+          TF = factor(TF, levels = ordered_tfs_older),
+          Comparison = factor(Comparison, levels = condition_names)
+        )
 
-            plots[[selected_ct]][["older_sorted"]] <- ggplot(plot_data_older_sorted, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
-              geom_tile(color = "white", linewidth = 0.5) +
-              scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, na.value = "grey80", name = "TF Activity\nDelta", limits = c(-absolute_max, absolute_max)) +
-              theme_minimal(base_size = 14) +
-              theme(
-                axis.text.x = element_text(size = rel(1.1)),
-                axis.text.y = element_text(size = rel(0.9)),
-                axis.title = element_blank(),
-                panel.grid = element_blank(),
-                legend.position = "bottom",
-                plot.title = element_text(size = rel(1.2), face = "bold", hjust = 0.5)
-              ) +
-              ggtitle(paste("Top", top_n, "Regulons (Sorted by Older)"))
-        } else {
-            warning("No regulons passed filtering for 'older_sorted' plot in ", selected_ct)
-            plots[[selected_ct]][["older_sorted"]] <- NULL
-        }
-        return(plots)
+      plots[[selected_ct]][["older_sorted"]] <- ggplot(plot_data_older_sorted, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
+        geom_tile(color = "white", linewidth = 0.5) +
+        scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, na.value = "grey80", name = "TF Activity\nDelta", limits = c(-absolute_max, absolute_max)) +
+        theme_minimal(base_size = 14) +
+        theme(
+          axis.text.x = element_text(size = rel(1.1)),
+          axis.text.y = element_text(size = rel(0.9)),
+          axis.title = element_blank(),
+          panel.grid = element_blank(),
+          legend.position = "bottom",
+          plot.title = element_text(size = rel(1.2), face = "bold", hjust = 0.5)
+        ) +
+        ggtitle(paste("Top", top_n, "Regulons (Sorted by Older)"))
+  } else {
+      warning("No regulons passed filtering for 'older_sorted' plot in ", selected_ct)
+      plots[[selected_ct]][["older_sorted"]] <- NULL
+  }
+  return(plots)
 }
 
 # Execute plot generation
