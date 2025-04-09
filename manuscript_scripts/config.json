@@ -164,7 +164,8 @@
       "repository": "cellxgene",
       "download_url": "https://datasets.cellxgene.cziscience.com/f5b6d620-76df-45c5-9524-e5631be0e44a.h5ad",
       "description": "Single-cell RNA-seq of the Adult Human Kidney (Version 1.5)",
-      "abbreviation": "cz_human_kidney_v1.5"
+      "abbreviation": "cz_human_kidney_v1.5",
+      "url": "https://cellxgene.cziscience.com/collections/0f528c8a-a25c-4840-8fa3-d156fa11086f"
     },
     "pre_processing":{
       "input_path": "data/cz_human_kidney_v1.5",
@@ -289,7 +290,8 @@
       "repository": "cellxgene",
       "download_url": "https://datasets.cellxgene.cziscience.com/5f4efede-b295-4be4-aded-eb8b9a946382.h5ad",
       "description": "Immunophenotyping of COVID-19 and influenza highlights the role of type I interferons in development of severe COVID-19",
-      "abbreviation": "cz_influenza"
+      "abbreviation": "cz_influenza",
+      "url": "https://cellxgene.cziscience.com/collections/4f889ffc-d4bc-4748-905b-8eb9db47a2ed"
     },
     "pre_processing":{
       "input_path": "data/cz_influenza",
@@ -678,10 +680,10 @@
   "SevCOVID": {
     "dataset_description":{
       "repository": "cellxgene",
-      "download_url": "https://datasets.cellxgene.cziscience.com/a6657cae-5daa-45cd-b1b4-cf08a07d3a7e.h5ad",
-      "description": "Cystic Fibrosis and healthy control biopsy",
-      "abbreviation": "cz_cf_bronchial_biopsy",
-      "url": "https://cellxgene.cziscience.com/collections/54004c5c-af08-4693-a606-73871b6ef989"
+      "download_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE155673",
+      "description": "Systems biological assessment of immunity to mild versus severe COVID-19 infection in humans",
+      "abbreviation": "SevCOVID",
+      "url": "https://www.science.org/doi/10.1126/science.abc6261"
     },
     "custom_pre_processing":{
       "input_path": "data/SevMilCOVID",
@@ -715,7 +717,7 @@
       "condition_name": "severity_group",
       "case_condition": "Severe",
       "control_condition": "Healthy",
-      "k_parameter": 1,
+      "k_parameter": 0,
       "min_meta_cells_parameter": 100
     },
     "Connectome_analysis": {
@@ -741,10 +743,10 @@
   "MilCOVID": {
     "dataset_description":{
       "repository": "cellxgene",
-      "download_url": "https://datasets.cellxgene.cziscience.com/a6657cae-5daa-45cd-b1b4-cf08a07d3a7e.h5ad",
-      "description": "Cystic Fibrosis and healthy control biopsy",
-      "abbreviation": "cz_cf_bronchial_biopsy",
-      "url": "https://cellxgene.cziscience.com/collections/54004c5c-af08-4693-a606-73871b6ef989"
+      "download_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE155673",
+      "description": "Systems biological assessment of immunity to mild versus severe COVID-19 infection in humans",
+      "abbreviation": "MilCOVID",
+      "url": "https://www.science.org/doi/10.1126/science.abc6261"
     },
     "custom_pre_processing":{
       "input_path": "data/SevMilCOVID",
@@ -778,7 +780,7 @@
       "condition_name": "severity_group",
       "case_condition": "Moderate",
       "control_condition": "Healthy",
-      "k_parameter": 1,
+      "k_parameter": 0,
       "min_meta_cells_parameter": 100
     },
     "Connectome_analysis": {

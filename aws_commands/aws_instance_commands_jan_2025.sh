@@ -123,6 +123,9 @@ for d in cov*/; do
   gunzip "${d}"*.gz
 done
 
+# now do azimuth
+docker run -it --rm -v "$(pwd):/workspace" -w /workspace satijalab/azimuth:0.5.0 bash
+
 
 #################################
 ####### Convert anndata objects to R-based objects (Seurat) ############
