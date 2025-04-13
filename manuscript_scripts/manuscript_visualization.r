@@ -1435,15 +1435,15 @@ library(patchwork)
 
 # Base path where condition-specific result folders are located
 # Adjust this path to your actual directory structure
-base_comparison_path <- "results"
-
+base_comparison_path <- "Manuscript_jan_2025"
+results_path <- file.path(base_comparison_path, "results")
 # Subfolder name within the base path for saving results
 # This will contain the final grouped PNG images
 output_folder_name <- "figures" 
 
 # Define the specific cell types (receiver cells) you want to analyze
 # Example using B cell types from file 1:
-selected_receiver_cells <- c( "B", "CD4_T", "CD8_T",    "DC",  "Mono",    "NK", "other" )
+selected_receiver_cells <- c( "Eryth", "CD16_Mono", "HSPC",    "CD4_TCM",  "Plasmablast",    "B_intermediate", "B_naive","CD8_Naive","NK","CD8_TEM","pDC","cDC2","Platelet","CD14_Mono","CD4_CTL" )
 # Example using CD8 T cell types from file 3:
 # selected_receiver_cells <- c("Naive_CD8", "CM_CD8", "EM_CD8", "Activ_CTL", "CTL_CD8", "GZMK_CD8", "ISG_CTL_CD8")
 # Example using NK cell types from file 1:
@@ -1453,13 +1453,13 @@ selected_receiver_cells <- c( "B", "CD4_T", "CD8_T",    "DC",  "Mono",    "NK", 
 top_n_regulons <- 20
 
 # Number of cell types to combine per output PNG file
-clusters_per_group_in_output <- 2 # Adjust as needed (e.g., 1, 2, 3)
+clusters_per_group_in_output <- 1 # Adjust as needed (e.g., 1, 2, 3)
 
 # Define condition names and the subfolders where their data resides
-# The names ('younger', 'older') will be used throughout the script
+# The names ('moderate', 'severe') will be used throughout the script
 conditions <- c(
-  younger = "MilCOVID_Azimuthl1", # Folder name for younger data
-  older = "SevCOVID_Azimuthl1"    # Folder name for older data
+  moderate =  "MilCOVID_Azimuthl2", # Folder name for moderate data
+  severe   =  "SevCOVID_Azimuthl2"    # Folder name for severe data
 )
 
 # -----------------------------------------------------------------------------
@@ -1553,12 +1553,12 @@ find_absolute_max <- function(deltas_list_of_lists) {
 # Dynamically load data based on conditions defined above
 regulon_deltas_list <- lapply(names(conditions), function(cond_name) {
   folder_name <- conditions[[cond_name]]
-  file_path <- file.path(base_comparison_path, folder_name, "data/regulon_deltas_by_cluster.rds")
+  file_path <- file.path(results_path, folder_name, "data/regulon_deltas_by_cluster.rds")
   cat("Loading data for:", cond_name, "from:", file_path, "\n")
   load_regulon_data(file_path, selected_receiver_cells)
 })
 
-# Set names of the main list (e.g., regulon_deltas_list$younger, regulon_deltas_list$older)
+# Set names of the main list (e.g., regulon_deltas_list$moderate, regulon_deltas_list$severe)
 names(regulon_deltas_list) <- names(conditions)
 
 # Refine selected_receiver_cells to only those present in the loaded data (at least in the first condition)
@@ -1632,7 +1632,7 @@ generate_heatmap_data_for_celltype <- function(selected_ct, regulon_deltas_list,
 }
 
 
-# Generate plots (two per cell type: one sorted by younger, one by older)
+# Generate plots (two per cell type: one sorted by moderate, one by severe)
 generate_sorted_plots <- function(selected_receiver_cells, regulon_deltas_list, conditions, top_n, absolute_max) {
   plots <- list()
   condition_names <- names(conditions)
@@ -1649,30 +1649,30 @@ generate_sorted_plots <- function(selected_receiver_cells, regulon_deltas_list, 
 
     plots[[selected_ct]] <- list()
 
-    # Create plot sorted by 'younger'
+    # Create plot sorted by 'moderate'
 
-      # Determine top N TFs based on 'younger' condition
-      heatmap_data_filtered_younger <- heatmap_data_full %>%
-        filter(Comparison == "younger" & !is.na(DeltaPagoda)) %>%
+      # Determine top N TFs based on 'moderate' condition
+      heatmap_data_filtered_moderate <- heatmap_data_full %>%
+        filter(Comparison == "Moderate" & !is.na(DeltaPagoda)) %>%
         arrange(desc(abs(DeltaPagoda))) %>% # Sort by absolute value first to get strongest effects
         #arrange(desc(DeltaPagoda)) %>% # Alternative: Sort by signed value
         slice_head(n = top_n) %>% # Take top N based on chosen sort
         arrange(DeltaPagoda) # Arrange for y-axis order (ascending is common)
 
       # Get the ordered list of TFs
-      ordered_tfs_younger <- heatmap_data_filtered_younger$TF
+      ordered_tfs_moderate <- heatmap_data_filtered_moderate$TF
 
-      if(length(ordered_tfs_younger) > 0) {
+      if(length(ordered_tfs_moderate) > 0) {
           # Filter the full data to include only these TFs
-          plot_data_younger_sorted <- heatmap_data_full %>%
-            filter(TF %in% ordered_tfs_younger) %>%
+          plot_data_moderate_sorted <- heatmap_data_full %>%
+            filter(TF %in% ordered_tfs_moderate) %>%
             mutate(
-              TF = factor(TF, levels = ordered_tfs_younger), # Set factor levels for y-axis order
+              TF = factor(TF, levels = ordered_tfs_moderate), # Set factor levels for y-axis order
               Comparison = factor(Comparison, levels = condition_names) # Ensure consistent x-axis order
             )
 
           # Generate the ggplot object
-          plots[[selected_ct]][["younger_sorted"]] <- ggplot(plot_data_younger_sorted, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
+          plots[[selected_ct]][["moderate_sorted"]] <- ggplot(plot_data_moderate_sorted, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
             geom_tile(color = "white", linewidth = 0.5) + # Added line thickness
             scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, na.value = "grey80", name = "TF Activity\nDelta", limits = c(-absolute_max, absolute_max)) +
             theme_minimal(base_size = 14) + # Increased base size
@@ -1684,34 +1684,34 @@ generate_sorted_plots <- function(selected_receiver_cells, regulon_deltas_list, 
               legend.position = "bottom",
               plot.title = element_text(size = rel(1.2), face = "bold", hjust = 0.5) # Centered title
             ) +
-            ggtitle(paste("Top", top_n, "Regulons (Sorted by Younger)"))
+            ggtitle(paste("Top", top_n, "Regulons (Sorted by moderate)"))
       } else {
-          warning("No regulons passed filtering for 'younger_sorted' plot in ", selected_ct)
-          plots[[selected_ct]][["younger_sorted"]] <- NULL # Indicate missing plot
+          warning("No regulons passed filtering for 'moderate_sorted' plot in ", selected_ct)
+          plots[[selected_ct]][["moderate_sorted"]] <- NULL # Indicate missing plot
       }
   }
 
-  # Create plot sorted by 'older'
-  # Determine top N TFs based on 'older' condition
-  heatmap_data_filtered_older <- heatmap_data_full %>%
-    filter(Comparison == "older" & !is.na(DeltaPagoda)) %>%
+  # Create plot sorted by 'severe'
+  # Determine top N TFs based on 'severe' condition
+  heatmap_data_filtered_severe <- heatmap_data_full %>%
+    filter(Comparison == "Severe" & !is.na(DeltaPagoda)) %>%
     arrange(desc(abs(DeltaPagoda))) %>% # Sort by absolute value
     #arrange(desc(DeltaPagoda)) %>% # Alternative: sort by signed value
     slice_head(n = top_n) %>%
     arrange(DeltaPagoda) # Arrange for y-axis
 
-  ordered_tfs_older <- heatmap_data_filtered_older$TF
+  ordered_tfs_severe <- heatmap_data_filtered_severe$TF
 
-  if(length(ordered_tfs_older) > 0) {
+  if(length(ordered_tfs_severe) > 0) {
       # Filter the full data to include only these TFs
-      plot_data_older_sorted <- heatmap_data_full %>%
-        filter(TF %in% ordered_tfs_older) %>%
+      plot_data_severe_sorted <- heatmap_data_full %>%
+        filter(TF %in% ordered_tfs_severe) %>%
         mutate(
-          TF = factor(TF, levels = ordered_tfs_older),
+          TF = factor(TF, levels = ordered_tfs_severe),
           Comparison = factor(Comparison, levels = condition_names)
         )
 
-      plots[[selected_ct]][["older_sorted"]] <- ggplot(plot_data_older_sorted, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
+      plots[[selected_ct]][["severe_sorted"]] <- ggplot(plot_data_severe_sorted, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
         geom_tile(color = "white", linewidth = 0.5) +
         scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, na.value = "grey80", name = "TF Activity\nDelta", limits = c(-absolute_max, absolute_max)) +
         theme_minimal(base_size = 14) +
@@ -1723,13 +1723,96 @@ generate_sorted_plots <- function(selected_receiver_cells, regulon_deltas_list, 
           legend.position = "bottom",
           plot.title = element_text(size = rel(1.2), face = "bold", hjust = 0.5)
         ) +
-        ggtitle(paste("Top", top_n, "Regulons (Sorted by Older)"))
+        ggtitle(paste("Top", top_n, "Regulons (Sorted by severe)"))
   } else {
-      warning("No regulons passed filtering for 'older_sorted' plot in ", selected_ct)
-      plots[[selected_ct]][["older_sorted"]] <- NULL
+      warning("No regulons passed filtering for 'severe_sorted' plot in ", selected_ct)
+      plots[[selected_ct]][["severe_sorted"]] <- NULL
   }
   return(plots)
 }
+
+
+#re-factored code
+# Helper function: Get top TFs for a given condition
+get_top_tfs <- function(data, condition, top_n) {
+  data %>%
+    filter(Comparison == condition, !is.na(DeltaPagoda)) %>%
+    arrange(desc(abs(DeltaPagoda))) %>%
+    slice_head(n = top_n) %>%
+    arrange(DeltaPagoda) %>%
+    pull(TF)
+}
+
+# Helper function: Generate ggplot for given TFs
+generate_heatmap_plot <- function(data, tfs, condition_names, absolute_max, condition_label, top_n) {
+  if (length(tfs) == 0) return(NULL)
+
+  plot_data <- data %>%
+    filter(TF %in% tfs) %>%
+    mutate(
+      TF = factor(TF, levels = tfs),
+      Comparison = factor(Comparison, levels = condition_names)
+    )
+
+  ggplot(plot_data, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
+    geom_tile(color = "white", linewidth = 0.5) +
+    scale_fill_gradient2(
+      low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0,
+      na.value = "grey80", name = "TF Activity\nDelta",
+      limits = c(-absolute_max, absolute_max)
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      axis.text.x = element_text(size = rel(1.1)),
+      axis.text.y = element_text(size = rel(0.9)),
+      axis.title = element_blank(),
+      panel.grid = element_blank(),
+      legend.position = "bottom",
+      plot.title = element_text(size = rel(1.2), face = "bold", hjust = 0.5)
+    ) +
+    ggtitle(paste("Top", top_n, "Regulons (Sorted by", condition_label, ")"))
+}
+
+# Main function
+generate_sorted_plots <- function(selected_receiver_cells, regulon_deltas_list, conditions, top_n, absolute_max) {
+  plots <- list()
+  condition_names <- names(conditions)
+
+  for (selected_ct in selected_receiver_cells) {
+    cat("Generating plots for cell type:", selected_ct, "\n")
+    heatmap_data_full <- generate_heatmap_data_for_celltype(selected_ct, regulon_deltas_list, conditions)
+
+    if (nrow(heatmap_data_full) == 0) {
+      warning("Skipping plots for ", selected_ct, " due to lack of data.")
+      next
+    }
+
+    plots[[selected_ct]] <- list()
+
+    for (cond in c("moderate", "severe")) {
+      top_tfs <- get_top_tfs(heatmap_data_full, cond, top_n)
+
+      plot <- generate_heatmap_plot(
+        data = heatmap_data_full,
+        tfs = top_tfs,
+        condition_names = condition_names,
+        absolute_max = absolute_max,
+        condition_label = cond,
+        top_n = top_n
+      )
+
+      if (is.null(plot)) {
+        warning("No regulons passed filtering for '", cond, "_sorted' plot in ", selected_ct)
+      }
+
+      plots[[selected_ct]][[paste0(cond, "_sorted")]] <- plot
+    }
+  }
+
+  return(plots)
+}
+
+
 
 # Execute plot generation
 generated_plots <- generate_sorted_plots(selected_receiver_cells, regulon_deltas_list, conditions, top_n_regulons, absolute_max)
@@ -1743,20 +1826,20 @@ create_combined_plots_per_celltype <- function(plots, selected_receiver_cells) {
   combined_plots <- list()
   for (selected_ct in selected_receiver_cells) {
     # Check if both plots exist for this cell type
-    plot_younger <- plots[[selected_ct]][["younger_sorted"]]
-    plot_older <- plots[[selected_ct]][["older_sorted"]]
+    plot_moderate <- plots[[selected_ct]][["moderate_sorted"]]
+    plotsevere <- plots[[selected_ct]][["severe_sorted"]]
 
     # Create placeholder plots if one or both are missing
     placeholder_plot <- ggplot() + theme_void() + ggtitle("Data Not Available") + theme(plot.title = element_text(hjust = 0.5))
-    if (is.null(plot_younger)) plot_younger <- placeholder_plot
-    if (is.null(plot_older)) plot_older <- placeholder_plot
+    if (is.null(plot_moderate)) plot_moderate <- placeholder_plot
+    if (is.null(plotsevere)) plotsevere <- placeholder_plot
 
     # Create title plot
     title <- ggplot() + theme_void() + ggtitle(selected_ct) +
       theme(plot.title = element_text(hjust = 0.5, size = 20, face = "bold"))
 
     # Combine the two heatmaps side-by-side
-    heatmaps <- wrap_plots(plot_younger, plot_older, ncol = 2)
+    heatmaps <- wrap_plots(plot_moderate, plotsevere, ncol = 2)
 
     # Stack title above heatmaps
     combined_plots[[selected_ct]] <- wrap_plots(title, heatmaps, ncol = 1, heights = c(0.1, 1)) # Adjust height ratio for title
@@ -1769,7 +1852,7 @@ celltype_combined_plots <- create_combined_plots_per_celltype(generated_plots, s
 # Function to save combined plots in groups
 save_grouped_plots <- function(combined_plots, clusters_per_group, output_dir_base, output_folder_name) {
   # Construct the full output path
-  output_dir <- file.path(output_dir_base, "results", output_folder_name) # Match structure from file 1
+  output_dir <- file.path(output_dir_base, output_folder_name) # Match structure from file 1
   if (!dir.exists(output_dir)) {
       dir.create(output_dir, recursive = TRUE)
       cat("Created output directory:", output_dir, "\n")
@@ -1836,9 +1919,11 @@ save_grouped_plots(
     output_folder_name = output_folder_name
 )
 
-cat("Script finished. Plots saved in:", file.path(base_comparison_path, "results", output_folder_name), "\n")
+cat("Script finished. Plots saved in:", file.path(base_comparison_path, , output_folder_name), "\n")
 
-
+# now DecipherPlots
+plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=10,dataset_name="SevCOVID_Azimuthl2",direction = "pos",selected_receiver_cells = c("CD16_Mono"),split_by_direction = TRUE)
+plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=10,dataset_name="MilCOVID_Azimuthl2",direction = "pos",selected_receiver_cells = c("CD16_Mono"),split_by_direction=TRUE)
 
 
 

@@ -69,7 +69,9 @@ datasets <- list(
   "SevCOVID" = "results/SevCOVID",
   "MilCOVID" = "results/MilCOVID",
   "SevCOVID_Azimuthl1" = "results/SevCOVID_Azimuthl1",
-  "MilCOVID_Azimuthl1" = "results/MilCOVID_Azimuthl1"
+  "MilCOVID_Azimuthl1" = "results/MilCOVID_Azimuthl1",
+  "SevCOVID_Azimuthl2" = "results/SevCOVID_Azimuthl2",
+  "MilCOVID_Azimuthl2" = "results/MilCOVID_Azimuthl2"
 )
 
 #"cz_ra_pbmc" = "results/cz_ra_pbmc",

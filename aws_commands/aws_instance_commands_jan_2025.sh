@@ -166,6 +166,22 @@ Rscript scripts/custom_pre_processing_SevMilCovid_Azimuth.r MilCOVID_Azimuthl2
 Rscript scripts/preprocess_object_for_analysis.R dataset_key
 
 
+
+#################################
+# Run scCODA analysis ###########
+#################################
+docker run -it \
+  -v "$(pwd):/workspace" \
+  -w /workspace \
+  wollmilchsau/scanpy_sccoda:latest
+python3
+
+sudo mkdir -p Manuscript_jan_2025/results/SevCOVID_Azimuthl2/sccoda
+sudo mkdir -p Manuscript_jan_2025/results/MilCOVID_Azimuthl2/sccoda
+sudo mv pre_processing_test/data/SevMilCOVID/results_sccoda_severe_vs_healthy.csv Manuscript_jan_2025/results/SevCOVID_Azimuthl2/sccoda
+sudo mv pre_processing_test/data/SevMilCOVID/results_sccoda_moderate_vs_healthy.csv Manuscript_jan_2025/results/MilCOVID_Azimuthl2/sccoda
+
+
 #################################
 ####### Move results to analysis folder ############
 #################################
@@ -202,7 +218,7 @@ docker run -it -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5 bas
 Rscript scripts/decipher_pipeline_v1_modularized.R dataset_key
 
 #example
-Rscript scripts/decipher_pipeline_v1_modularized.R MilCOVID_Azimuthl1
+Rscript scripts/decipher_pipeline_v1_modularized.R MilCOVID_Azimuthl2
 
 
 #################################
@@ -215,19 +231,19 @@ Rscript scripts/connectome_analysis.R MilCOVID_Azimuthl2
 ####### NicheNet ############
 #################################
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest bash
-Rscript scripts/nichenet_analysis.R MilCOVID_Azimuthl1
+Rscript scripts/nichenet_analysis.R SevCOVID_Azimuthl2
 
 #################################
 ####### NATMI ############
 #################################
 docker run -it -v "$(pwd):/workspace" -w /workspace asrhou/natmi  
-bash scripts/natmi_analysis.sh MilCOVID_Azimuthl1
+bash scripts/natmi_analysis.sh MilCOVID_Azimuthl2
 
 #################################
 ############# LIANA+ ############
 #################################
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus bash
-python3 scripts/liana_plus_analysis.py SevCOVID_Azimuthl1
+python3 scripts/liana_plus_analysis.py MilCOVID_Azimuthl2
 
 
 
