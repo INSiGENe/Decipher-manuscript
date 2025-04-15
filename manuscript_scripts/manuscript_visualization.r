@@ -1413,15 +1413,8 @@ if (save_result) {
 
 
 
+# ==== TF activity deltas (Severe vs Mild) ====
 
-
-
-
-
-
-###################################
-##### COVID Severe vs Mild#########
-###################################
 # Load necessary libraries
 library(Seurat)
 library(dplyr)
@@ -1429,9 +1422,7 @@ library(ggplot2)
 library(ggrepel) # Although not used in heatmap, kept for consistency if extending
 library(patchwork)
 
-# -----------------------------------------------------------------------------
 # Configuration & Placeholders
-# -----------------------------------------------------------------------------
 
 # Base path where condition-specific result folders are located
 # Adjust this path to your actual directory structure
@@ -1444,10 +1435,6 @@ output_folder_name <- "figures"
 # Define the specific cell types (receiver cells) you want to analyze
 # Example using B cell types from file 1:
 selected_receiver_cells <- c( "Eryth", "CD16_Mono", "HSPC",    "CD4_TCM",  "Plasmablast",    "B_intermediate", "B_naive","CD8_Naive","NK","CD8_TEM","pDC","cDC2","Platelet","CD14_Mono","CD4_CTL" )
-# Example using CD8 T cell types from file 3:
-# selected_receiver_cells <- c("Naive_CD8", "CM_CD8", "EM_CD8", "Activ_CTL", "CTL_CD8", "GZMK_CD8", "ISG_CTL_CD8")
-# Example using NK cell types from file 1:
-# selected_receiver_cells <- c("ISG_NK","NKT","CD56_dim_NK","CD56_brt_CCL4_NK","CD56_brt_NK","Early_NK","NK","Activ_NK")
 
 # Number of top regulons (TFs) to display in each heatmap
 top_n_regulons <- 20
@@ -1462,9 +1449,7 @@ conditions <- c(
   severe   =  "SevCOVID_Azimuthl2"    # Folder name for severe data
 )
 
-# -----------------------------------------------------------------------------
 # Helper Functions (Adapted from provided files)
-# -----------------------------------------------------------------------------
 
 # Assumed function to load regulon data (replace with your actual loading mechanism)
 # It should return a list where each element corresponds to a cell type,
@@ -1547,9 +1532,8 @@ find_absolute_max <- function(deltas_list_of_lists) {
 }
 
 
-# -----------------------------------------------------------------------------
-# Data Loading
-# -----------------------------------------------------------------------------
+# ---->> Data Loading <<----
+
 # Dynamically load data based on conditions defined above
 regulon_deltas_list <- lapply(names(conditions), function(cond_name) {
   folder_name <- conditions[[cond_name]]
@@ -1577,9 +1561,7 @@ if(final_cell_count == 0) {
 }
 
 
-# -----------------------------------------------------------------------------
 # Calculate Global Color Scale Limit
-# -----------------------------------------------------------------------------
 
 absolute_max <- find_absolute_max(regulon_deltas_list)
 cat("Global absolute max deltaPagoda for scaling:", absolute_max, "\n")
@@ -1589,9 +1571,8 @@ if(is.na(absolute_max) || absolute_max <= 0) {
     absolute_max <- 1
 }
 
-# -----------------------------------------------------------------------------
+
 # Heatmap Generation
-# -----------------------------------------------------------------------------
 
 # Function to generate the combined data needed for plotting
 generate_heatmap_data_for_celltype <- function(selected_ct, regulon_deltas_list, conditions) {
@@ -1817,9 +1798,9 @@ generate_sorted_plots <- function(selected_receiver_cells, regulon_deltas_list, 
 # Execute plot generation
 generated_plots <- generate_sorted_plots(selected_receiver_cells, regulon_deltas_list, conditions, top_n_regulons, absolute_max)
 
-# -----------------------------------------------------------------------------
+
 # Combine and Save Plots
-# -----------------------------------------------------------------------------
+
 
 # Create combined plots with titles (one combined plot per cell type)
 create_combined_plots_per_celltype <- function(plots, selected_receiver_cells) {
@@ -1921,17 +1902,544 @@ save_grouped_plots(
 
 cat("Script finished. Plots saved in:", file.path(base_comparison_path, , output_folder_name), "\n")
 
-# now DecipherPlots
-plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=10,dataset_name="SevCOVID_Azimuthl2",direction = "pos",selected_receiver_cells = c("CD16_Mono"),split_by_direction = TRUE)
-plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=10,dataset_name="MilCOVID_Azimuthl2",direction = "pos",selected_receiver_cells = c("CD16_Mono"),split_by_direction=TRUE)
+# ==== Plot PCA of regulons ====
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(tibble)
+
+# 1. Combine both moderate and severe into a long format
+get_long_deltas <- function(regulon_deltas, condition) {
+  bind_rows(lapply(names(regulon_deltas), function(ct) {
+    df <- regulon_deltas[[ct]] %>%
+      filter(class == "real")  # Keep only real TFs
+    df$Cluster <- ct
+    df$Condition <- condition
+    return(df)
+  }))
+}
+
+
+long_moderate <- get_long_deltas(regulon_deltas_list$moderate, "Moderate")
+long_severe   <- get_long_deltas(regulon_deltas_list$severe, "Severe")
+
+combined_long <- bind_rows(long_moderate, long_severe)
+
+# 2. Pivot to wide format: rows = Cluster+Condition, cols = TFs
+wide_deltas <- combined_long %>%
+  select(Cluster, Condition, name, deltaPagoda) %>%
+  pivot_wider(names_from = name, values_from = deltaPagoda, values_fill = 0) %>%
+  unite(Cluster_Condition, Cluster, Condition, sep = "_")
+
+# 3. Run PCA
+deltas_mat <- wide_deltas %>% column_to_rownames("Cluster_Condition") %>% as.matrix()
+pca_res <- prcomp(deltas_mat, scale. = TRUE)
+
+# 4. Extract scores and metadata
+pca_df <- as.data.frame(pca_res$x[, 1:2])
+pca_df$Cluster_Condition <- rownames(pca_df)
+
+cluster_condition_map <- combined_long %>%
+  mutate(Cluster_Condition = paste(Cluster, Condition, sep = "_")) %>%
+  distinct(Cluster_Condition, Cluster, Condition)
+
+pca_df <- pca_df %>%
+  left_join(cluster_condition_map, by = "Cluster_Condition")
+
+moderate_clusters <- pca_df %>% filter(Condition == "Moderate") %>% pull(Cluster)
+severe_clusters   <- pca_df %>% filter(Condition == "Severe") %>% pull(Cluster)
+
+# Clusters that appear only in Moderate
+unique_moderate_clusters <- setdiff(moderate_clusters, severe_clusters)
+
+pca_df <- pca_df %>%
+  mutate(label_text = ifelse(
+    Condition == "Severe" | Cluster %in% unique_moderate_clusters,
+    Cluster,
+    NA_character_
+  ))
+
+
+# 5. Plot
+library(scales)  # for pseudo log transformation
+
+# Define custom colors
+condition_colors <- c("Moderate" = "#91C8F6", "Severe" = "#E4B731")  # light blue and gold
+
+# Define a pseudo-log transformation that handles negatives
+pseudo_log_trans <- function(base = 10) {
+  trans_new(
+    name = paste0("pseudo_log", base),
+    transform = function(x) sign(x) * log1p(abs(x)) / log(base),
+    inverse = function(x) sign(x) * (base^abs(x) - 1),
+    domain = c(-Inf, Inf)
+  )
+}
+library(ggrepel)
+
+library(purrr)
+
+# Match Moderate and Severe by Cluster
+cluster_pairs <- intersect(moderate_clusters, severe_clusters)
+
+segment_df <- map_dfr(cluster_pairs, function(clust) {
+  pt1 <- pca_df %>% filter(Cluster == clust, Condition == "Moderate")
+  pt2 <- pca_df %>% filter(Cluster == clust, Condition == "Severe")
+  
+  dist <- sqrt((pt1$PC1 - pt2$PC1)^2 + (pt1$PC2 - pt2$PC2)^2)
+  
+  tibble(
+    Cluster = clust,
+    x = pt1$PC1, y = pt1$PC2,
+    xend = pt2$PC1, yend = pt2$PC2,
+    dist = dist
+  )
+})
+
+
+# Plot
+PCA_plot <- ggplot(pca_df, aes(x = PC1, y = PC2, color = Condition)) +
+  geom_point(size = 4) +
+  geom_text_repel(aes(label = label_text), color = "black", size = 4, max.overlaps = Inf) +
+  geom_segment(data = segment_df, 
+               aes(x = x, y = y, xend = xend, yend = yend, size = dist),
+               inherit.aes = FALSE, color = "black", linetype = "dashed") +
+  scale_size(range = c(0.5, 3), guide = "none") +
+  scale_color_manual(values = condition_colors) +
+  scale_x_continuous(trans = pseudo_log_trans()) +
+  scale_y_continuous(trans = pseudo_log_trans()) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    plot.title = element_blank()
+  )
+
+install.packages("ggnewscale")  # run once
+library(ggnewscale)
+
+
+PCA_plot <- ggplot(pca_df, aes(x = PC1, y = PC2)) +
+  # First scale: point color by Condition
+  geom_point(aes(color = Condition), size = 4) +
+  scale_color_manual(values = condition_colors, name = NULL,
+                     guide = guide_legend(override.aes = list(size = 4))) +
+
+  # Reset color scale
+  new_scale_color() +
+
+  # Add line segments with a new color scale (Euclidean distance)
+  geom_segment(data = segment_df, 
+               aes(x = x, y = y, xend = xend, yend = yend, color = dist),
+               inherit.aes = FALSE, linetype = "dashed", size = 1) +
+  scale_color_gradient(
+  name = "Euclidean distance",
+  low = "#DCE6F2",  # light gray-blue
+  high = "#08306B"  # deep navy blue
+) +
+  geom_text_repel(aes(label = label_text), color = "black", size = 4, max.overlaps = Inf) +
+
+  # Axes and theme
+  scale_x_continuous(trans = pseudo_log_trans()) +
+  scale_y_continuous(trans = pseudo_log_trans()) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    legend.box = "horizontal",            # <-- this puts legends side by side
+    legend.spacing.x = unit(1, "cm"),     # spacing between the two
+    legend.title = element_text(hjust = 0.5),
+    plot.title = element_blank()
+  )
+
+
+# Save
+ggsave("Manuscript_jan_2025/figures/pca_plot_custom.png", PCA_plot, width = 8, height = 6)
 
 
 
+# ==== Plot Decipher (Severe vs Moderate) ====
+plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=15,dataset_name="SevCOVID_Azimuthl2",direction = "pos",selected_receiver_cells = c("CD16_Mono","CD14_Mono"),split_by_direction = TRUE, abs_decipher_plot_limit = 20)
+plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=15,dataset_name="MilCOVID_Azimuthl2",direction = "pos",selected_receiver_cells = c("CD16_Mono","CD14_Mono"),split_by_direction=TRUE, abs_decipher_plot_limit = 20)
+
+#ok so here what I want is a heatmap, because the bubble plots are not really work
+decipher_scores_severe <- readRDS("Manuscript_jan_2025/results/SevCOVID_Azimuthl2/data/decipher_scores_by_cluster.rds")
+decipher_scores_moderate <- readRDS("Manuscript_jan_2025/results/MilCOVID_Azimuthl2/data/decipher_scores_by_cluster.rds")
+
+#----> Decipher Heatmap <----
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(stringr)
+
+# Define receiver clusters
+target_clusters <- c("CD14_Mono", "CD16_Mono")
+
+# Helper function: get top 20 interactions for each receiver_cluster from a score list
+get_top_interactions <- function(score_list, label_prefix) {
+  bind_rows(lapply(target_clusters, function(clust) {
+    score_list[[clust]] %>%
+      mutate(receiver_cluster = clust) %>%
+      slice_max(order_by = decipher_score, n = 10) %>%
+      mutate(Condition = paste0(label_prefix, clust))
+  }))
+}
+
+# Combine top interactions for both conditions
+top_severe <- get_top_interactions(decipher_scores_severe, "SEV_")
+top_moderate <- get_top_interactions(decipher_scores_moderate, "MOD_")
+heatmap_data <- bind_rows(top_severe, top_moderate)
+
+# Add Interaction_Label before doing anything with it
+heatmap_data <- heatmap_data %>%
+  mutate(Interaction_Label = paste(ligand, receptor, sep = "-"))
+
+# Ensure top-down ordering of interactions (most variable first)
+interaction_order <- heatmap_data %>%
+  group_by(Interaction_Label) %>%
+  summarise(variance = var(decipher_score)) %>%
+  arrange(desc(variance)) %>%
+  pull(Interaction_Label)
+
+heatmap_data <- heatmap_data %>%
+  mutate(
+    Condition = factor(Condition, levels = c("MOD_CD14_Mono", "SEV_CD14_Mono", "MOD_CD16_Mono", "SEV_CD16_Mono")),
+    Interaction_Label = factor(Interaction_Label, levels = rev(interaction_order))
+  )
+
+heatmap_data$decipher_score <- log(heatmap_data$decipher_score+1,base=2)
+
+# === Plot heatmap ===
+heatmap_plot <- ggplot(heatmap_data, aes(x = Condition, y = Interaction_Label, fill = decipher_score)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(
+    low = "#2166AC", mid = "white", high = "#B2182B",
+    midpoint = 0, name = "Decipher score (log base 2)"
+  ) +
+  labs(x = "Receiver Cluster", y = "Interaction") +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    plot.title = element_blank()
+  )
+
+# === Save ===
+ggsave("Manuscript_jan_2025/figures/heatmap_decipher_top20_mono.png", heatmap_plot, width = 10, height = 8)
+
+#----> Decipher iSN Networks <----
+# 0. Load Required Libraries
+library(dplyr)
+library(igraph)
+library(scales)
+library(purrr)
+library(tidyr)
+
+# 1. Define Helper Functions
+
+# Function to reformat cell type names for plotting
+formatCellTypeNamesForPlotting <- function(cluster_names) {
+  formatted <- gsub("_minus_", "-", cluster_names)
+  formatted <- gsub("_plus_", "+", formatted)
+  formatted <- gsub("_", " ", formatted)
+  return(formatted)
+}
+
+# Function to shorten long strings (first 3 & last 3 characters)
+get_first_and_last_three <- function(x) {
+  if (nchar(x) <= 8) {
+    return(x)  # If the string is too short, return as is
+  } else {
+    return(paste0(substr(x, 1, 4), ".", substr(x, nchar(x) - 3, nchar(x))))
+  }
+}
+
+# Function 1: Check Data Inputs
+check_cluster_exists <- function(cluster_name, decipher_scores, decipher_scores_by_regulon_and_cluster, regulon_deltas_by_cluster) {
+  if (!cluster_name %in% names(regulon_deltas_by_cluster)) {
+    stop(paste("Cluster", cluster_name, "not found in regulon_deltas_by_cluster"))
+  }
+  if (!cluster_name %in% names(decipher_scores_by_regulon_and_cluster)) {
+    stop(paste("Cluster", cluster_name, "not found in decipher_scores_by_regulon_and_cluster"))
+  }
+  if (!cluster_name %in% names(decipher_scores)) {
+    stop(paste("Cluster", cluster_name, "not found in decipher_scores"))
+  }
+}
+
+# Function 2: Extract Top Regulons
+get_top_regulons <- function(cluster_name, regulon_deltas_by_cluster, n = 10) {
+  this_regulon_deltas <- regulon_deltas_by_cluster[[cluster_name]]
+  top_regulons_df <- this_regulon_deltas %>%
+    filter(class == "real") %>%
+    arrange(desc(deltaPagoda)) %>%
+    head(n)
+  top_regulons <- top_regulons_df$name
+  list(top_regulons_df = top_regulons_df, top_regulons = top_regulons)
+}
+
+# Function 3: Extract Top Interactions
+get_top_interactions <- function(cluster_name, decipher_scores, decipher_scores_by_regulon_and_cluster, top_regulons,top_interactions = NULL) {
+  this_decipher_scores_by_regulon <- decipher_scores_by_regulon_and_cluster[[cluster_name]]
+  this_decipher_scores <- decipher_scores[[cluster_name]]
+  if(is.null(top_interactions)){
+      top_20_interactions <- this_decipher_scores %>%
+      arrange(desc(decipher_score)) %>%
+      slice_head(n = 20) %>%
+      pull(interaction)
+  } else {
+    top_20_interactions <- top_interactions
+  }
+
+  top_interactions <- this_decipher_scores_by_regulon %>%
+    filter(regulon %in% top_regulons) %>%
+    filter(interaction %in% top_20_interactions) %>%
+    group_by(regulon) %>%
+    slice_max(order_by = imp.perm, n = 5, with_ties = FALSE) %>%
+    ungroup() %>%
+    drop_na(interaction)
+  top_interactions
+}
+
+# Function 4: Build Sender → Ligand Edges
+build_sender_ligand_edges <- function(top_interactions, feature_statistics, sender_cts) {
+  normalized_fs <- feature_statistics %>%
+    mutate(normalized.counts = sum.counts / n.cell) %>%
+    group_by(condition, feature) %>%
+    mutate(total.normalized.counts = sum(normalized.counts)) %>%
+    ungroup() %>%
+    mutate(frac.normalized.counts = normalized.counts / total.normalized.counts)
+  
+  sender_ligand <- normalized_fs %>%
+    filter(condition == 'case', cluster %in% sender_cts, feature %in% top_interactions$ligand) %>%
+    group_by(feature) %>%
+    slice_max(order_by = frac.normalized.counts, n = 3, with_ties = FALSE) %>%
+    ungroup() %>%
+    mutate(total_counts = frac.normalized.counts) %>%
+    select(ligand = feature, sender_cluster = cluster, total_counts) %>%
+    mutate(weight = rescale(total_counts, to = c(1, 5)))
+  
+  # Format sender cell type names
+  sender_ligand$sender_cluster <- formatCellTypeNamesForPlotting(sender_ligand$sender_cluster)
+  sender_ligand$sender_cluster <- sapply(sender_ligand$sender_cluster, get_first_and_last_three)
+  
+  # Build edge table
+  edges_sender_ligand <- sender_ligand %>%
+    select(from = sender_cluster, to = ligand, weight) %>%
+    mutate(edge_type = "Sender_Ligand", colour = weight)
+  
+  list(sender_ligand = sender_ligand, edges_sender_ligand = edges_sender_ligand)
+}
+
+# Function 5: Build Ligand → Receptor Edges
+build_ligand_receptor_edges <- function(this_decipher_scores, sender_ligand, top_interactions) {
+  ligand_receptor_edges <- this_decipher_scores %>%
+    filter(ligand %in% sender_ligand$ligand, receptor %in% top_interactions$receptor) %>%
+    select(ligand, receptor, decipher_score) %>%
+    rename(from = ligand, to = receptor, weight = decipher_score) %>%
+    mutate(edge_type = "Ligand_Receptor", colour = weight) %>%
+    mutate(weight = rescale(abs(weight), to = c(1, 5)))
+  ligand_receptor_edges
+}
+
+# Function 6: Build Receptor → TF (Regulon) Edges
+build_receptor_tf_edges <- function(top_interactions) {
+  receptor_tf_edges <- top_interactions %>%
+    select(receptor, regulon, imp.perm, spearman.cor) %>%
+    distinct() %>%
+    mutate(weight = imp.perm,
+           edge_type = "Receptor_TF",
+           colour = imp.perm * sign(spearman.cor)) %>%
+    rename(from = receptor, to = regulon) %>%
+    mutate(weight = rescale(weight, to = c(1, 5)))
+  receptor_tf_edges
+}
+
+# Function 7: Combine Edges and Create Nodes Data Frame
+build_graph_components <- function(edges_sender_ligand, ligand_receptor_edges, receptor_tf_edges, top_interactions, sender_ligand, top_regulons_df) {
+  
+  all_edges <- bind_rows(
+    edges_sender_ligand %>% select(from, to, weight, edge_type, colour),
+    ligand_receptor_edges %>% select(from, to, weight, edge_type, colour),
+    receptor_tf_edges %>% select(from, to, weight, edge_type, colour)
+  )
+  
+  # Nodes from different sources
+  nodes_sender <- sender_ligand$sender_cluster
+  nodes_ligand <- sender_ligand$ligand
+  nodes_receptor <- top_interactions$receptor
+  nodes_tf <- top_interactions$regulon
+  
+  nodes <- data.frame(
+    name = unique(c(nodes_sender, nodes_ligand, nodes_receptor, nodes_tf)),
+    stringsAsFactors = FALSE
+  ) %>%
+    mutate(layer = case_when(
+      name %in% nodes_sender ~ "Sender Cell Type",
+      name %in% nodes_ligand ~ "Ligand",
+      name %in% nodes_receptor ~ "Receptor",
+      name %in% nodes_tf ~ "TF",
+      TRUE ~ "Other"
+    ))
+  
+  # Merge deltaPagoda information for TF nodes if available
+  nodes <- nodes %>%
+    left_join(top_regulons_df %>% select(name, deltaPagoda), by = "name") %>%
+    mutate(color = case_when(
+      layer == "TF" ~ col_numeric(palette = c("white", "tomato"),
+                                   domain = c(0, max(top_regulons_df$deltaPagoda, na.rm = TRUE)))(deltaPagoda),
+      layer == "Sender Cell Type" ~ "skyblue",
+      layer == "Ligand" ~ "lightgreen",
+      layer == "Receptor" ~ "orange",
+      TRUE ~ "grey"
+    ))
+  
+  list(all_edges = all_edges, nodes = nodes)
+}
+
+# Function 8: Create and Configure Graph Object
+create_graph <- function(all_edges, nodes) {
+  g <- graph_from_data_frame(d = all_edges, vertices = nodes, directed = TRUE)
+  V(g)$color <- nodes$color[match(V(g)$name, nodes$name)]
+  V(g)$size <- 15
+  g
+}
+
+# Function 9: Assign Edge Colors
+assign_edge_colors <- function(g, all_edges) {
+  # For Receptor_TF edges: define a gradient
+  edges_rt <- all_edges %>% filter(edge_type == "Receptor_TF")
+  max_val <- max(abs(edges_rt$colour), na.rm = TRUE)
+  max_value <- max_val + 0.1 * max_val
+  gradient_func <- col_numeric(palette = c("blue", "white", "tomato"),
+                               domain = c(-max_value, max_value))
+  
+  # For Sender_Ligand edges:
+  edges_sl <- all_edges %>% filter(edge_type == "Sender_Ligand")
+  max_val_sl <- max(abs(edges_sl$colour), na.rm = TRUE)
+  max_value_sl <- max_val_sl + 0.1 * max_val_sl
+  gradient_func_sl <- col_numeric(palette = c("white", "grey"),
+                                  domain = c(0, max_value_sl))
+  
+  # Assign colors based on edge type
+  all_edges <- all_edges %>%
+    mutate(
+      edge_color = case_when(
+        edge_type == "Ligand_Receptor" ~ case_when(
+          colour > 0 ~ "tomato",
+          colour < 0 ~ "blue",
+          TRUE ~ "white"
+        ),
+        edge_type == "Receptor_TF" ~ gradient_func(colour),
+        TRUE ~ gradient_func_sl(colour)
+      )
+    )
+  
+  E(g)$color <- all_edges$edge_color
+  E(g)$width <- abs(all_edges$weight)
+  g
+}
+
+# Function 10: Plot the Graph and Save
+plot_graph <- function(g, output_file, cluster_name, condition_label) {
+  layout <- layout_with_sugiyama(g)$layout
+  png(output_file, width = 15, height = 15, units = "cm", res = 400)
+  plot(g,
+       layout = layout,
+       vertex.label = V(g)$name,
+       vertex.label.cex = 0.4,
+       vertex.label.color = "black",
+       main = paste(cluster_name, " (", condition_label, ")", sep = " "),
+       edge.arrow.size = 0.5,
+       vertex.frame.color = NA)
+  dev.off()
+  message("Saved network plot to: ", output_file)
+}
+
+# Main Function: Generate Network Plot
+generate_network_plot <- function(condition_label, cluster_name, 
+                                  decipher_scores, decipher_scores_by_regulon_and_cluster, 
+                                  regulon_deltas_by_cluster, feature_statistics,
+                                  sender_cts, output_dir,top_interactions = NULL) {
+  # 1. Check inputs
+  check_cluster_exists(cluster_name, decipher_scores, decipher_scores_by_regulon_and_cluster, regulon_deltas_by_cluster)
+  
+  # 2. Get top regulons
+  top_regulons_out <- get_top_regulons(cluster_name, regulon_deltas_by_cluster, n = 10)
+  top_regulons_df <- top_regulons_out$top_regulons_df
+  top_regulons <- top_regulons_out$top_regulons
+  
+  # 3. Get top interactions
+  top_interactions <- get_top_interactions(cluster_name, decipher_scores, decipher_scores_by_regulon_and_cluster, top_regulons,top_interactions = top_interactions)
+  
+  # 4. Build Sender → Ligand edges
+  sl_out <- build_sender_ligand_edges(top_interactions, feature_statistics, sender_cts)
+  sender_ligand <- sl_out$sender_ligand
+  edges_sender_ligand <- sl_out$edges_sender_ligand
+  
+  # 5. Build Ligand → Receptor edges
+  this_decipher_scores <- decipher_scores[[cluster_name]]
+  ligand_receptor_edges <- build_ligand_receptor_edges(this_decipher_scores, sender_ligand, top_interactions)
+  
+  # 6. Build Receptor → TF edges
+  receptor_tf_edges <- build_receptor_tf_edges(top_interactions)
+  
+  # 7. Combine edges and build nodes
+  graph_components <- build_graph_components(edges_sender_ligand, ligand_receptor_edges, receptor_tf_edges, top_interactions, sender_ligand, top_regulons_df)
+  all_edges <- graph_components$all_edges
+  nodes <- graph_components$nodes
+  
+  # 8. Create graph
+  g <- create_graph(all_edges, nodes)
+  
+  # 9. Assign edge colors and widths
+  g <- assign_edge_colors(g, all_edges)
+  
+  # 10. Plot and save the network
+  output_file <- file.path(output_dir, paste0(condition_label, "_", cluster_name, "_network_map.png"))
+  plot_graph(g, output_file, cluster_name, condition_label)
+}
 
 
+# 3. Load Data for Severe and Moderate Conditions
+# Severe data
+decipher_scores_severe <- readRDS("Manuscript_jan_2025/results/SevCOVID_Azimuthl2/data/decipher_scores_by_cluster.rds")
+decipher_scores_by_regulon_and_cluster_severe <- readRDS("Manuscript_jan_2025/results/SevCOVID_Azimuthl2/data/decipher_scores_by_regulon_and_cluster.rds")
+regulon_deltas_by_cluster_severe <- readRDS("Manuscript_jan_2025/results/SevCOVID_Azimuthl2/data/regulon_deltas_by_cluster.rds")
+feature_statistics_severe <- readRDS("Manuscript_jan_2025/results/SevCOVID_Azimuthl2/data/feature_statistics.rds")
 
+# Moderate data
+decipher_scores_moderate <- readRDS("Manuscript_jan_2025/results/MilCOVID_Azimuthl2/data/decipher_scores_by_cluster.rds")
+decipher_scores_by_regulon_and_cluster_moderate <- readRDS("Manuscript_jan_2025/results/MilCOVID_Azimuthl2/data/decipher_scores_by_regulon_and_cluster.rds")
+regulon_deltas_by_cluster_moderate <- readRDS("Manuscript_jan_2025/results/MilCOVID_Azimuthl2/data/regulon_deltas_by_cluster.rds")
+feature_statistics_moderate <- readRDS("Manuscript_jan_2025/results/MilCOVID_Azimuthl2/data/feature_statistics.rds")
 
+# 4. Specify Parameters and Generate Networks
 
+# Define target receiver clusters and sender cell types
+target_clusters <- c("CD14_Mono", "CD16_Mono")
+sender_cts <- c("Eryth", "NK", "cDC2", "CD16_Mono", "CD14_Mono", "CD8_TEM")
+output_dir <- "Manuscript_jan_2025/figures"  # adjust if needed
+
+# Generate network plots for Severe condition
+for (cl in target_clusters) {
+  generate_network_plot("SevCOVID_Azimuthl2", cl,
+                        decipher_scores_severe, 
+                        decipher_scores_by_regulon_and_cluster_severe,
+                        regulon_deltas_by_cluster_severe, 
+                        feature_statistics_severe,
+                        sender_cts, 
+                        output_dir)
+}
+
+# Generate network plots for Moderate condition
+for (cl in target_clusters[2]) {
+  generate_network_plot("MilCOVID_Azimuthl2", cl,
+                        decipher_scores_moderate, decipher_scores_by_regulon_and_cluster_moderate,
+                        regulon_deltas_by_cluster_moderate, feature_statistics_moderate,
+                        sender_cts, output_dir,
+                        
+                        top_interactions = c("CD38-PECAM1","ENAM-CD63","SLAMF7-SLAMF7", "SIGLEC1-SPN", "CCL3L1-CCR1"))
+}
 
 
 
