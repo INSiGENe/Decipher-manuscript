@@ -1,0 +1,19 @@
+{
+    "outline.showArrays": false,
+    "outline.showBooleans": false,
+    "outline.showClasses": false,
+    "outline.showConstants": false,
+    "outline.showConstructors": false,
+    "outline.showEnumMembers": false,
+    "outline.showEnums": false,
+    "outline.showEvents": true,
+    "outline.showFields": true,
+    "outline.showFiles": true,
+    "outline.showMethods": true,
+    "outline.showNumbers": false,
+    "outline.showObjects": true,
+    "outline.showPackages": true,
+    "outline.showVariables": true,
+    "outline.showStrings": true,
+    "notebook.outline.showCodeCells": true
+}

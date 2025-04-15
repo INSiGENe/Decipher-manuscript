@@ -1,206 +1,336 @@
+# ==== libraries ====
 library(ggplot2)
 library(dplyr)     # Or library(data.table) if you prefer
 library(purrr)     # For map functions
 library(stringr)   # For string manipulation if needed
-library(patchwork) # For combining plots (optional)
+library(patchwork) 
 library(ggridges)  # For density ridgeline plots
-library(UpSetR) # Make sure UpSetR is installed install.packages("UpSetR")
 library(tidyr)
+library(Seurat)
+library(ggrepel)
+library(tibble)
+library(scales) 
+library(reshape2)   # For reshaping matrix to long format
+library(gridExtra)  # For arranging multiple heatmaps in a grid
+library(pROC)
+library(data.table)
+
+#install.packages("ggnewscale")  # run once
+library(ggnewscale)
+#install.packages("UpSetR")
+library(UpSetR) # Make sure UpSetR is installed install.packages("UpSetR")
+# install.packages("ggbeeswarm")
+library(ggbeeswarm) # Ensure this is loaded for geom_beeswarm
+#install.packages("ggnewscale") #add this to docker
+library(ggnewscale) # For multiple color scales
+
 # --- Assume your previous code has run and populated 'results_preprocessed' ---
 
-# Combine results into a single dataframe for plotting
-all_scores_list <- imap(results_preprocessed, ~{
-  # For each dataset, iterate through its methods
-  dataset_name <- .y
-  methods_list <- .x
-
-  # Map over the methods within the current dataset
-  imap_dfr(methods_list, ~{
-    method_name <- .y
-    method_data <- .x
-
-    if (!is.null(method_data) && nrow(method_data) > 0 && "prioritization_score" %in% names(method_data)) {
-      # Select the score and add dataset/method identifiers
-      method_data %>%
-        select(prioritization_score) %>%
-        mutate(
-          method = method_name,
-          dataset = dataset_name
-        )
-    } else {
-      # Return an empty tibble/dataframe if data is missing or invalid
-      tibble(prioritization_score = numeric(0), method = character(0), dataset = character(0))
-    }
+# ==== functions ====
+# Assumed function to load regulon data (replace with your actual loading mechanism)
+# It should return a list where each element corresponds to a cell type,
+# and contains a dataframe with 'name' (regulon) and 'deltaPagoda' columns.
+load_regulon_data <- function(file_path, cell_types) {
+  # --- This is a PLACEHOLDER ---
+  # Replace this with your actual code to load the .rds file
+  # and subset/process it as needed.
+  # Example:
+  tryCatch({
+      data_list <- readRDS(file_path)
+      # Ensure it's filtered for selected cell types if the file contains more
+      data_list <- data_list[intersect(names(data_list), cell_types)]
+      # Add basic validation
+      if(!is.list(data_list)) stop("Loaded data is not a list.")
+      if(length(data_list) > 0) {
+          first_el <- data_list[[1]]
+          if(!is.data.frame(first_el) || !all(c("name", "deltaPagoda") %in% colnames(first_el))) {
+              stop("Dataframe structure is incorrect. Needs 'name' and 'deltaPagoda' columns.")
+          }
+      }
+      return(data_list)
+  }, error = function(e) {
+      warning(paste("Error loading or validating file:", file_path, "-", e$message))
+      # Return an empty list or handle appropriately
+      return(list())
   })
-})
-
-# Combine the list of dataframes into one single dataframe
-combined_scores_df <- bind_rows(all_scores_list)
-
-
-# Define a consistent color scheme (adjust colors as needed)
-method_colors <- c(
-  "Decipher" = "#1f77b4",
-  "NicheNet" = "#ff7f0e",
-  "LIANA+" = "#2ca02c",
-  "Connectome" = "#d62728",
-  "NATMI" = "#9467bd"
-  # Add more if needed
-)
-
-# Optional: Remove datasets/methods with zero rows if any slipped through
-combined_scores_df <- combined_scores_df %>% filter(!is.na(prioritization_score))
-
-
-desired_method_order <- c("Decipher", "NicheNet", "LIANA+", "NATMI", "Connectome")
-
-# Convert the 'method' column to a factor with the specified levels.
-# We use rev() because ggplot plots factors bottom-up on the y-axis.
-# To have "Decipher" at the top visually, it needs to be the last level.
-combined_scores_df <- combined_scores_df %>%
-  mutate(method = factor(method, levels = rev(desired_method_order)))
-
-
-
-
-
-
-
-############################
-###### Box-plot of number of interactions reported on by each method ##
-############################
-
-
-# Collect interaction counts into a data frame
-interaction_counts <- do.call(rbind, lapply(names(results_preprocessed), function(ds) {
-  df <- results_preprocessed[[ds]]
-  data.frame(
-    dataset = ds,
-    method = names(df),
-    interaction_count = sapply(df, nrow),
-    stringsAsFactors = FALSE
-  )
-}))
-
-# Ensure correct order and factor levels
-interaction_counts$method <- factor(interaction_counts$method, levels = desired_method_order)
-
-# Plot
-p <- ggplot(interaction_counts, aes(x = method, y = interaction_count, fill = method)) +
-  geom_boxplot(outlier.shape = NA, width = 0.6) +
-  geom_jitter(width = 0.2, size = 2, alpha = 0.8) +
-  scale_fill_manual(values = method_colors) +
-  scale_y_log10() +
-  labs(
-    x = "Method",
-    y = "Number of Interactions (log10)"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme_bw(base_size = 12) +
-  theme(
-    legend.position = "none",
-    axis.text.x = element_text(angle = 0, vjust = 1,size = 14), # Rotate labels for readability
-    axis.text.y = element_text(size=14)
-  )
-
-
-ggsave("figures/boxplot_number_of_interactions_by_method.png", plot = p, width = 8, height = 4, dpi = 300)
-
-
-
-
-
-
-############################
-###### violin plot ##
-############################
-# Load necessary library
-library(ggplot2)
-library(scales) # For pseudo_log_trans
-
-# --- Check if variables exist ---
-if (!exists("combined_scores_df")) stop("DataFrame 'combined_scores_df' not found.")
-if (!exists("method_colors")) stop("Color vector 'method_colors' not found.")
-if (!exists("desired_method_order")) stop("Order vector 'desired_method_order' not found.")
-
-# --- Generate the Violin Plot ---
-plot_violin_scores_by_method <- ggplot(combined_scores_df,
-                                        # Swap x and y aesthetics
-                                        aes(x = method,
-                                            y = prioritization_score,
-                                            fill = method)) + # Grouping defaults to x aesthetic
-
-  # Use geom_violin instead of geom_density_ridges
-  geom_violin(trim = FALSE,    # Keep tails
-              alpha = 0.7,     # Adjust transparency
-              scale = "width", # Makes violins comparable across methods
-              # Optional: Show median and quartiles
-              draw_quantiles = c(0.25, 0.5, 0.75)
-              ) +
-
-  # Use consistent colors; ensure names match factor levels
-  scale_fill_manual(values = method_colors, name = "Method", breaks = desired_method_order) +
-
-  # Apply pseudo-log scale to the Y axis
-  scale_y_continuous(
-      trans = scales::pseudo_log_trans(sigma = 0.1, base = 10),
-      breaks = c(-10, -1, 0, 1, 10, 100), # Adjust breaks if needed for score range
-      name = "Interaction Prioritization Score (Pseudo-Log Scale)" # Set y-axis label here
-  ) +
-
-  # Ensure method order on the X axis
-  scale_x_discrete(limits = desired_method_order, name = "Method") + # Set x-axis label here
-
-  theme_bw(base_size = 12) +
-  theme(
-    legend.position = "none", # Keep legend off
-    axis.text.x = element_text(angle = 0, vjust = 1,size = 14), # Rotate labels for readability
-    axis.text.y = element_text(size=14)
-    # Add other theme adjustments if needed
-  ) +
-  labs(
-    # x and y labels are set within the scale functions now
-    fill = "Method"
-  )
-
-
-# --- Save the Plot ---
-# Adjust dimensions as needed for violin plot layout
-output_filename_violin <- "figures/violin_scores_by_method.png"
-dir.create("figures", showWarnings = FALSE)
-
-save_result_violin <- tryCatch({
-    ggsave(output_filename_violin, plot = plot_violin_scores_by_method, width = 8, height = 4, dpi = 300)
-    TRUE
-}, error = function(e) {
-    warning("Failed to save the violin plot: ", e$message, call. = FALSE)
-    FALSE
-})
-
-if (save_result_violin) {
-    print(paste("Violin plot saved to", output_filename_violin))
-} else {
-    print("Violin plot was generated but could not be saved automatically.")
+  # --- End PLACEHOLDER ---
 }
 
+get_deltaPagoda <- function(identity, regulon_list, regulon) {
+  identity_char <- as.character(identity)
+  if (is.null(regulon_list) || !identity_char %in% names(regulon_list)) {
+    # warning(paste("Identity", identity_char, "not found in provided regulon list. Returning NA."))
+    return(NA)
+  }
+  df <- regulon_list[[identity_char]]
+  if (is.null(df) || !is.data.frame(df) || !all(c("name", "deltaPagoda") %in% colnames(df))) {
+    # warning(paste("Required columns ('name', 'deltaPagoda') missing or data invalid for identity", identity_char, ". Returning NA."))
+    return(NA)
+  }
+  if (regulon %in% df$name) {
+    # Handle potential multiple matches (shouldn't happen with unique names)
+    return(df$deltaPagoda[df$name == regulon][1])
+  } else {
+    # warning(paste("Regulon", regulon, "not found for identity", identity_char, ". Returning NA."))
+    return(NA)
+  }
+}
 
+# Helper function to find the absolute max deltaPagoda, handling NULL/NA/empty lists
+find_absolute_max <- function(deltas_list_of_lists) {
+  max_val <- -Inf # Initialize with negative infinity
+  for (cond_list in deltas_list_of_lists) {
+      if (!is.null(cond_list) && length(cond_list) > 0) {
+          cond_max <- sapply(cond_list, function(df) {
+              if (!is.null(df) && is.data.frame(df) && "deltaPagoda" %in% colnames(df) && nrow(df) > 0) {
+                  current_max <- max(abs(df$deltaPagoda), na.rm = TRUE)
+                  # Handle case where all deltaPagoda are NA or df is empty after NA removal
+                  if (is.infinite(current_max)) {
+                    return(-Inf) # Return -Inf if no valid values
+                  } else {
+                    return(current_max)
+                  }
+              } else {
+                  return(-Inf) # Return -Inf for invalid/empty dataframes
+              }
+          })
+          # Filter out -Inf before taking the max for the condition
+          valid_cond_max <- cond_max[is.finite(cond_max)]
+          if (length(valid_cond_max) > 0) {
+             max_val <- max(max_val, max(valid_cond_max, na.rm = TRUE), na.rm = TRUE)
+          }
+      }
+  }
+   # If max_val is still -Inf (no valid data found), return a default like 1 or NA
+  return(ifelse(is.finite(max_val), max_val, 1))
+}
 
+# Function to generate the combined data needed for plotting
+generate_heatmap_data_for_celltype <- function(selected_ct, regulon_deltas_list, conditions) {
+  heatmap_data <- data.frame()
 
+  # Gather all unique regulons for this cell type across all conditions
+  all_regulons <- character(0)
+  for (cond_name in names(conditions)) {
+    if (!is.null(regulon_deltas_list[[cond_name]]) && !is.null(regulon_deltas_list[[cond_name]][[selected_ct]])) {
+      current_regulons <- regulon_deltas_list[[cond_name]][[selected_ct]]$name
+      all_regulons <- union(all_regulons, current_regulons)
+    } else {
+        warning("No data found for cell type '", selected_ct, "' in condition '", cond_name, "'")
+    }
+  }
+  # Remove potential "sample*" regulons if they exist
+  all_regulons <- unique(all_regulons[!grepl("sample", all_regulons)])
 
+  if(length(all_regulons) == 0) {
+      warning("No valid regulons found for cell type: ", selected_ct)
+      return(data.frame()) # Return empty frame
+  }
 
+  # Populate the data frame with deltaPagoda values for all regulons and conditions
+  for (cond_name in names(conditions)) {
+    regulon_deltas <- regulon_deltas_list[[cond_name]]
+    for (regulon in all_regulons) {
+      mean_delta <- get_deltaPagoda(selected_ct, regulon_deltas, regulon)
+      heatmap_data <- rbind(heatmap_data, data.frame(
+        TF = regulon,
+        Comparison = cond_name,
+        DeltaPagoda = mean_delta,
+        stringsAsFactors = FALSE # Important for factor handling later
+      ))
+    }
+  }
+  return(heatmap_data)
+}
 
+# Generate plots (two per cell type: one sorted by moderate, one by severe)
+# Helper function: Get top TFs for a given condition
+get_top_tfs <- function(data, condition, top_n) {
+  data %>%
+    filter(Comparison == condition, !is.na(DeltaPagoda)) %>%
+    arrange(desc(abs(DeltaPagoda))) %>%
+    slice_head(n = top_n) %>%
+    arrange(DeltaPagoda) %>%
+    pull(TF)
+}
 
+# Helper function: Generate ggplot for given TFs
+generate_heatmap_plot <- function(data, tfs, condition_names, absolute_max, condition_label, top_n) {
+  if (length(tfs) == 0) return(NULL)
 
+  plot_data <- data %>%
+    filter(TF %in% tfs) %>%
+    mutate(
+      TF = factor(TF, levels = tfs),
+      Comparison = factor(Comparison, levels = condition_names)
+    )
 
+  ggplot(plot_data, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
+    geom_tile(color = "white", linewidth = 0.5) +
+    scale_fill_gradient2(
+      low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0,
+      na.value = "grey80", name = "TF Activity\nDelta",
+      limits = c(-absolute_max, absolute_max)
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      axis.text.x = element_text(size = rel(1.1)),
+      axis.text.y = element_text(size = rel(0.9)),
+      axis.title = element_blank(),
+      panel.grid = element_blank(),
+      legend.position = "bottom",
+      plot.title = element_text(size = rel(1.2), face = "bold", hjust = 0.5)
+    ) +
+    ggtitle(paste("Top", top_n, "Regulons (Sorted by", condition_label, ")"))
+}
 
+# Main function
+generate_sorted_plots <- function(selected_receiver_cells, regulon_deltas_list, conditions, top_n, absolute_max) {
+  plots <- list()
+  condition_names <- names(conditions)
 
+  for (selected_ct in selected_receiver_cells) {
+    cat("Generating plots for cell type:", selected_ct, "\n")
+    heatmap_data_full <- generate_heatmap_data_for_celltype(selected_ct, regulon_deltas_list, conditions)
 
-#############################
-######### overlap ###########
-#############################
-# function that extract the top 'n' interaction identifiers
-# from the input object (which is results_for_correlation[[ds]][[method_name]]).
+    if (nrow(heatmap_data_full) == 0) {
+      warning("Skipping plots for ", selected_ct, " due to lack of data.")
+      next
+    }
 
+    plots[[selected_ct]] <- list()
+
+    for (cond in c("moderate", "severe")) {
+      top_tfs <- get_top_tfs(heatmap_data_full, cond, top_n)
+
+      plot <- generate_heatmap_plot(
+        data = heatmap_data_full,
+        tfs = top_tfs,
+        condition_names = condition_names,
+        absolute_max = absolute_max,
+        condition_label = cond,
+        top_n = top_n
+      )
+
+      if (is.null(plot)) {
+        warning("No regulons passed filtering for '", cond, "_sorted' plot in ", selected_ct)
+      }
+
+      plots[[selected_ct]][[paste0(cond, "_sorted")]] <- plot
+    }
+  }
+
+  return(plots)
+}
+
+create_combined_plots_per_celltype <- function(plots, selected_receiver_cells) {
+  combined_plots <- list()
+  for (selected_ct in selected_receiver_cells) {
+    # Check if both plots exist for this cell type
+    plot_moderate <- plots[[selected_ct]][["moderate_sorted"]]
+    plotsevere <- plots[[selected_ct]][["severe_sorted"]]
+
+    # Create placeholder plots if one or both are missing
+    placeholder_plot <- ggplot() + theme_void() + ggtitle("Data Not Available") + theme(plot.title = element_text(hjust = 0.5))
+    if (is.null(plot_moderate)) plot_moderate <- placeholder_plot
+    if (is.null(plotsevere)) plotsevere <- placeholder_plot
+
+    # Create title plot
+    title <- ggplot() + theme_void() + ggtitle(selected_ct) +
+      theme(plot.title = element_text(hjust = 0.5, size = 20, face = "bold"))
+
+    # Combine the two heatmaps side-by-side
+    heatmaps <- wrap_plots(plot_moderate, plotsevere, ncol = 2)
+
+    # Stack title above heatmaps
+    combined_plots[[selected_ct]] <- wrap_plots(title, heatmaps, ncol = 1, heights = c(0.1, 1)) # Adjust height ratio for title
+  }
+  return(combined_plots)
+}
+
+save_grouped_plots <- function(combined_plots, clusters_per_group, output_dir_base, output_folder_name) {
+  # Construct the full output path
+  output_dir <- file.path(output_dir_base, output_folder_name) # Match structure from file 1
+  if (!dir.exists(output_dir)) {
+      dir.create(output_dir, recursive = TRUE)
+      cat("Created output directory:", output_dir, "\n")
+  }
+
+  cluster_names <- names(combined_plots)
+  if (length(cluster_names) == 0) {
+      warning("No plots available to save.")
+      return()
+  }
+
+  for (i in seq(1, length(cluster_names), by = clusters_per_group)) {
+    # Select clusters for the current group
+    selected_clusters_group <- cluster_names[i:min(i + clusters_per_group - 1, length(cluster_names))]
+
+    # Combine the plots for the selected group (e.g., arrange in 2 columns)
+    # Adjust ncol based on how many plots per page you want vertically vs horizontally
+    plots_to_save_list <- combined_plots[selected_clusters_group]
+
+    # Check if list is empty before plotting
+    if(length(plots_to_save_list) > 0){
+        to_plot <- wrap_plots(plots_to_save_list, ncol = 1) + # Stack cell types vertically by default
+            plot_layout(guides = "collect") & # Collect legends
+            theme(
+                legend.position = "bottom",
+                legend.text = element_text(size = 12),
+                legend.title = element_text(size = 14, face = "bold"),
+                legend.key.size = unit(1.2, "cm"), # Adjust key size
+                # Adjust key height/width if needed, size often covers it
+                # legend.key.height = unit(1.0, "cm"),
+                # legend.key.width = unit(1.0, "cm")
+            )
+
+        # Define filename
+        group_num <- (i - 1) %/% clusters_per_group + 1
+        file_name <- paste0("Combined_Sorted_Heatmaps_Group_", group_num, ".png")
+        file_path <- file.path(output_dir, file_name)
+
+        # Calculate dynamic height (adjust base height and multiplier as needed)
+        plot_height <- 7 * length(selected_clusters_group) # Base height * number of plots stacked
+        plot_width <- 12 # Fixed width (adjust if needed)
+
+        cat("Saving group", group_num, "to:", file_path, "\n")
+        # Save the plot
+        ggsave(
+          filename = file_path,
+          plot = to_plot,
+          width = plot_width,
+          height = plot_height,
+          dpi = 300,
+          limitsize = FALSE # Important for potentially large plots
+        )
+    } else {
+        cat("Skipping save for group", (i - 1) %/% clusters_per_group + 1, "as no plots were generated for the selected clusters.\n")
+    }
+  }
+}
+
+# 1. Combine both moderate and severe into a long format
+get_long_deltas <- function(regulon_deltas, condition) {
+  bind_rows(lapply(names(regulon_deltas), function(ct) {
+    df <- regulon_deltas[[ct]] %>%
+      filter(class == "real")  # Keep only real TFs
+    df$Cluster <- ct
+    df$Condition <- condition
+    return(df)
+  }))
+}
+
+# Define a pseudo-log transformation that handles negatives
+pseudo_log_trans <- function(base = 10) {
+  trans_new(
+    name = paste0("pseudo_log", base),
+    transform = function(x) sign(x) * log1p(abs(x)) / log(base),
+    inverse = function(x) sign(x) * (base^abs(x) - 1),
+    domain = c(-Inf, Inf)
+  )
+}
+
+# function that extract the top 'n' interaction identifiers from the input object (which is results_for_correlation[[ds]][[method_name]]).
 getSet <- function(method_result, n) {
   # Basic Input Checks
   if (is.null(method_result)) {
@@ -308,7 +438,192 @@ calculate_all_intersections <- function(list_input) {
   return(results_df)
 }
 
-# --- Main Calculation Loop ---
+# Function: Create a custom color scale for flagged points.
+# For each method, assign:
+#   - A darker color when flagged (flagged == TRUE)
+#   - The base color when not flagged (flagged == FALSE)
+create_flag_color_scale <- function(methods) {
+  # Get a base color for each method using a hue palette.
+  #base_cols <- scales::hue_pal()(length(methods))
+  base_cols <- method_colors
+  #names(base_cols) <- methods
+  names(base_cols) <- names(method_colors)
+  
+  # Helper to darken a given color.
+  darker <- function(col) {
+    adjustcolor(col, red.f = 0.6, green.f = 0.6, blue.f = 0.6)
+  }
+  
+  # For each method, return a vector with:
+  #   - A darker color (flagged)
+  #   - The base color (not flagged)
+  color_values <- unlist(lapply(methods, function(m) {
+    c(darker(base_cols[m]), base_cols[m])
+  }))
+  
+  # Name the colors to match the values produced by interaction(method, flagged).
+  # That is, names like "MethodName.TRUE" and "MethodName.FALSE".
+  names(color_values) <- unlist(lapply(methods, function(m) {
+    c(paste0(m, ".TRUE"), paste0(m, ".FALSE"))
+  }))
+  
+  return(color_values)
+}
+
+
+# ==== clean up results ====
+all_scores_list <- imap(results_preprocessed, ~{
+  # For each dataset, iterate through its methods
+  dataset_name <- .y
+  methods_list <- .x
+
+  # Map over the methods within the current dataset
+  imap_dfr(methods_list, ~{
+    method_name <- .y
+    method_data <- .x
+
+    if (!is.null(method_data) && nrow(method_data) > 0 && "prioritization_score" %in% names(method_data)) {
+      # Select the score and add dataset/method identifiers
+      method_data %>%
+        select(prioritization_score) %>%
+        mutate(
+          method = method_name,
+          dataset = dataset_name
+        )
+    } else {
+      # Return an empty tibble/dataframe if data is missing or invalid
+      tibble(prioritization_score = numeric(0), method = character(0), dataset = character(0))
+    }
+  })
+})
+
+# Combine the list of dataframes into one single dataframe
+combined_scores_df <- bind_rows(all_scores_list)
+
+# Define a consistent color scheme (adjust colors as needed)
+method_colors <- c(
+  "Decipher" = "#1f77b4",
+  "NicheNet" = "#ff7f0e",
+  "LIANA+" = "#2ca02c",
+  "Connectome" = "#d62728",
+  "NATMI" = "#9467bd"
+  # Add more if needed
+)
+
+# Optional: Remove datasets/methods with zero rows if any slipped through
+combined_scores_df <- combined_scores_df %>% filter(!is.na(prioritization_score))
+
+
+desired_method_order <- c("Decipher", "NicheNet", "LIANA+", "NATMI", "Connectome")
+
+# Convert the 'method' column to a factor with the specified levels.
+combined_scores_df <- combined_scores_df %>%
+  mutate(method = factor(method, levels = rev(desired_method_order)))
+
+
+# ==== Box-plot number of interactions ====
+# Collect interaction counts into a data frame
+interaction_counts <- do.call(rbind, lapply(names(results_preprocessed), function(ds) {
+  df <- results_preprocessed[[ds]]
+  data.frame(
+    dataset = ds,
+    method = names(df),
+    interaction_count = sapply(df, nrow),
+    stringsAsFactors = FALSE
+  )
+}))
+
+# Ensure correct order and factor levels
+interaction_counts$method <- factor(interaction_counts$method, levels = desired_method_order)
+
+# Plot
+p <- ggplot(interaction_counts, aes(x = method, y = interaction_count, fill = method)) +
+  geom_boxplot(outlier.shape = NA, width = 0.6) +
+  geom_jitter(width = 0.2, size = 2, alpha = 0.8) +
+  scale_fill_manual(values = method_colors) +
+  scale_y_log10() +
+  labs(
+    x = "Method",
+    y = "Number of Interactions (log10)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 0, vjust = 1,size = 14), # Rotate labels for readability
+    axis.text.y = element_text(size=14)
+  )
+
+
+ggsave("figures/boxplot_number_of_interactions_by_method.png", plot = p, width = 8, height = 4, dpi = 300)
+
+#==== violin plot score distribution ====
+# Check if variables exist
+if (!exists("combined_scores_df")) stop("DataFrame 'combined_scores_df' not found.")
+if (!exists("method_colors")) stop("Color vector 'method_colors' not found.")
+if (!exists("desired_method_order")) stop("Order vector 'desired_method_order' not found.")
+
+# Generate the Violin Plot
+plot_violin_scores_by_method <- ggplot(combined_scores_df,
+                                        # Swap x and y aesthetics
+                                        aes(x = method,
+                                            y = prioritization_score,
+                                            fill = method)) + # Grouping defaults to x aesthetic
+
+  # Use geom_violin instead of geom_density_ridges
+  geom_violin(trim = FALSE,    # Keep tails
+              alpha = 0.7,     # Adjust transparency
+              scale = "width", # Makes violins comparable across methods
+              # Optional: Show median and quartiles
+              draw_quantiles = c(0.25, 0.5, 0.75)
+              ) +
+
+  # Use consistent colors; ensure names match factor levels
+  scale_fill_manual(values = method_colors, name = "Method", breaks = desired_method_order) +
+
+  # Apply pseudo-log scale to the Y axis
+  scale_y_continuous(
+      trans = scales::pseudo_log_trans(sigma = 0.1, base = 10),
+      breaks = c(-10, -1, 0, 1, 10, 100), # Adjust breaks if needed for score range
+      name = "Interaction Prioritization Score (Pseudo-Log Scale)" # Set y-axis label here
+  ) +
+
+  # Ensure method order on the X axis
+  scale_x_discrete(limits = desired_method_order, name = "Method") + # Set x-axis label here
+
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "none", # Keep legend off
+    axis.text.x = element_text(angle = 0, vjust = 1,size = 14), # Rotate labels for readability
+    axis.text.y = element_text(size=14)
+    # Add other theme adjustments if needed
+  ) +
+  labs(
+    # x and y labels are set within the scale functions now
+    fill = "Method"
+  )
+
+
+# Save the Plot
+output_filename_violin <- "figures/violin_scores_by_method.png"
+dir.create("figures", showWarnings = FALSE)
+
+save_result_violin <- tryCatch({
+    ggsave(output_filename_violin, plot = plot_violin_scores_by_method, width = 8, height = 4, dpi = 300)
+    TRUE
+}, error = function(e) {
+    warning("Failed to save the violin plot: ", e$message, call. = FALSE)
+    FALSE
+})
+
+if (save_result_violin) {
+    print(paste("Violin plot saved to", output_filename_violin))
+} else {
+    print("Violin plot was generated but could not be saved automatically.")
+}
+
+
+#==== overlap ====
 n_top <- 100
 method_names_expected <- c("Decipher", "NicheNet", "LIANA+", "NATMI", "Connectome")
 all_intersection_data <- list()
@@ -496,20 +811,7 @@ upset(
 # Close the PNG device
 dev.off()
 
-
-
-
-
-
-##########################
-## Correlation ###########
-##########################
-
-library(ggplot2)
-library(reshape2)   # For reshaping matrix to long format
-library(gridExtra)  # For arranging multiple heatmaps in a grid
-library(dplyr)
-
+# ==== Correlation ====
 # Initialize list to store Spearman matrices
 spearman_matrices <- list()
 
@@ -639,10 +941,6 @@ combined_spearman_df <- combined_spearman_df %>%
 # Merge the two data frames by Dataset and Method_Pair
 combined_df <- full_join(combined_k_df, combined_spearman_df, by = c("Dataset", "Method_Pair", "Var1", "Var2", "Method1", "Method2"))
 
-# --- Load necessary libraries ---
-library(ggplot2)
-library(dplyr)
-
 # --- Assume 'combined_df' is ready ---
 # It should have columns like: Var1, Var2, k_value, Spearman
 
@@ -674,13 +972,7 @@ if(nrow(plot_data) == 0) {
 plot_data$Method1 <- factor(plot_data$Method1, levels = desired_method_order)
 plot_data$Method2 <- factor(plot_data$Method2, levels = desired_method_order)
 
-# Check if conversion worked (optional)
-# print(levels(plot_data$Method1))
-# print(levels(plot_data$Method2))
-# print(head(plot_data))
-
-
-# --- Create the final dual-axis boxplot ---
+# Create the final dual-axis boxplot
 p_final <- ggplot(plot_data, aes(x = Method2)) +
 
   # Boxplots (same as before)
@@ -751,23 +1043,10 @@ p_final <- ggplot(plot_data, aes(x = Method2)) +
     legend.title = element_blank()
   )
 
-# Print the final plot
-print(p_final)
-
 # Save the plot (adjust dimensions if needed)
 ggsave("figures/combined_k_spearman_boxplot_final_ordered.png", plot = p_final, width = 16, height = 7.5, dpi = 300)
 
-
-
-
-
-
-
-
-
-##########################
-### AUC plots ####
-########################
+# ==== AUC plots ====
 #load cytosig data
 cytosig_significance   <- list() 
 #cells_per_cluster <- list()  # New list to store cell counts per cluster
@@ -795,9 +1074,6 @@ for (ds in names(datasets)) {
   # Process Cytosig significance
   cytosig_significance[[ds]] <- summarizeZScores(z_score_files, z_score_folder, mapping_table)
 }
-
-
-#library(gplots)
 
 # Filter datasets with non-empty heatmaps
 valid <- list()
@@ -852,16 +1128,8 @@ for (dataset in names(valid)) {
 }
 
 
-#ROC curves
-
-library(ggplot2)
-library(pROC)
-library(patchwork)
-library(data.table)
-
+#==== ROC curves ====
 #results_for_comparison <- results_for_comparison[setdiff(names(results_for_comparison), "lupus")]
-
-
 predictions_and_responses_all <- list()
 auc_scores_by_datset <- list()
 for (ds in names(datasets)) {
@@ -900,16 +1168,7 @@ for (ds in names(datasets)) {
     plotCytosigSignificanceMatrix(cytosig_significance[[ds]],output_figures_filepath)
 }
 
-
-library(dplyr)
-library(tidyr)
-library(purrr)
-library(ggplot2)
-# If not installed yet:
-# install.packages("ggbeeswarm")
-library(ggbeeswarm)
-library(dplyr)
-
+#ggbeeswarm
 results_df <- map_dfr(names(auc_scores_by_datset), function(dataset) {
   map_dfr(names(auc_scores_by_datset[[dataset]]), function(threshold) {
     map_dfr(names(auc_scores_by_datset[[dataset]][[threshold]]), function(method){
@@ -936,48 +1195,13 @@ results_df <- results_df %>% filter(threshold == 2)  %>%
 # Reorder methods by median if desired
 results_df$method <- reorder(results_df$method, results_df$value, FUN = median)
 
-# Filter flagged points (n_true < 10)
+# Filter flagged points n_true lt 10
 flagged_points <- filter(results_df, flag == "*")
 
 # Plot
 results_df$flagged <- results_df$flag == "*"
 
-# Function: Create a custom color scale for flagged points.
-# For each method, assign:
-#   - A darker color when flagged (flagged == TRUE)
-#   - The base color when not flagged (flagged == FALSE)
-create_flag_color_scale <- function(methods) {
-  # Get a base color for each method using a hue palette.
-  #base_cols <- scales::hue_pal()(length(methods))
-  base_cols <- method_colors
-  #names(base_cols) <- methods
-  names(base_cols) <- names(method_colors)
-  
-  # Helper to darken a given color.
-  darker <- function(col) {
-    adjustcolor(col, red.f = 0.6, green.f = 0.6, blue.f = 0.6)
-  }
-  
-  # For each method, return a vector with:
-  #   - A darker color (flagged)
-  #   - The base color (not flagged)
-  color_values <- unlist(lapply(methods, function(m) {
-    c(darker(base_cols[m]), base_cols[m])
-  }))
-  
-  # Name the colors to match the values produced by interaction(method, flagged).
-  # That is, names like "MethodName.TRUE" and "MethodName.FALSE".
-  names(color_values) <- unlist(lapply(methods, function(m) {
-    c(paste0(m, ".TRUE"), paste0(m, ".FALSE"))
-  }))
-  
-  return(color_values)
-}
-
-
 #color line by variance
-library(dplyr)
-
 # Calculate variance (or std dev) for each method
 dataset_var <- results_df %>%
   group_by(dataset) %>%
@@ -996,7 +1220,6 @@ metdataset_varhod_var <- dataset_var %>%
   ))
 results_df <- results_df %>%
   left_join(metdataset_varhod_var %>% select(dataset, line_color), by = "dataset")
-
 
 p <- ggplot(results_df, aes(x = method, y = value)) +
   geom_line(aes(group = dataset, color = line_color), size = 1, alpha = 0.6) +
@@ -1028,17 +1251,7 @@ p <- ggplot(results_df, aes(x = method, y = value)) +
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ggsave("figures/variance_w_boxplot_beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
 
-#########################
 #V2
-
-# --- Load necessary libraries ---
-library(ggplot2)
-library(ggbeeswarm) # Ensure this is loaded for geom_beeswarm
-library(dplyr)      # For data manipulation (filtering/mutating)
-#install.packages("ggnewscale") #add this to docker
-library(ggnewscale) # For multiple color scales
-
-
 # --- Prepare Data: Order Methods ---
 print("Ordering methods on X-axis...")
 available_methods_plot <- unique(results_df$method)
@@ -1132,9 +1345,6 @@ p_updated <- ggplot(results_df, aes(x = method, y = value)) +
   theme(legend.position = "none",
         axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) # Rotate labels
 
-# Print the plot
-print(p_updated)
-
 # --- Save the Plot ---
 output_filename_updated <- "figures/variance_w_boxplot_beeswarm_auc_plot_updated.png"
 dir.create("figures", showWarnings = FALSE)
@@ -1152,9 +1362,6 @@ if (save_result_updated) {
 } else {
     print("Updated plot was generated but could not be saved automatically.")
 }
-
-
-
 
 #basic
 
@@ -1188,37 +1395,8 @@ ggsave("figures/beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 3
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-##########################
-### Decipher heatmap ####
-########################
-# --- Load Necessary Libraries ---
-if (!requireNamespace("ggplot2", quietly = TRUE)) {
-    stop("This script requires 'ggplot2'. Please install it.", call. = FALSE)
-}
-if (!requireNamespace("patchwork", quietly = TRUE)) {
-    stop("This script requires 'patchwork'. Please install it.", call. = FALSE)
-}
-if (!requireNamespace("tidyr", quietly = TRUE)) {
-    stop("This script requires 'tidyr'. Please install it.", call. = FALSE)
-}
-library(ggplot2)
-library(patchwork)
-library(tidyr)
-# library(dplyr) # Not strictly required if using base R alternatives below
+# ==== Decipher heatmap ====
+#  # Not strictly required if using base R alternatives below
 
 # --- Ensure 'results_for_comparison' list exists ---
 if (!exists("results_for_comparison") || length(results_for_comparison) == 0) {
@@ -1282,7 +1460,7 @@ print("Identifying top 20 interactions...")
 interaction_max_scores <- aggregate(score ~ interaction, data = combined_decipher_df, FUN = max, na.rm = TRUE)
 
 # Using dplyr (if available and preferred)
-# library(dplyr)
+# 
 # interaction_max_scores <- combined_decipher_df %>%
 #   group_by(interaction) %>%
 #   summarise(max_score = max(score, na.rm = TRUE), .groups = 'drop') %>%
@@ -1407,37 +1585,16 @@ if (save_result) {
     print("Decipher heatmap was generated but could not be saved automatically.")
 }
 
-
-
-
-
-
-
 # ==== TF activity deltas (Severe vs Mild) ====
-
-# Load necessary libraries
-library(Seurat)
-library(dplyr)
-library(ggplot2)
-library(ggrepel) # Although not used in heatmap, kept for consistency if extending
-library(patchwork)
-
-# Configuration & Placeholders
-
-# Base path where condition-specific result folders are located
-# Adjust this path to your actual directory structure
 base_comparison_path <- "Manuscript_jan_2025"
 results_path <- file.path(base_comparison_path, "results")
-# Subfolder name within the base path for saving results
-# This will contain the final grouped PNG images
 output_folder_name <- "figures" 
 
 # Define the specific cell types (receiver cells) you want to analyze
-# Example using B cell types from file 1:
 selected_receiver_cells <- c( "Eryth", "CD16_Mono", "HSPC",    "CD4_TCM",  "Plasmablast",    "B_intermediate", "B_naive","CD8_Naive","NK","CD8_TEM","pDC","cDC2","Platelet","CD14_Mono","CD4_CTL" )
 
 # Number of top regulons (TFs) to display in each heatmap
-top_n_regulons <- 20
+top_n_regulons <- 10
 
 # Number of cell types to combine per output PNG file
 clusters_per_group_in_output <- 1 # Adjust as needed (e.g., 1, 2, 3)
@@ -1448,91 +1605,6 @@ conditions <- c(
   moderate =  "MilCOVID_Azimuthl2", # Folder name for moderate data
   severe   =  "SevCOVID_Azimuthl2"    # Folder name for severe data
 )
-
-# Helper Functions (Adapted from provided files)
-
-# Assumed function to load regulon data (replace with your actual loading mechanism)
-# It should return a list where each element corresponds to a cell type,
-# and contains a dataframe with 'name' (regulon) and 'deltaPagoda' columns.
-load_regulon_data <- function(file_path, cell_types) {
-  # --- This is a PLACEHOLDER ---
-  # Replace this with your actual code to load the .rds file
-  # and subset/process it as needed.
-  # Example:
-  tryCatch({
-      data_list <- readRDS(file_path)
-      # Ensure it's filtered for selected cell types if the file contains more
-      data_list <- data_list[intersect(names(data_list), cell_types)]
-      # Add basic validation
-      if(!is.list(data_list)) stop("Loaded data is not a list.")
-      if(length(data_list) > 0) {
-          first_el <- data_list[[1]]
-          if(!is.data.frame(first_el) || !all(c("name", "deltaPagoda") %in% colnames(first_el))) {
-              stop("Dataframe structure is incorrect. Needs 'name' and 'deltaPagoda' columns.")
-          }
-      }
-      return(data_list)
-  }, error = function(e) {
-      warning(paste("Error loading or validating file:", file_path, "-", e$message))
-      # Return an empty list or handle appropriately
-      return(list())
-  })
-  # --- End PLACEHOLDER ---
-}
-
-
-# Function to get deltaPagoda for a specified regulon and identity (cell type)
-get_deltaPagoda <- function(identity, regulon_list, regulon) {
-  identity_char <- as.character(identity)
-  if (is.null(regulon_list) || !identity_char %in% names(regulon_list)) {
-    # warning(paste("Identity", identity_char, "not found in provided regulon list. Returning NA."))
-    return(NA)
-  }
-  df <- regulon_list[[identity_char]]
-  if (is.null(df) || !is.data.frame(df) || !all(c("name", "deltaPagoda") %in% colnames(df))) {
-    # warning(paste("Required columns ('name', 'deltaPagoda') missing or data invalid for identity", identity_char, ". Returning NA."))
-    return(NA)
-  }
-  if (regulon %in% df$name) {
-    # Handle potential multiple matches (shouldn't happen with unique names)
-    return(df$deltaPagoda[df$name == regulon][1])
-  } else {
-    # warning(paste("Regulon", regulon, "not found for identity", identity_char, ". Returning NA."))
-    return(NA)
-  }
-}
-
-# Helper function to find the absolute max deltaPagoda, handling NULL/NA/empty lists
-find_absolute_max <- function(deltas_list_of_lists) {
-  max_val <- -Inf # Initialize with negative infinity
-  for (cond_list in deltas_list_of_lists) {
-      if (!is.null(cond_list) && length(cond_list) > 0) {
-          cond_max <- sapply(cond_list, function(df) {
-              if (!is.null(df) && is.data.frame(df) && "deltaPagoda" %in% colnames(df) && nrow(df) > 0) {
-                  current_max <- max(abs(df$deltaPagoda), na.rm = TRUE)
-                  # Handle case where all deltaPagoda are NA or df is empty after NA removal
-                  if (is.infinite(current_max)) {
-                    return(-Inf) # Return -Inf if no valid values
-                  } else {
-                    return(current_max)
-                  }
-              } else {
-                  return(-Inf) # Return -Inf for invalid/empty dataframes
-              }
-          })
-          # Filter out -Inf before taking the max for the condition
-          valid_cond_max <- cond_max[is.finite(cond_max)]
-          if (length(valid_cond_max) > 0) {
-             max_val <- max(max_val, max(valid_cond_max, na.rm = TRUE), na.rm = TRUE)
-          }
-      }
-  }
-   # If max_val is still -Inf (no valid data found), return a default like 1 or NA
-  return(ifelse(is.finite(max_val), max_val, 1))
-}
-
-
-# ---->> Data Loading <<----
 
 # Dynamically load data based on conditions defined above
 regulon_deltas_list <- lapply(names(conditions), function(cond_name) {
@@ -1560,9 +1632,7 @@ if(final_cell_count == 0) {
     stop("No valid selected cell types found in the loaded data. Please check 'selected_receiver_cells' and data files.")
 }
 
-
 # Calculate Global Color Scale Limit
-
 absolute_max <- find_absolute_max(regulon_deltas_list)
 cat("Global absolute max deltaPagoda for scaling:", absolute_max, "\n")
 # Ensure absolute_max is not zero or negative, set a minimum limit if needed
@@ -1571,328 +1641,13 @@ if(is.na(absolute_max) || absolute_max <= 0) {
     absolute_max <- 1
 }
 
-
-# Heatmap Generation
-
-# Function to generate the combined data needed for plotting
-generate_heatmap_data_for_celltype <- function(selected_ct, regulon_deltas_list, conditions) {
-  heatmap_data <- data.frame()
-
-  # Gather all unique regulons for this cell type across all conditions
-  all_regulons <- character(0)
-  for (cond_name in names(conditions)) {
-    if (!is.null(regulon_deltas_list[[cond_name]]) && !is.null(regulon_deltas_list[[cond_name]][[selected_ct]])) {
-      current_regulons <- regulon_deltas_list[[cond_name]][[selected_ct]]$name
-      all_regulons <- union(all_regulons, current_regulons)
-    } else {
-        warning("No data found for cell type '", selected_ct, "' in condition '", cond_name, "'")
-    }
-  }
-  # Remove potential "sample*" regulons if they exist
-  all_regulons <- unique(all_regulons[!grepl("sample", all_regulons)])
-
-  if(length(all_regulons) == 0) {
-      warning("No valid regulons found for cell type: ", selected_ct)
-      return(data.frame()) # Return empty frame
-  }
-
-  # Populate the data frame with deltaPagoda values for all regulons and conditions
-  for (cond_name in names(conditions)) {
-    regulon_deltas <- regulon_deltas_list[[cond_name]]
-    for (regulon in all_regulons) {
-      mean_delta <- get_deltaPagoda(selected_ct, regulon_deltas, regulon)
-      heatmap_data <- rbind(heatmap_data, data.frame(
-        TF = regulon,
-        Comparison = cond_name,
-        DeltaPagoda = mean_delta,
-        stringsAsFactors = FALSE # Important for factor handling later
-      ))
-    }
-  }
-  return(heatmap_data)
-}
-
-
-# Generate plots (two per cell type: one sorted by moderate, one by severe)
-generate_sorted_plots <- function(selected_receiver_cells, regulon_deltas_list, conditions, top_n, absolute_max) {
-  plots <- list()
-  condition_names <- names(conditions)
-
-  for (selected_ct in selected_receiver_cells) {
-    cat("Generating plots for cell type:", selected_ct, "\n")
-    # Get the combined data for this cell type
-    heatmap_data_full <- generate_heatmap_data_for_celltype(selected_ct, regulon_deltas_list, conditions)
-
-    if (nrow(heatmap_data_full) == 0) {
-        warning("Skipping plots for ", selected_ct, " due to lack of data.")
-        next # Skip to the next cell type
-    }
-
-    plots[[selected_ct]] <- list()
-
-    # Create plot sorted by 'moderate'
-
-      # Determine top N TFs based on 'moderate' condition
-      heatmap_data_filtered_moderate <- heatmap_data_full %>%
-        filter(Comparison == "Moderate" & !is.na(DeltaPagoda)) %>%
-        arrange(desc(abs(DeltaPagoda))) %>% # Sort by absolute value first to get strongest effects
-        #arrange(desc(DeltaPagoda)) %>% # Alternative: Sort by signed value
-        slice_head(n = top_n) %>% # Take top N based on chosen sort
-        arrange(DeltaPagoda) # Arrange for y-axis order (ascending is common)
-
-      # Get the ordered list of TFs
-      ordered_tfs_moderate <- heatmap_data_filtered_moderate$TF
-
-      if(length(ordered_tfs_moderate) > 0) {
-          # Filter the full data to include only these TFs
-          plot_data_moderate_sorted <- heatmap_data_full %>%
-            filter(TF %in% ordered_tfs_moderate) %>%
-            mutate(
-              TF = factor(TF, levels = ordered_tfs_moderate), # Set factor levels for y-axis order
-              Comparison = factor(Comparison, levels = condition_names) # Ensure consistent x-axis order
-            )
-
-          # Generate the ggplot object
-          plots[[selected_ct]][["moderate_sorted"]] <- ggplot(plot_data_moderate_sorted, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
-            geom_tile(color = "white", linewidth = 0.5) + # Added line thickness
-            scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, na.value = "grey80", name = "TF Activity\nDelta", limits = c(-absolute_max, absolute_max)) +
-            theme_minimal(base_size = 14) + # Increased base size
-            theme(
-              axis.text.x = element_text(size = rel(1.1)), # Relative sizing
-              axis.text.y = element_text(size = rel(0.9)),
-              axis.title = element_blank(),
-              panel.grid = element_blank(),
-              legend.position = "bottom",
-              plot.title = element_text(size = rel(1.2), face = "bold", hjust = 0.5) # Centered title
-            ) +
-            ggtitle(paste("Top", top_n, "Regulons (Sorted by moderate)"))
-      } else {
-          warning("No regulons passed filtering for 'moderate_sorted' plot in ", selected_ct)
-          plots[[selected_ct]][["moderate_sorted"]] <- NULL # Indicate missing plot
-      }
-  }
-
-  # Create plot sorted by 'severe'
-  # Determine top N TFs based on 'severe' condition
-  heatmap_data_filtered_severe <- heatmap_data_full %>%
-    filter(Comparison == "Severe" & !is.na(DeltaPagoda)) %>%
-    arrange(desc(abs(DeltaPagoda))) %>% # Sort by absolute value
-    #arrange(desc(DeltaPagoda)) %>% # Alternative: sort by signed value
-    slice_head(n = top_n) %>%
-    arrange(DeltaPagoda) # Arrange for y-axis
-
-  ordered_tfs_severe <- heatmap_data_filtered_severe$TF
-
-  if(length(ordered_tfs_severe) > 0) {
-      # Filter the full data to include only these TFs
-      plot_data_severe_sorted <- heatmap_data_full %>%
-        filter(TF %in% ordered_tfs_severe) %>%
-        mutate(
-          TF = factor(TF, levels = ordered_tfs_severe),
-          Comparison = factor(Comparison, levels = condition_names)
-        )
-
-      plots[[selected_ct]][["severe_sorted"]] <- ggplot(plot_data_severe_sorted, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
-        geom_tile(color = "white", linewidth = 0.5) +
-        scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, na.value = "grey80", name = "TF Activity\nDelta", limits = c(-absolute_max, absolute_max)) +
-        theme_minimal(base_size = 14) +
-        theme(
-          axis.text.x = element_text(size = rel(1.1)),
-          axis.text.y = element_text(size = rel(0.9)),
-          axis.title = element_blank(),
-          panel.grid = element_blank(),
-          legend.position = "bottom",
-          plot.title = element_text(size = rel(1.2), face = "bold", hjust = 0.5)
-        ) +
-        ggtitle(paste("Top", top_n, "Regulons (Sorted by severe)"))
-  } else {
-      warning("No regulons passed filtering for 'severe_sorted' plot in ", selected_ct)
-      plots[[selected_ct]][["severe_sorted"]] <- NULL
-  }
-  return(plots)
-}
-
-
-#re-factored code
-# Helper function: Get top TFs for a given condition
-get_top_tfs <- function(data, condition, top_n) {
-  data %>%
-    filter(Comparison == condition, !is.na(DeltaPagoda)) %>%
-    arrange(desc(abs(DeltaPagoda))) %>%
-    slice_head(n = top_n) %>%
-    arrange(DeltaPagoda) %>%
-    pull(TF)
-}
-
-# Helper function: Generate ggplot for given TFs
-generate_heatmap_plot <- function(data, tfs, condition_names, absolute_max, condition_label, top_n) {
-  if (length(tfs) == 0) return(NULL)
-
-  plot_data <- data %>%
-    filter(TF %in% tfs) %>%
-    mutate(
-      TF = factor(TF, levels = tfs),
-      Comparison = factor(Comparison, levels = condition_names)
-    )
-
-  ggplot(plot_data, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
-    geom_tile(color = "white", linewidth = 0.5) +
-    scale_fill_gradient2(
-      low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0,
-      na.value = "grey80", name = "TF Activity\nDelta",
-      limits = c(-absolute_max, absolute_max)
-    ) +
-    theme_minimal(base_size = 14) +
-    theme(
-      axis.text.x = element_text(size = rel(1.1)),
-      axis.text.y = element_text(size = rel(0.9)),
-      axis.title = element_blank(),
-      panel.grid = element_blank(),
-      legend.position = "bottom",
-      plot.title = element_text(size = rel(1.2), face = "bold", hjust = 0.5)
-    ) +
-    ggtitle(paste("Top", top_n, "Regulons (Sorted by", condition_label, ")"))
-}
-
-# Main function
-generate_sorted_plots <- function(selected_receiver_cells, regulon_deltas_list, conditions, top_n, absolute_max) {
-  plots <- list()
-  condition_names <- names(conditions)
-
-  for (selected_ct in selected_receiver_cells) {
-    cat("Generating plots for cell type:", selected_ct, "\n")
-    heatmap_data_full <- generate_heatmap_data_for_celltype(selected_ct, regulon_deltas_list, conditions)
-
-    if (nrow(heatmap_data_full) == 0) {
-      warning("Skipping plots for ", selected_ct, " due to lack of data.")
-      next
-    }
-
-    plots[[selected_ct]] <- list()
-
-    for (cond in c("moderate", "severe")) {
-      top_tfs <- get_top_tfs(heatmap_data_full, cond, top_n)
-
-      plot <- generate_heatmap_plot(
-        data = heatmap_data_full,
-        tfs = top_tfs,
-        condition_names = condition_names,
-        absolute_max = absolute_max,
-        condition_label = cond,
-        top_n = top_n
-      )
-
-      if (is.null(plot)) {
-        warning("No regulons passed filtering for '", cond, "_sorted' plot in ", selected_ct)
-      }
-
-      plots[[selected_ct]][[paste0(cond, "_sorted")]] <- plot
-    }
-  }
-
-  return(plots)
-}
-
-
-
 # Execute plot generation
 generated_plots <- generate_sorted_plots(selected_receiver_cells, regulon_deltas_list, conditions, top_n_regulons, absolute_max)
 
-
-# Combine and Save Plots
-
-
 # Create combined plots with titles (one combined plot per cell type)
-create_combined_plots_per_celltype <- function(plots, selected_receiver_cells) {
-  combined_plots <- list()
-  for (selected_ct in selected_receiver_cells) {
-    # Check if both plots exist for this cell type
-    plot_moderate <- plots[[selected_ct]][["moderate_sorted"]]
-    plotsevere <- plots[[selected_ct]][["severe_sorted"]]
-
-    # Create placeholder plots if one or both are missing
-    placeholder_plot <- ggplot() + theme_void() + ggtitle("Data Not Available") + theme(plot.title = element_text(hjust = 0.5))
-    if (is.null(plot_moderate)) plot_moderate <- placeholder_plot
-    if (is.null(plotsevere)) plotsevere <- placeholder_plot
-
-    # Create title plot
-    title <- ggplot() + theme_void() + ggtitle(selected_ct) +
-      theme(plot.title = element_text(hjust = 0.5, size = 20, face = "bold"))
-
-    # Combine the two heatmaps side-by-side
-    heatmaps <- wrap_plots(plot_moderate, plotsevere, ncol = 2)
-
-    # Stack title above heatmaps
-    combined_plots[[selected_ct]] <- wrap_plots(title, heatmaps, ncol = 1, heights = c(0.1, 1)) # Adjust height ratio for title
-  }
-  return(combined_plots)
-}
-
 celltype_combined_plots <- create_combined_plots_per_celltype(generated_plots, selected_receiver_cells)
 
 # Function to save combined plots in groups
-save_grouped_plots <- function(combined_plots, clusters_per_group, output_dir_base, output_folder_name) {
-  # Construct the full output path
-  output_dir <- file.path(output_dir_base, output_folder_name) # Match structure from file 1
-  if (!dir.exists(output_dir)) {
-      dir.create(output_dir, recursive = TRUE)
-      cat("Created output directory:", output_dir, "\n")
-  }
-
-  cluster_names <- names(combined_plots)
-  if (length(cluster_names) == 0) {
-      warning("No plots available to save.")
-      return()
-  }
-
-  for (i in seq(1, length(cluster_names), by = clusters_per_group)) {
-    # Select clusters for the current group
-    selected_clusters_group <- cluster_names[i:min(i + clusters_per_group - 1, length(cluster_names))]
-
-    # Combine the plots for the selected group (e.g., arrange in 2 columns)
-    # Adjust ncol based on how many plots per page you want vertically vs horizontally
-    plots_to_save_list <- combined_plots[selected_clusters_group]
-
-    # Check if list is empty before plotting
-    if(length(plots_to_save_list) > 0){
-        to_plot <- wrap_plots(plots_to_save_list, ncol = 1) + # Stack cell types vertically by default
-            plot_layout(guides = "collect") & # Collect legends
-            theme(
-                legend.position = "bottom",
-                legend.text = element_text(size = 12),
-                legend.title = element_text(size = 14, face = "bold"),
-                legend.key.size = unit(1.2, "cm"), # Adjust key size
-                # Adjust key height/width if needed, size often covers it
-                # legend.key.height = unit(1.0, "cm"),
-                # legend.key.width = unit(1.0, "cm")
-            )
-
-        # Define filename
-        group_num <- (i - 1) %/% clusters_per_group + 1
-        file_name <- paste0("Combined_Sorted_Heatmaps_Group_", group_num, ".png")
-        file_path <- file.path(output_dir, file_name)
-
-        # Calculate dynamic height (adjust base height and multiplier as needed)
-        plot_height <- 7 * length(selected_clusters_group) # Base height * number of plots stacked
-        plot_width <- 12 # Fixed width (adjust if needed)
-
-        cat("Saving group", group_num, "to:", file_path, "\n")
-        # Save the plot
-        ggsave(
-          filename = file_path,
-          plot = to_plot,
-          width = plot_width,
-          height = plot_height,
-          dpi = 300,
-          limitsize = FALSE # Important for potentially large plots
-        )
-    } else {
-        cat("Skipping save for group", (i - 1) %/% clusters_per_group + 1, "as no plots were generated for the selected clusters.\n")
-    }
-  }
-}
-
-# Run the function to save the plots in groups
 save_grouped_plots(
     combined_plots = celltype_combined_plots,
     clusters_per_group = clusters_per_group_in_output,
@@ -1903,23 +1658,6 @@ save_grouped_plots(
 cat("Script finished. Plots saved in:", file.path(base_comparison_path, , output_folder_name), "\n")
 
 # ==== Plot PCA of regulons ====
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(tibble)
-
-# 1. Combine both moderate and severe into a long format
-get_long_deltas <- function(regulon_deltas, condition) {
-  bind_rows(lapply(names(regulon_deltas), function(ct) {
-    df <- regulon_deltas[[ct]] %>%
-      filter(class == "real")  # Keep only real TFs
-    df$Cluster <- ct
-    df$Condition <- condition
-    return(df)
-  }))
-}
-
-
 long_moderate <- get_long_deltas(regulon_deltas_list$moderate, "Moderate")
 long_severe   <- get_long_deltas(regulon_deltas_list$severe, "Severe")
 
@@ -1933,7 +1671,10 @@ wide_deltas <- combined_long %>%
 
 # 3. Run PCA
 deltas_mat <- wide_deltas %>% column_to_rownames("Cluster_Condition") %>% as.matrix()
-pca_res <- prcomp(deltas_mat, scale. = TRUE)
+#filter for informative features and run PCA
+min_presence <- 0.8 * nrow(deltas_mat)
+deltas_mat_filtered <- deltas_mat[, colSums(deltas_mat != 0) >= min_presence]
+pca_res <- prcomp(deltas_mat_filtered, scale. = TRUE)
 
 # 4. Extract scores and metadata
 pca_df <- as.data.frame(pca_res$x[, 1:2])
@@ -1959,25 +1700,11 @@ pca_df <- pca_df %>%
     NA_character_
   ))
 
-
 # 5. Plot
-library(scales)  # for pseudo log transformation
+ # for pseudo log transformation
 
 # Define custom colors
 condition_colors <- c("Moderate" = "#91C8F6", "Severe" = "#E4B731")  # light blue and gold
-
-# Define a pseudo-log transformation that handles negatives
-pseudo_log_trans <- function(base = 10) {
-  trans_new(
-    name = paste0("pseudo_log", base),
-    transform = function(x) sign(x) * log1p(abs(x)) / log(base),
-    inverse = function(x) sign(x) * (base^abs(x) - 1),
-    domain = c(-Inf, Inf)
-  )
-}
-library(ggrepel)
-
-library(purrr)
 
 # Match Moderate and Severe by Cluster
 cluster_pairs <- intersect(moderate_clusters, severe_clusters)
@@ -2015,9 +1742,6 @@ PCA_plot <- ggplot(pca_df, aes(x = PC1, y = PC2, color = Condition)) +
     plot.title = element_blank()
   )
 
-install.packages("ggnewscale")  # run once
-library(ggnewscale)
-
 
 PCA_plot <- ggplot(pca_df, aes(x = PC1, y = PC2)) +
   # First scale: point color by Condition
@@ -2053,7 +1777,162 @@ PCA_plot <- ggplot(pca_df, aes(x = PC1, y = PC2)) +
 
 
 # Save
-ggsave("Manuscript_jan_2025/figures/pca_plot_custom.png", PCA_plot, width = 8, height = 6)
+ggsave("Manuscript_jan_2025/figures/pca_plot_custom.png", PCA_plot, width = 3, height = 6)
+
+# ==== Test ====
+test <- readRDS("pre_processing_test/data/SevMilCOVID/combined_seurat_for_processing_azimuth_mapped.rds")
+meta.data <- test@meta.data
+rm(test)
+
+# Get loadings from PCA result
+loadings <- as.data.frame(pca_res$rotation[, 1:2])  # Just PC1 and PC2 for now
+loadings$TF <- rownames(loadings)
+
+# Arrange by absolute contribution to PC1
+top_PC1 <- loadings %>% arrange(desc(abs(PC1))) %>% head(10)
+
+# Arrange by absolute contribution to PC2
+top_PC2 <- loadings %>% arrange(desc(abs(PC2))) %>% head(10)
+
+p1 <- ggplot(top_PC1, aes(x = reorder(TF, PC1), y = PC1)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Top TFs contributing to PC1", x = "TF", y = "Loading") +
+  theme_minimal()
+
+p2 <- ggplot(top_PC2, aes(x = reorder(TF, PC2), y = PC2)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Top TFs contributing to PC2", x = "TF", y = "Loading") +
+  theme_minimal()
+
+# Save
+ggsave("Manuscript_jan_2025/figures/p1.png", p1, width = 8, height = 6)
+ggsave("Manuscript_jan_2025/figures/p2.png", p2, width = 8, height = 6)
+
+# ==== test 2 =====
+
+library(ggplot2)
+library(dplyr)
+library(scales)          # for pseudo_log_trans
+library(ggrepel)
+library(ggnewscale)      # for multiple color scales
+
+# Define custom colors
+condition_colors <- c("Moderate" = "#91C8F6", "Severe" = "#E4B731")  # light blue and gold
+
+# Calculate segments for connecting points
+cluster_pairs <- intersect(
+  pca_df %>% filter(Condition == "Moderate") %>% pull(Cluster),
+  pca_df %>% filter(Condition == "Severe") %>% pull(Cluster)
+)
+
+segment_df <- purrr::map_dfr(cluster_pairs, function(clust) {
+  pt1 <- pca_df %>% filter(Cluster == clust, Condition == "Moderate")
+  pt2 <- pca_df %>% filter(Cluster == clust, Condition == "Severe")
+  dist <- sqrt((pt1$PC1 - pt2$PC1)^2)
+  tibble(
+    Cluster = clust,
+    x = pt1$PC1, xend = pt2$PC1,
+    y = pt1$Cluster, yend = pt2$Cluster,
+    dist = dist
+  )
+})
+
+# Plot
+p <- ggplot(pca_df, aes(x = PC1, y = Cluster)) +
+  # Dashed line by distance
+  geom_segment(data = segment_df,
+               aes(x = x, xend = xend, y = y, yend = yend, color = dist),
+               linetype = "dashed", size = 1) +
+  scale_color_gradient(
+    name = "Distance",
+    low = "#DCE6F2",
+    high = "#08306B"
+  ) +
+  ggnewscale::new_scale_color() +
+
+  # Plot points
+  geom_point(aes(color = Condition), size = 4) +
+  scale_color_manual(values = condition_colors, name = "Condition",
+                     guide = guide_legend(override.aes = list(size = 4))) +
+
+  # Axis transformation and theme tweaks
+  scale_x_continuous(trans = pseudo_log_trans(base = 10)) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    axis.text = element_text(face = "bold"),
+    axis.title = element_text(face = "bold"),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold")
+  ) +
+  labs(x = "PC1", y = "Cluster")
+
+# Save with better filename
+ggsave("Manuscript_jan_2025/figures/pca_PC1_by_cluster.png", p, width = 4, height = 6)
+
+# ==== Heatmap ====
+
+
+# ==== loadings heat map ====
+# ok now I want to take these variables and do a heatmap with cell_types + condition in the y-axis and TFs in the x-axis (these are the top ten loadings for PC1)
+#I want the heatmap to go from blue to red and basically I have two conditions, moderate and severe
+#so I want M_NK, then S_NK, then M_cDC2, then S_cDC2 and so on. I want the legend to be at the bottom.
+top_PC1
+deltas_mat_filtered
+and cluster_condition_map
+cell_types <- c("NK","cDC2","CD16_Mono","CD14_Mono")
+
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(ggplot2)
+library(forcats)
+
+# 1. Get top 10 TFs based on PC1 loadings
+top_PC1_TFs <- top_PC1$TF
+
+# 2. Extract the deltaPagoda matrix and convert to long
+heatmap_data <- deltas_mat_filtered[, top_PC1_TFs] %>%
+  as.data.frame() %>%
+  rownames_to_column("Cluster_Condition") %>%
+  pivot_longer(-Cluster_Condition, names_to = "TF", values_to = "deltaPagoda") %>%
+  left_join(cluster_condition_map, by = "Cluster_Condition")
+
+# 3. Filter for selected cell types
+heatmap_data <- heatmap_data %>%
+  filter(Cluster %in% cell_types) %>%
+  mutate(
+    Condition_short = ifelse(Condition == "Moderate", "M", "S"),
+    Cluster_label = paste0(Condition_short, "_", Cluster)
+  )
+
+# 4. Factor levels for correct ordering
+heatmap_data <- heatmap_data %>%
+  mutate(Cluster_label = factor(Cluster_label,
+    levels = as.vector(t(outer(c("M", "S"), cell_types, paste, sep = "_")))
+  ))
+
+# 5. Plot the heatmap
+heatmap_plot <- ggplot(heatmap_data, aes(x = TF, y = Cluster_label, fill = deltaPagoda)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "blue", high = "red", mid = "white", midpoint = 0,
+    name = "TF delta"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    axis.text.y = element_text(face = "bold"),
+    axis.title = element_blank(),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold")
+  )
+
+# Save it
+ggsave("Manuscript_jan_2025/figures/PC1_top_TF_heatmap.png", heatmap_plot, width = 4, height = 4)
 
 
 
@@ -2066,10 +1945,6 @@ decipher_scores_severe <- readRDS("Manuscript_jan_2025/results/SevCOVID_Azimuthl
 decipher_scores_moderate <- readRDS("Manuscript_jan_2025/results/MilCOVID_Azimuthl2/data/decipher_scores_by_cluster.rds")
 
 #----> Decipher Heatmap <----
-library(dplyr)
-library(ggplot2)
-library(tidyr)
-library(stringr)
 
 # Define receiver clusters
 target_clusters <- c("CD14_Mono", "CD16_Mono")
@@ -2128,11 +2003,11 @@ ggsave("Manuscript_jan_2025/figures/heatmap_decipher_top20_mono.png", heatmap_pl
 
 #----> Decipher iSN Networks <----
 # 0. Load Required Libraries
-library(dplyr)
+
 library(igraph)
 library(scales)
-library(purrr)
-library(tidyr)
+
+
 
 # 1. Define Helper Functions
 
@@ -2452,10 +2327,10 @@ for (cl in target_clusters[2]) {
 ##############################
 # --- Load Necessary Libraries ---
 # Ensure these libraries are installed: install.packages(c("ggplot2", "dplyr", "tidyr", "patchwork"))
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-library(patchwork)
+
+
+
+
 
 # --- Ensure 'results_preprocessed' list exists ---
 if (!exists("results_preprocessed") || !is.list(results_preprocessed) || length(results_preprocessed) == 0) {
@@ -2721,10 +2596,10 @@ if (save_result) {
 #v2
 #############
 # --- Load Necessary Libraries ---
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-library(patchwork)
+
+
+
+
 
 # --- Ensure 'results_preprocessed' list exists ---
 if (!exists("results_preprocessed") || !is.list(results_preprocessed) || length(results_preprocessed) == 0) {
@@ -3118,7 +2993,7 @@ print("UpSet plot saved to figures/overlap_upset_median_plot.png")
 if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("This script requires the 'ggplot2' package. Please install it using install.packages('ggplot2')", call. = FALSE)
 }
-library(ggplot2)
+
 
 # --- Load or Ensure 'combined_intersection_df' is available ---
 # (This part remains the same - assumes data is loaded/calculated earlier)
@@ -3294,7 +3169,7 @@ if (save_result) {
 if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("This script requires the 'ggplot2' package. Please install it using install.packages('ggplot2')", call. = FALSE)
 }
-library(ggplot2)
+
 
 # --- Load or Ensure 'combined_intersection_df' is available ---
 # (This part remains the same - assumes data is loaded/calculated earlier)
@@ -3559,8 +3434,8 @@ ggsave("figures/combined_k_spearman_boxplot_7apr.png", plot = p, width = 12, hei
 ######################
 #V2
 # --- Load necessary libraries (ensure ggplot2, dplyr are loaded) ---
-library(ggplot2)
-library(dplyr)
+
+
 
 # --- Assume 'combined_df' is already created and merged ---
 # It should have columns like: Var1, Var2, Method1, Method2, k_value, Spearman
