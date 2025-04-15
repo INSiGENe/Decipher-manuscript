@@ -15,14 +15,14 @@ library(gridExtra)  # For arranging multiple heatmaps in a grid
 library(pROC)
 library(data.table)
 
-#install.packages("ggnewscale")  # run once
+#install.packages("ggnewscale") 
 library(ggnewscale)
 #install.packages("UpSetR")
-library(UpSetR) # Make sure UpSetR is installed install.packages("UpSetR")
+library(UpSetR) 
 # install.packages("ggbeeswarm")
-library(ggbeeswarm) # Ensure this is loaded for geom_beeswarm
-#install.packages("ggnewscale") #add this to docker
-library(ggnewscale) # For multiple color scales
+library(ggbeeswarm) 
+#install.packages("ggnewscale") 
+library(ggnewscale) 
 
 # --- Assume your previous code has run and populated 'results_preprocessed' ---
 
@@ -1395,6 +1395,10 @@ ggsave("figures/beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 3
 
 
 
+
+
+
+
 # ==== Decipher heatmap ====
 #  # Not strictly required if using base R alternatives below
 
@@ -1585,6 +1589,13 @@ if (save_result) {
     print("Decipher heatmap was generated but could not be saved automatically.")
 }
 
+
+
+
+
+
+
+
 # ==== TF activity deltas (Severe vs Mild) ====
 base_comparison_path <- "Manuscript_jan_2025"
 results_path <- file.path(base_comparison_path, "results")
@@ -1656,6 +1667,13 @@ save_grouped_plots(
 )
 
 cat("Script finished. Plots saved in:", file.path(base_comparison_path, , output_folder_name), "\n")
+
+
+
+
+
+
+
 
 # ==== Plot PCA of regulons ====
 long_moderate <- get_long_deltas(regulon_deltas_list$moderate, "Moderate")
