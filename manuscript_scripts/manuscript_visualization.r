@@ -14,6 +14,11 @@ library(reshape2)   # For reshaping matrix to long format
 library(gridExtra)  # For arranging multiple heatmaps in a grid
 library(pROC)
 library(data.table)
+library(ggplot2)
+library(dplyr)
+library(scales)          # for pseudo_log_trans
+library(ggrepel)
+library(ggnewscale)      # for multiple color scales
 
 #install.packages("ggnewscale") 
 library(ggnewscale)
@@ -1742,24 +1747,6 @@ segment_df <- map_dfr(cluster_pairs, function(clust) {
 })
 
 
-# Plot
-PCA_plot <- ggplot(pca_df, aes(x = PC1, y = PC2, color = Condition)) +
-  geom_point(size = 4) +
-  geom_text_repel(aes(label = label_text), color = "black", size = 4, max.overlaps = Inf) +
-  geom_segment(data = segment_df, 
-               aes(x = x, y = y, xend = xend, yend = yend, size = dist),
-               inherit.aes = FALSE, color = "black", linetype = "dashed") +
-  scale_size(range = c(0.5, 3), guide = "none") +
-  scale_color_manual(values = condition_colors) +
-  scale_x_continuous(trans = pseudo_log_trans()) +
-  scale_y_continuous(trans = pseudo_log_trans()) +
-  theme_minimal(base_size = 14) +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_blank(),
-    plot.title = element_blank()
-  )
-
 
 PCA_plot <- ggplot(pca_df, aes(x = PC1, y = PC2)) +
   # First scale: point color by Condition
@@ -1798,9 +1785,6 @@ PCA_plot <- ggplot(pca_df, aes(x = PC1, y = PC2)) +
 ggsave("Manuscript_jan_2025/figures/pca_plot_custom.png", PCA_plot, width = 3, height = 6)
 
 # ==== Test ====
-test <- readRDS("pre_processing_test/data/SevMilCOVID/combined_seurat_for_processing_azimuth_mapped.rds")
-meta.data <- test@meta.data
-rm(test)
 
 # Get loadings from PCA result
 loadings <- as.data.frame(pca_res$rotation[, 1:2])  # Just PC1 and PC2 for now
@@ -1829,13 +1813,6 @@ ggsave("Manuscript_jan_2025/figures/p1.png", p1, width = 8, height = 6)
 ggsave("Manuscript_jan_2025/figures/p2.png", p2, width = 8, height = 6)
 
 # ==== test 2 =====
-
-library(ggplot2)
-library(dplyr)
-library(scales)          # for pseudo_log_trans
-library(ggrepel)
-library(ggnewscale)      # for multiple color scales
-
 # Define custom colors
 condition_colors <- c("Moderate" = "#91C8F6", "Severe" = "#E4B731")  # light blue and gold
 
