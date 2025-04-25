@@ -473,6 +473,12 @@ create_flag_color_scale <- function(methods) {
   return(color_values)
 }
 
+
+
+##########################
+## analysis below
+##########################
+
 figures_folder <- "figures_25_04_2025"
 dir.create(figures_folder,recursive = TRUE)
 
@@ -575,43 +581,36 @@ if (!exists("desired_method_order")) stop("Order vector 'desired_method_order' n
 
 # Generate the Violin Plot
 plot_violin_scores_by_method <- ggplot(combined_scores_df,
-                                        # Swap x and y aesthetics
                                         aes(x = method,
                                             y = prioritization_score,
-                                            fill = method)) + # Grouping defaults to x aesthetic
+                                            fill = method)) +
 
-  # Use geom_violin instead of geom_density_ridges
-  geom_violin(trim = FALSE,    # Keep tails
-              alpha = 0.7,     # Adjust transparency
-              scale = "width", # Makes violins comparable across methods
-              # Optional: Show median and quartiles
-              draw_quantiles = c(0.25, 0.5, 0.75)
-              ) +
+  geom_violin(trim = FALSE,
+              alpha = 0.7,
+              scale = "width",
+              draw_quantiles = c(0.25, 0.5, 0.75)) +
 
-  # Use consistent colors; ensure names match factor levels
   scale_fill_manual(values = method_colors, name = "Method", breaks = desired_method_order) +
 
-  # Apply pseudo-log scale to the Y axis
   scale_y_continuous(
-      trans = scales::pseudo_log_trans(sigma = 0.1, base = 10),
-      breaks = c(-10, -1, 0, 1, 10, 100), # Adjust breaks if needed for score range
-      name = "Interaction Prioritization Score (Pseudo-Log Scale)" # Set y-axis label here
+    trans = scales::pseudo_log_trans(sigma = 0.1, base = 10),
+    breaks = c(-10, -1, 0, 1, 10, 100),
+    name = "Interaction Prioritization Score"
   ) +
 
-  # Ensure method order on the X axis
-  scale_x_discrete(limits = desired_method_order, name = "Method") + # Set x-axis label here
+  scale_x_discrete(limits = desired_method_order, name = NULL) +  # match x-axis label with boxplot
 
   theme_bw(base_size = 12) +
   theme(
-    legend.position = "none", # Keep legend off
-    axis.text.x = element_text(angle = 0, vjust = 1,size = 14), # Rotate labels for readability
-    axis.text.y = element_text(size=14)
-    # Add other theme adjustments if needed
+    legend.position = "none",
+    axis.text.x = element_text(angle = 0, vjust = 1, size = 17, face = "bold"),
+    axis.text.y = element_text(size = 17, face = "bold"),
+    axis.title.x = element_text(size = 18, face = "bold"),
+    axis.title.y = element_text(size = 18, face = "bold"),
+    text = element_text(face = "bold")
   ) +
-  labs(
-    # x and y labels are set within the scale functions now
-    fill = "Method"
-  )
+  labs(fill = "Method")
+
 
 
 # Save the Plot
@@ -699,7 +698,7 @@ if (length(all_intersection_data) > 0) {
     }
 
     # Save the combined data used for the plot
-    saveRDS(combined_intersection_df, file = "figures/overlap_all_intersections_data.rds")
+    saveRDS(combined_intersection_df, file = file.path(figures_folder,"overlap_all_intersections_data.rds"))
     print("Full overlap data saved to figures/overlap_all_intersections_data.rds")
 
 } else {
@@ -764,7 +763,7 @@ names(upset_input_vector) <- gsub(" & ", "&", median_counts_all$Intersection_Nam
 print("Generating UpSet plot based on median intersection sizes...")
 
 # Use png() device for saving UpSet plots
-png("figures/overlap_upset_median_plot_ordered.png", width = 10, height = 6, units = "in", res = 300)
+png(file.path(figures_folder,"overlap_upset_median_plot_ordered.png"), width = 10, height = 6, units = "in", res = 300)
 
 #V2 plot
 upset(
@@ -783,7 +782,6 @@ upset(
       list(query = intersects, params = list("Connectome", "Decipher"), color = method_colors["Decipher"], active = T),
       list(query = intersects, params = list("NicheNet", "Decipher"), color = method_colors["Decipher"], active = T),
       list(query = intersects, params = list("NicheNet", "Decipher","LIANA+"), color = method_colors["Decipher"], active = T),
-      list(query = intersects, params = list("Decipher", "Connectome","LIANA+"), color = method_colors["Decipher"], active = T),
       list(query = intersects, params = list("Decipher", "Connectome","NATMI"), color = method_colors["Decipher"], active = T)
    ),            # 2. Apply the coloring rules
 
@@ -1043,7 +1041,100 @@ p_final <- ggplot(plot_data, aes(x = Method2)) +
   )
 
 # Save the plot (adjust dimensions if needed)
-ggsave("figures/combined_k_spearman_boxplot_final_ordered.png", plot = p_final, width = 16, height = 7.5, dpi = 300)
+ggsave(file.path(figures_folder,"combined_k_spearman_boxplot_final_ordered.png"), plot = p_final, width = 8, height = 7.5, dpi = 300)
+
+#let's not do complete
+plot_data <- combined_df %>%
+  filter(Method1 != Method2) %>%
+  filter(Method1 %in% desired_method_order & Method2 %in% desired_method_order) %>%
+  rowwise() %>%
+  mutate(
+    Method_A = min(c(Method1, Method2)),
+    Method_B = max(c(Method1, Method2))
+  ) %>%
+  ungroup() %>%
+  mutate(Method_Pair = paste(Method_A, Method_B, sep = "_"))
+# Compute median Spearman per unique pair
+pair_order <- plot_data %>%
+  group_by(Method_Pair) %>%
+  summarise(median_spearman = median(Spearman, na.rm = TRUE)) %>%
+  arrange(desc(median_spearman)) %>%
+  pull(Method_Pair)
+
+  # Convert to factors WITH the desired levels
+plot_data$Method1 <- factor(plot_data$Method1, levels = desired_method_order)
+plot_data$Method2 <- factor(plot_data$Method2, levels = desired_method_order)
+# Convert Method_Pair to a factor ordered by median Spearman
+plot_data$Method_Pair <- factor(plot_data$Method_Pair, levels = pair_order)
+
+# Create the final dual-axis boxplot
+
+p_final <- ggplot(plot_data, aes(x = Method_Pair)) +
+
+  geom_boxplot(aes(y = k_value, fill = "Search Space (k-value)"),
+               color = "black", outlier.shape = NA, alpha = 0.7) +
+  geom_boxplot(aes(y = Spearman * max(plot_data$k_value, na.rm = TRUE),
+                   fill = "Spearman Correlation"),
+               color = "black", outlier.shape = NA, alpha = 0.7) +
+
+  # --- 4. & 5. Add Horizontal Lines ---
+  geom_hline(yintercept = 0, color = "darkblue", linetype = "dashed", size = 0.6) +
+  geom_hline(yintercept = 100, color = color_k_value, linetype = "dashed", size = 0.6) + # Using the k-value color (gold/orange)
+
+  # Manual color scale for fill
+  scale_fill_manual(
+      name = NULL,
+      values = c("Search Space (k-value)" = color_k_value, "Spearman Correlation" = color_spearman)
+      ) +
+
+  # Dual Y-axis setup
+  scale_y_continuous(
+    name = "Search Space (k-value)",
+    expand = expansion(mult = c(0.05, 0.05)), # Keep some expansion
+    sec.axis = sec_axis(
+        ~ . / max(plot_data$k_value, na.rm = TRUE),
+        name = "Spearman Correlation"
+        )
+  ) +
+
+  # X-axis - order now controlled by factor levels from plot_data$Method2
+  scale_x_discrete(name = NULL) +
+  labs(title = NULL) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+
+  # Theme modifications
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(color = "grey90", size = 0.4, linetype = "dotted"),
+    panel.grid.minor.x = element_blank(),
+
+    # --- 1. Increase Facet Separation ---
+    panel.spacing.x = unit(1.5, "lines"), # Increased space BETWEEN facets
+
+    strip.text.x = element_text(face = "bold", size=rel(1.1)),
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+
+    # Color Y Axes (same as before)
+    axis.title.y.left = element_text(color = color_k_value, face = "bold", size=rel(1.0)),
+    axis.text.y.left = element_text(color = color_k_value, face="bold"),
+    axis.ticks.y.left = element_line(color = color_k_value),
+    axis.line.y.left = element_line(color = color_k_value),
+    axis.title.y.right = element_text(color = color_spearman, face = "bold", size=rel(1.0)),
+    axis.text.y.right = element_text(color = color_spearman, face="bold"),
+    axis.ticks.y.right = element_line(color = color_spearman),
+    axis.line.y.right = element_line(color = color_spearman),
+
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+
+# Save the plot (adjust dimensions if needed)
+ggsave(file.path(figures_folder,"combined_k_spearman_boxplot_final_ordered.png"), plot = p_final, width = 10, height = 7.5, dpi = 300)
+
 
 # ==== AUC plots ====
 #load cytosig data
@@ -1135,7 +1226,7 @@ for (ds in names(datasets)) {
     dataset_path <- datasets[[ds]]
     pre_processing_filepath <- file.path(dataset_path, "pre_processing")
     meta_path <- "manuscript_analysis/data_for_meta_comparisons"
-    output_figures_filepath <- file.path(dataset_path, "figures")
+    output_figures_filepath <- file.path(dataset_path, figures_folder)
     reference_filepath <- "reference_data"
     decipher_filepath <- file.path(dataset_path, "data")
     seurat_object_oi <- readRDS(file.path(decipher_filepath,"pseudobulk_seurat.rds"))
