@@ -16,5 +16,5 @@
     "outline.showVariables": true,
     "outline.showStrings": true,
     "notebook.outline.showCodeCells": true,
-    "outline.collapseItems": "alwaysCollapse"
+    "outline.collapseItems": "alwaysExpand"
 }

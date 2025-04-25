@@ -18,16 +18,14 @@ library(ggplot2)
 library(dplyr)
 library(scales)          # for pseudo_log_trans
 library(ggrepel)
-library(ggnewscale)      # for multiple color scales
 
-#install.packages("ggnewscale") 
+install.packages("ggnewscale") 
+install.packages("UpSetR")
+install.packages("ggbeeswarm")
+
 library(ggnewscale)
-#install.packages("UpSetR")
-library(UpSetR) 
-# install.packages("ggbeeswarm")
+library(UpSetR)  
 library(ggbeeswarm) 
-#install.packages("ggnewscale") 
-library(ggnewscale) 
 
 # --- Assume your previous code has run and populated 'results_preprocessed' ---
 
@@ -475,6 +473,8 @@ create_flag_color_scale <- function(methods) {
   return(color_values)
 }
 
+figures_folder <- "figures_25_04_2025"
+dir.create(figures_folder,recursive = TRUE)
 
 # ==== clean up results ====
 all_scores_list <- imap(results_preprocessed, ~{
@@ -544,23 +544,28 @@ interaction_counts$method <- factor(interaction_counts$method, levels = desired_
 # Plot
 p <- ggplot(interaction_counts, aes(x = method, y = interaction_count, fill = method)) +
   geom_boxplot(outlier.shape = NA, width = 0.6) +
-  geom_jitter(width = 0.2, size = 2, alpha = 0.8) +
+  geom_jitter(width = 0.2, size = 2.8, alpha = 0.8) +  # increased point size by ~40%
   scale_fill_manual(values = method_colors) +
   scale_y_log10() +
   labs(
-    x = "Method",
-    y = "Number of Interactions (log10)"
+    x = NULL,
+    y = "Number of Interactions"
   ) +
-  theme_minimal(base_size = 14) +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12) +  # using theme_bw as a base
   theme(
     legend.position = "none",
-    axis.text.x = element_text(angle = 0, vjust = 1,size = 14), # Rotate labels for readability
-    axis.text.y = element_text(size=14)
+    # Updated tick labels with ~20% size increase and bold formatting:
+    axis.text.x = element_text(angle = 0, vjust = 1, size = 17, face = "bold"),
+    axis.text.y = element_text(size = 17, face = "bold"),
+    # Updated axis titles with ~50% size increase and bold formatting:
+    axis.title.x = element_text(size = 18, face = "bold"),
+    axis.title.y = element_text(size = 18, face = "bold"),
+    # Optionally, you can enforce a bold base for all text if desired:
+    text = element_text(face = "bold")
   )
 
 
-ggsave("figures/boxplot_number_of_interactions_by_method.png", plot = p, width = 8, height = 4, dpi = 300)
+ggsave(file.path(figures_folder,"boxplot_number_of_interactions_by_method.png"), plot = p, width = 8, height = 4, dpi = 300)
 
 #==== violin plot score distribution ====
 # Check if variables exist
@@ -610,22 +615,11 @@ plot_violin_scores_by_method <- ggplot(combined_scores_df,
 
 
 # Save the Plot
-output_filename_violin <- "figures/violin_scores_by_method.png"
-dir.create("figures", showWarnings = FALSE)
+output_filename_violin <- "violin_scores_by_method.png"
+ggsave(file.path(figures_folder,output_filename_violin), plot = plot_violin_scores_by_method, width = 8, height = 4, dpi = 300)
 
-save_result_violin <- tryCatch({
-    ggsave(output_filename_violin, plot = plot_violin_scores_by_method, width = 8, height = 4, dpi = 300)
-    TRUE
-}, error = function(e) {
-    warning("Failed to save the violin plot: ", e$message, call. = FALSE)
-    FALSE
-})
 
-if (save_result_violin) {
-    print(paste("Violin plot saved to", output_filename_violin))
-} else {
-    print("Violin plot was generated but could not be saved automatically.")
-}
+
 
 
 #==== overlap ====
