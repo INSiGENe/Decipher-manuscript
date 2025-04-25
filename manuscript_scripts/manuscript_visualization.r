@@ -1934,8 +1934,13 @@ ggsave("Manuscript_jan_2025/figures/PC1_top_TF_heatmap.png", heatmap_plot, width
 # ==== Plot Decipher (Severe vs Moderate) ====
 plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=15,dataset_name="SevCOVID_Azimuthl2",direction = "pos",selected_receiver_cells = c("CD16_Mono","CD14_Mono"),split_by_direction = TRUE, abs_decipher_plot_limit = 20)
 plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=15,dataset_name="MilCOVID_Azimuthl2",direction = "pos",selected_receiver_cells = c("CD16_Mono","CD14_Mono"),split_by_direction=TRUE, abs_decipher_plot_limit = 20)
+plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=15,dataset_name="SevCOVID_Azimuthl2_CD8_NK",direction = "pos",selected_receiver_cells = c("CD8_TEM","NK"),split_by_direction=TRUE, abs_decipher_plot_limit = 20)
+plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=15,dataset_name="MilCOVID_Azimuthl2_CD8_NK",direction = "pos",selected_receiver_cells = c("CD8_TEM","NK"),split_by_direction=TRUE, abs_decipher_plot_limit = 20)
+plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=15,dataset_name="SevCOVID_Azimuthl2_CD8_NK",direction = "pos",selected_receiver_cells = NULL,split_by_direction=TRUE, abs_decipher_plot_limit = 20)
+plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=15,dataset_name="MilCOVID_Azimuthl2_CD8_NK",direction = "pos",selected_receiver_cells = NULL,split_by_direction=TRUE, abs_decipher_plot_limit = 20)
 
-#ok so here what I want is a heatmap, because the bubble plots are not really work
+
+#ok so here what I want is a heatmap, because the bubble plots are not really working
 decipher_scores_severe <- readRDS("Manuscript_jan_2025/results/SevCOVID_Azimuthl2/data/decipher_scores_by_cluster.rds")
 decipher_scores_moderate <- readRDS("Manuscript_jan_2025/results/MilCOVID_Azimuthl2/data/decipher_scores_by_cluster.rds")
 

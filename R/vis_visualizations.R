@@ -910,7 +910,7 @@ if(is.null(receiver_cell_type)){
     distinct() %>%
     dplyr::slice_head(n = slice_n) %>%
     ungroup() %>%
-    left_join(decipher_scores_by_cluster_bound_clean, by = c("interaction"))
+    left_join(decipher_scores_by_cluster_bound_clean, by = c("interaction","receiver"))
 }
 
 
