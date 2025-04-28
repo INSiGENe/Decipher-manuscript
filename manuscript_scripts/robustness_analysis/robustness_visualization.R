@@ -9,7 +9,7 @@ library(ggplot2)
 all_runs_dat_1 <- list()
 all_runs_dat_2 <- list()
 
-N <- 10
+N <- 18
 # Loop through all 100 runs
 for (i in 1:N) {
   # Load the data
@@ -66,13 +66,85 @@ interaction_consistency <- interaction_consistency %>%
 # Step 3: Visualize the Consistency of Interactions
 #===================================================
 # Plot the proportion of runs where each interaction was in the top 10
-ggplot(interaction_consistency, aes(x = interaction, y = proportion, fill = Cells)) +
+p <- ggplot(interaction_consistency, aes(x = interaction, y = proportion, fill = Cells)) +
   geom_bar(stat = "identity", position = "dodge") +
   theme_minimal() +
   labs(title = "Proportion of Runs Where Interactions are in the Top 10",
        x = "Interaction",
        y = "Proportion of Runs (Top 10)") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+  library(ggplot2)
+
+# Calculate total count per interaction across all cell types
+interaction_totals <- interaction_consistency %>%
+  group_by(interaction) %>%
+  summarise(total_count = sum(count), .groups = "drop")
+
+# Join the total_count back into your interaction_consistency table
+interaction_consistency <- interaction_consistency %>%
+  left_join(interaction_totals, by = "interaction")
+
+# Base R reordering 
+interaction_consistency$interaction <- factor(
+  interaction_consistency$interaction,
+  levels = interaction_totals$interaction[order(interaction_totals$total_count,decreasing = FALSE)]
+)
+
+# Now plot again
+library(ggplot2)
+
+p <- ggplot(interaction_consistency, aes(x = interaction, y = Cells, fill = count)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(
+    title = NULL,
+    x = NULL,
+    y = "Cell Type",
+    fill = "Count"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), # ligand-receptor 90 degrees
+    axis.text.y = element_text(angle = 0, vjust = 0.5, hjust = 1, size = 10), # cell types 0 degrees
+    panel.grid = element_blank(),
+    legend.position = "bottom"     # move legend to bottom
+  )
+
+ggsave("figures/proportions_runs_top_10_flipped.png", p, width = 12, height = 4.5)
+
+# 1. Rename the Cells
+interaction_consistency <- interaction_consistency %>%
+  mutate(Cells = recode(Cells,
+                        "CD8_T_cells" = "CD8 T",
+                        "CD4_T_cells" = "CD4 T",
+                        "CD14_plus_Monocytes" = "CD14+ Mono",
+                        "B_cells" = "B"))
+
+# 2. Plot
+p <- ggplot(interaction_consistency, aes(x = interaction, y = Cells, fill = count)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(
+    title = NULL,
+    x = NULL,
+    y = NULL,   # remove y-axis label here
+    fill = "Count"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10),
+    axis.text.y = element_text(angle = 0, vjust = 0.5, hjust = 1, size = 10),
+    panel.grid = element_blank(),
+    legend.position = "bottom"
+  )
+
+# Save
+ggsave("figures/proportions_runs_top_10_flipped_cleaned.png", p, width = 10, height = 10)
+
+
+
 
 #===================================================
 # Step 4: Track Decipher Scores Over Runs
