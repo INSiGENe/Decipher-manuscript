@@ -218,7 +218,7 @@ docker run -it -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5 bas
 Rscript scripts/decipher_pipeline_v1_modularized.R dataset_key
 
 #example
-Rscript scripts/decipher_pipeline_v1_modularized.R MilCOVID_Azimuthl2
+Rscript scripts/decipher_pipeline_v1_modularized.R MilCOVID_Azimuthl2_k0
 
 
 #################################
