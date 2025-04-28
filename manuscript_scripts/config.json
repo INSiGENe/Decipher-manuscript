@@ -1183,7 +1183,7 @@
       "this_species": "human"
     },
     "liana_plus_analysis":{
-        "dataset_path": "results/_k0",
+        "dataset_path": "results/MilCOVID_Azimuthl2_k0",
         "sample_key": "orig.ident",
         "groupby": "predicted.celltype.l2",
         "condition_key": "condition"

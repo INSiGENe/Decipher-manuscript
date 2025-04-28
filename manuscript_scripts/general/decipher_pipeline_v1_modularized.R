@@ -82,7 +82,7 @@ plotQC_CpC(CpC_data,outputPath=output_figures_filepath)
 #PARAM: select the minimum number of cells per cluster + condition
 clusters_passing_CpC_filter <- getClustersPassingCpCFilter(CpC_data,minCpc = 100)
 seurat_oi <- seurat_oi[, which(seurat_oi$cluster %in% clusters_passing_CpC_filter), seed=NULL]
-plotQC_UpC(seuratObject = seurat_oi,outputPath = output_figures_filepath,id = "_sc")
+plotQC_UpC(seuratObject = seurat_oi,outputPath = output_figures_filepath,id = "_scd")
 
 
 ##############

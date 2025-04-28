@@ -6,7 +6,7 @@ library(patchwork)
 genes_of_interest <- c("TIMP1", "ENAM")
 
 # Optionally, create a new metadata column combining severity and celltype
-test$severity_celltype <- paste(test$severity_group, test$predicted.celltype.l2, sep = "_")
+test$severity_celltype <- paste(test$condition, test$cluster, sep = "_")
 
 # Plot each gene as a violin plot
 p_list <- lapply(genes_of_interest, function(gene) {
