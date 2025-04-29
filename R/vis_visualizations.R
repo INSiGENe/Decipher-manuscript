@@ -539,7 +539,8 @@ plotBubble <- function(df,color.var,size.var,stroke.var,plot.position,col.min.va
 #' @importFrom grDevices png dev.off
 #' @importFrom utils write.csv
 #' @import patchwork
-plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cells = NULL,sc_feature_statistics=FALSE,primary_ct = NULL,split_by_direction = FALSE,direction = c("pos","neg"),dataset_name,abs_decipher_plot_limit = NULL){
+plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cells = NULL,sc_feature_statistics=FALSE,primary_ct = NULL,split_by_direction = FALSE,direction = c("pos","neg"),dataset_name,abs_decipher_plot_limit = NULL,priority_receiver_cells = NULL
+){
   decipher_path <- file.path(dataset_path,"data")
   #read data ----
   lr_markers_by_cluster <- readRDS(file.path(decipher_path,"lr_markers_by_cluster.rds"))
@@ -638,16 +639,24 @@ plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cell
 
   }
 
-  # Group, arrange, and select interactions
+  if (!is.null(priority_receiver_cells)) {
   decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters %>%
-    group_by(decipher_score_sign) %>%
-    arrange(desc(abs(prioritization_score))) %>%
-    select(interaction) %>%
-    distinct() %>%
-    dplyr::slice_head(n = top_n) %>%
-    ungroup() %>%
-    left_join(decipher_scores_by_cluster_bound)
+    mutate(priority = if_else(receiver %in% priority_receiver_cells, 1, 0)) %>%
+    arrange(desc(priority), desc(abs(prioritization_score)))
+} else {
+  decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters %>%
+    arrange(desc(abs(prioritization_score)))
+}
 
+    
+    # Then continue normally
+decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters %>%
+  group_by(decipher_score_sign) %>%
+  select(interaction) %>%
+  distinct() %>%
+  dplyr::slice_head(n = top_n) %>%
+  ungroup() %>%
+  left_join(decipher_scores_by_cluster_bound)
 
 
 

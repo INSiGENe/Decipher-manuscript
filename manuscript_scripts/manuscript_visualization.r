@@ -2023,6 +2023,30 @@ plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=15,dataset_name="S
 plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=15,dataset_name="MilCOVID_Azimuthl2_CD8_NK",direction = "pos",selected_receiver_cells = c("CD8_TEM","NK"),split_by_direction=TRUE, abs_decipher_plot_limit = 20)
 plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=15,dataset_name="SevCOVID_Azimuthl2_CD8_NK",direction = "pos",selected_receiver_cells = NULL,split_by_direction=TRUE, abs_decipher_plot_limit = 20)
 plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=15,dataset_name="MilCOVID_Azimuthl2_CD8_NK",direction = "pos",selected_receiver_cells = NULL,split_by_direction=TRUE, abs_decipher_plot_limit = 20)
+plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=8,dataset_name="SevCOVID_Azimuthl2", abs_decipher_plot_limit = 20)
+plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=8,dataset_name="MilCOVID_Azimuthl2", abs_decipher_plot_limit = 20)
+plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=8,dataset_name="MilCOVID_Azimuthl2_CD8_prior", abs_decipher_plot_limit = 5,priority_receiver_cells = c("CD8_TEM"))
+plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=8,dataset_name="SevCOVID_Azimuthl2_CD8_prior", abs_decipher_plot_limit = 5,priority_receiver_cells = c("CD8_TEM"))
+
+
+#ok so I need a severe vs mild story 
+#NK cells
+plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=8,dataset_name="SevCOVID_Azimuthl2_NK_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("NK"))
+plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=8,dataset_name="MilCOVID_Azimuthl2_NK_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("NK"))
+
+#CD8 cells
+plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=8,dataset_name="SevCOVID_Azimuthl2_CD8_TEM_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("CD8_TEM"))
+plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=8,dataset_name="MilCOVID_Azimuthl2_CD8_TEM_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("CD8_TEM"))
+
+#CD14+ Monocytes
+plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=8,dataset_name="SevCOVID_Azimuthl2_CD16_Mono_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("CD16_Mono"))
+plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=8,dataset_name="MilCOVID_Azimuthl2_CD16_Mono_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("CD16_Mono"))
+
+#CD16+ Monocytes
+plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=8,dataset_name="SevCOVID_Azimuthl2_CD14_Mono_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("CD14_Mono"))
+plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=8,dataset_name="MilCOVID_Azimuthl2_CD14_Mono_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("CD14_Mono"))
+
+
 
 
 #ok so here what I want is a heatmap, because the bubble plots are not really working

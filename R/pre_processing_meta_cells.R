@@ -203,9 +203,10 @@ calculatePseudoBulkMatrix <- function(rnaCountsMatrix, distanceMatrix, numNeares
   # Sampling column names
   subSamples <- sample(colnames(rnaCountsMatrix), numMetaCells)
 
-  # Getting nearest neighbors
-  knnMatrix <- getNearestNeighbors(distanceMatrix, numNearestNeighbors, subSamples)
-
+  # Getting nearest neighbors only if numNearestNeighbors > 0
+  if (numNearestNeighbors > 0) {
+    knnMatrix <- getNearestNeighbors(distanceMatrix, numNearestNeighbors, subSamples)
+  }
   # Initialize imputed matrix
   imputedMatrix <- matrix(0, nrow = nrow(rnaCountsMatrix), ncol = numMetaCells)
   rownames(imputedMatrix) <- rownames(rnaCountsMatrix)
@@ -213,10 +214,16 @@ calculatePseudoBulkMatrix <- function(rnaCountsMatrix, distanceMatrix, numNeares
 
   # Impute matrix using nearest neighbors
   for (sample in subSamples) {
-    neighbors <- knnMatrix[sample, ]
-    sampleData <- rnaCountsMatrix[, c(sample, colnames(rnaCountsMatrix)[neighbors])]
-    imputedMatrix[, sample] <- rowSums(sampleData)
+    if (numNearestNeighbors > 0) {
+      neighbors <- knnMatrix[sample, ]
+      sampleData <- rnaCountsMatrix[, c(sample, colnames(rnaCountsMatrix)[neighbors])]
+      imputedMatrix[, sample] <- rowSums(sampleData)
+    } else {
+      # No neighbors, just use the sample itself
+      imputedMatrix[, sample] <- rnaCountsMatrix[, sample]
+    }
   }
+
 
   # Return the imputed matrix
   imputedMatrix
