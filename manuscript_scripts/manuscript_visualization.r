@@ -2046,6 +2046,10 @@ plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=8,dataset_name="Mi
 plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=8,dataset_name="SevCOVID_Azimuthl2_CD14_Mono_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("CD14_Mono"))
 plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=8,dataset_name="MilCOVID_Azimuthl2_CD14_Mono_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("CD14_Mono"))
 
+#cDC2
+plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=8,dataset_name="SevCOVID_Azimuthl2_cDC2_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("cDC2"))
+plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=8,dataset_name="MilCOVID_Azimuthl2_cDC2_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("cDC2"))
+
 
 
 

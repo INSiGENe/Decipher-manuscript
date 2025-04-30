@@ -3,10 +3,10 @@ library(dplyr)
 library(tidyr)
 
 # Paths to your datasets
-severe_path <- "results/SevCOVID_Azimuthl2/data"
-mild_path   <- "results/MilCOVID_Azimuthl2/data"
+severe_path <- "results/SevCOVID_Azimuthl2_k0/data"
+mild_path   <- "results/MilCOVID_Azimuthl2_k0/data"
 
-cell_type <- "cDC2"
+cell_type <- "CD8_Naive"
 k_param <- 1
 # Load data
 severe_scores <- readRDS(file.path(severe_path, "decipher_scores_by_cluster.rds")) %>%
