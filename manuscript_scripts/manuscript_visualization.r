@@ -2114,7 +2114,8 @@ ggsave("Manuscript_jan_2025/figures/heatmap_decipher_top20_mono.png", heatmap_pl
 
 library(igraph)
 library(scales)
-
+library(dplyr)
+library(tidyr)
 
 
 # 1. Define Helper Functions
@@ -2276,9 +2277,9 @@ build_graph_components <- function(edges_sender_ligand, ligand_receptor_edges, r
       layer == "TF" ~ col_numeric(palette = c("white", "tomato"),
                                    #domain = c(0, max(top_regulons_df$deltaPagoda, na.rm = TRUE)))(deltaPagoda),
                                    domain = c(0, global_deltaPagoda_max))(deltaPagoda),
-      layer == "Sender Cell Type" ~ "skyblue",
-      layer == "Ligand" ~ "lightgreen",
-      layer == "Receptor" ~ "orange",
+      layer == "Sender Cell Type" ~ "cadetblue1",
+      layer == "Ligand" ~ "darkolivegreen2",
+      layer == "Receptor" ~ "darkorange",
       TRUE ~ "grey"
     ))
   
@@ -2333,16 +2334,40 @@ assign_edge_colors <- function(g, all_edges,global_receptor_tf_col_max) {
 
 # Function 10: Plot the Graph and Save
 plot_graph <- function(g, output_file, cluster_name, condition_label) {
-  layout <- layout_with_sugiyama(g)$layout
-  png(output_file, width = 15, height = 15, units = "cm", res = 400)
+  #layout <- layout_with_sugiyama(g)$layout
+  #layout <- layout_as_tree(g, root = V(g)[V(g)$layer == "Sender Cell Type"], circular = FALSE)
+  # Custom layout: even horizontal spacing per layer
+  node_layers <- V(g)$layer
+  unique_layers <- c("Sender Cell Type", "Ligand", "Receptor", "TF")
+
+  layout <- matrix(NA, nrow = length(V(g)), ncol = 2)
+
+  for (i in seq_along(unique_layers)) {
+    layer <- unique_layers[i]
+    nodes_in_layer <- which(node_layers == layer)
+    n <- length(nodes_in_layer)
+    if (n > 0) {
+      x_pad <- 4  # stretch width of layout
+      #x_positions <- seq(from = 0, to = x_pad, length.out = n)
+      #x_positions <- seq(from = 0, to = n * 0.3, length.out = n)
+      x_positions <- seq(from = 0, to = 1, length.out = n + 2)[2:(n + 1)]
+      y_position <- length(unique_layers) - i
+      layout[nodes_in_layer, 1] <- x_positions
+      layout[nodes_in_layer, 2] <- y_position
+    }
+  }
+
+  png(output_file, width = 10, height = 6.7, units = "in", res = 400)
   plot(g,
        layout = layout,
        vertex.label = V(g)$name,
-       vertex.label.cex = 0.4,
+       vertex.label.cex = 1.2,       # Font size
+       vertex.label.font = 2,        # Font weight (2 = bold)
        vertex.label.color = "black",
        main = paste(cluster_name, " (", condition_label, ")", sep = " "),
        edge.arrow.size = 0.5,
-       vertex.frame.color = NA)
+       vertex.frame.color = NA,
+       asp = 0.5)
   dev.off()
   message("Saved network plot to: ", output_file)
 }
@@ -2355,12 +2380,13 @@ generate_network_plot <- function(condition_label, cluster_name,
                                   global_deltaPagoda_max = global_deltaPagoda_max,
                                   global_receptor_tf_col_max = global_receptor_tf_col_max,
                                   global_sender_ligand_max = global_sender_ligand_max,
-                                  global_decipher_score_max = global_decipher_score_max) {
+                                  global_decipher_score_max = global_decipher_score_max,
+                                  n_top_regulons = 10) {
   # 1. Check inputs
   check_cluster_exists(cluster_name, decipher_scores, decipher_scores_by_regulon_and_cluster, regulon_deltas_by_cluster)
   
   # 2. Get top regulons
-  top_regulons_out <- get_top_regulons(cluster_name, regulon_deltas_by_cluster, n = 10)
+  top_regulons_out <- get_top_regulons(cluster_name, regulon_deltas_by_cluster, n = n_top_regulons)
   top_regulons_df <- top_regulons_out$top_regulons_df
   top_regulons <- top_regulons_out$top_regulons
   
@@ -2418,7 +2444,6 @@ output_dir <- "figures"  # adjust if needed
 
 #calculate global stats
 # GLOBAL SCALING VALUES
-library(dplyr)
 # TF deltaPagoda
 global_deltaPagoda_max <- max(
   sapply(regulon_deltas_by_cluster_severe[target_clusters], function(x) max(x$deltaPagoda, na.rm = TRUE)),
@@ -2466,7 +2491,8 @@ for (cl in target_clusters) {
                       global_deltaPagoda_max = global_deltaPagoda_max,
                       global_receptor_tf_col_max = global_receptor_tf_col_max,
                       global_sender_ligand_max = global_sender_ligand_max,
-                      global_decipher_score_max = global_decipher_score_max)
+                      global_decipher_score_max = global_decipher_score_max,
+                      n_top_regulons = 8)
 
                         }
 
@@ -2485,7 +2511,8 @@ for (cl in target_clusters) {
                       global_deltaPagoda_max = global_deltaPagoda_max,
                       global_receptor_tf_col_max = global_receptor_tf_col_max,
                       global_sender_ligand_max = global_sender_ligand_max,
-                      global_decipher_score_max = global_decipher_score_max)
+                      global_decipher_score_max = global_decipher_score_max,
+                      n_top_regulons = 8)
 
                         }
 
