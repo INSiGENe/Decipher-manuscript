@@ -2184,7 +2184,7 @@ get_top_interactions <- function(cluster_name, decipher_scores, decipher_scores_
 }
 
 # Function 4: Build Sender → Ligand Edges
-build_sender_ligand_edges <- function(top_interactions, feature_statistics, sender_cts) {
+build_sender_ligand_edges <- function(top_interactions, feature_statistics, sender_cts,global_sender_ligand_max) {
   normalized_fs <- feature_statistics %>%
     mutate(normalized.counts = sum.counts / n.cell) %>%
     group_by(condition, feature) %>%
@@ -2199,8 +2199,9 @@ build_sender_ligand_edges <- function(top_interactions, feature_statistics, send
     ungroup() %>%
     mutate(total_counts = frac.normalized.counts) %>%
     select(ligand = feature, sender_cluster = cluster, total_counts) %>%
-    mutate(weight = rescale(total_counts, to = c(1, 5)))
-  
+    #mutate(weight = rescale(total_counts, to = c(1, 5)))
+    mutate(weight = 5 * (total_counts / global_sender_ligand_max))
+
   # Format sender cell type names
   sender_ligand$sender_cluster <- formatCellTypeNamesForPlotting(sender_ligand$sender_cluster)
   sender_ligand$sender_cluster <- sapply(sender_ligand$sender_cluster, get_first_and_last_three)
@@ -2214,18 +2215,19 @@ build_sender_ligand_edges <- function(top_interactions, feature_statistics, send
 }
 
 # Function 5: Build Ligand → Receptor Edges
-build_ligand_receptor_edges <- function(this_decipher_scores, sender_ligand, top_interactions) {
+build_ligand_receptor_edges <- function(this_decipher_scores, sender_ligand, top_interactions,global_decipher_score_max) {
   ligand_receptor_edges <- this_decipher_scores %>%
     filter(ligand %in% sender_ligand$ligand, receptor %in% top_interactions$receptor) %>%
     select(ligand, receptor, decipher_score) %>%
     rename(from = ligand, to = receptor, weight = decipher_score) %>%
     mutate(edge_type = "Ligand_Receptor", colour = weight) %>%
-    mutate(weight = rescale(abs(weight), to = c(1, 5)))
+    mutate(weight = 5 * abs(weight) / global_decipher_score_max)
+    #mutate(weight = rescale(abs(weight), to = c(1, 5)))
   ligand_receptor_edges
 }
 
 # Function 6: Build Receptor → TF (Regulon) Edges
-build_receptor_tf_edges <- function(top_interactions) {
+build_receptor_tf_edges <- function(top_interactions,global_receptor_tf_col_max) {
   receptor_tf_edges <- top_interactions %>%
     select(receptor, regulon, imp.perm, spearman.cor) %>%
     distinct() %>%
@@ -2233,12 +2235,15 @@ build_receptor_tf_edges <- function(top_interactions) {
            edge_type = "Receptor_TF",
            colour = imp.perm * sign(spearman.cor)) %>%
     rename(from = receptor, to = regulon) %>%
-    mutate(weight = rescale(weight, to = c(1, 5)))
+    #mutate(weight = rescale(weight, to = c(1, 5)))
+    #mutate(weight = 5 * imp.perm / max(imp.perm, na.rm = TRUE),
+    mutate(weight = 5 * imp.perm / global_receptor_tf_col_max,
+       colour = imp.perm * sign(spearman.cor))  # scale colour later
   receptor_tf_edges
 }
 
 # Function 7: Combine Edges and Create Nodes Data Frame
-build_graph_components <- function(edges_sender_ligand, ligand_receptor_edges, receptor_tf_edges, top_interactions, sender_ligand, top_regulons_df) {
+build_graph_components <- function(edges_sender_ligand, ligand_receptor_edges, receptor_tf_edges, top_interactions, sender_ligand, top_regulons_df,global_deltaPagoda_max) {
   
   all_edges <- bind_rows(
     edges_sender_ligand %>% select(from, to, weight, edge_type, colour),
@@ -2269,7 +2274,8 @@ build_graph_components <- function(edges_sender_ligand, ligand_receptor_edges, r
     left_join(top_regulons_df %>% select(name, deltaPagoda), by = "name") %>%
     mutate(color = case_when(
       layer == "TF" ~ col_numeric(palette = c("white", "tomato"),
-                                   domain = c(0, max(top_regulons_df$deltaPagoda, na.rm = TRUE)))(deltaPagoda),
+                                   #domain = c(0, max(top_regulons_df$deltaPagoda, na.rm = TRUE)))(deltaPagoda),
+                                   domain = c(0, global_deltaPagoda_max))(deltaPagoda),
       layer == "Sender Cell Type" ~ "skyblue",
       layer == "Ligand" ~ "lightgreen",
       layer == "Receptor" ~ "orange",
@@ -2288,13 +2294,16 @@ create_graph <- function(all_edges, nodes) {
 }
 
 # Function 9: Assign Edge Colors
-assign_edge_colors <- function(g, all_edges) {
+assign_edge_colors <- function(g, all_edges,global_receptor_tf_col_max) {
   # For Receptor_TF edges: define a gradient
   edges_rt <- all_edges %>% filter(edge_type == "Receptor_TF")
   max_val <- max(abs(edges_rt$colour), na.rm = TRUE)
   max_value <- max_val + 0.1 * max_val
   gradient_func <- col_numeric(palette = c("blue", "white", "tomato"),
                                domain = c(-max_value, max_value))
+  gradient_func <- col_numeric(palette = c("blue", "white", "tomato"),
+                             domain = c(-global_receptor_tf_col_max, global_receptor_tf_col_max))
+
   
   # For Sender_Ligand edges:
   edges_sl <- all_edges %>% filter(edge_type == "Sender_Ligand")
@@ -2342,7 +2351,11 @@ plot_graph <- function(g, output_file, cluster_name, condition_label) {
 generate_network_plot <- function(condition_label, cluster_name, 
                                   decipher_scores, decipher_scores_by_regulon_and_cluster, 
                                   regulon_deltas_by_cluster, feature_statistics,
-                                  sender_cts, output_dir,top_interactions = NULL) {
+                                  sender_cts, output_dir,top_interactions = NULL,
+                                  global_deltaPagoda_max = global_deltaPagoda_max,
+                                  global_receptor_tf_col_max = global_receptor_tf_col_max,
+                                  global_sender_ligand_max = global_sender_ligand_max,
+                                  global_decipher_score_max = global_decipher_score_max) {
   # 1. Check inputs
   check_cluster_exists(cluster_name, decipher_scores, decipher_scores_by_regulon_and_cluster, regulon_deltas_by_cluster)
   
@@ -2355,19 +2368,19 @@ generate_network_plot <- function(condition_label, cluster_name,
   top_interactions <- get_top_interactions(cluster_name, decipher_scores, decipher_scores_by_regulon_and_cluster, top_regulons,top_interactions = top_interactions)
   
   # 4. Build Sender → Ligand edges
-  sl_out <- build_sender_ligand_edges(top_interactions, feature_statistics, sender_cts)
+  sl_out <- build_sender_ligand_edges(top_interactions, feature_statistics, sender_cts,global_sender_ligand_max)
   sender_ligand <- sl_out$sender_ligand
   edges_sender_ligand <- sl_out$edges_sender_ligand
   
   # 5. Build Ligand → Receptor edges
   this_decipher_scores <- decipher_scores[[cluster_name]]
-  ligand_receptor_edges <- build_ligand_receptor_edges(this_decipher_scores, sender_ligand, top_interactions)
+  ligand_receptor_edges <- build_ligand_receptor_edges(this_decipher_scores, sender_ligand, top_interactions,global_decipher_score_max)
   
   # 6. Build Receptor → TF edges
-  receptor_tf_edges <- build_receptor_tf_edges(top_interactions)
+  receptor_tf_edges <- build_receptor_tf_edges(top_interactions,global_receptor_tf_col_max)
   
   # 7. Combine edges and build nodes
-  graph_components <- build_graph_components(edges_sender_ligand, ligand_receptor_edges, receptor_tf_edges, top_interactions, sender_ligand, top_regulons_df)
+  graph_components <- build_graph_components(edges_sender_ligand, ligand_receptor_edges, receptor_tf_edges, top_interactions, sender_ligand, top_regulons_df,global_deltaPagoda_max)
   all_edges <- graph_components$all_edges
   nodes <- graph_components$nodes
   
@@ -2375,7 +2388,7 @@ generate_network_plot <- function(condition_label, cluster_name,
   g <- create_graph(all_edges, nodes)
   
   # 9. Assign edge colors and widths
-  g <- assign_edge_colors(g, all_edges)
+  g <- assign_edge_colors(g, all_edges,global_receptor_tf_col_max)
   
   # 10. Plot and save the network
   output_file <- file.path(output_dir, paste0(condition_label, "_", cluster_name, "_network_map.png"))
@@ -2403,26 +2416,77 @@ target_clusters <- c("CD14_Mono", "CD16_Mono")
 sender_cts <- c("Eryth", "NK", "cDC2", "CD16_Mono", "CD14_Mono", "CD8_TEM","Platelet","pDC")
 output_dir <- "figures"  # adjust if needed
 
+#calculate global stats
+# GLOBAL SCALING VALUES
+library(dplyr)
+# TF deltaPagoda
+global_deltaPagoda_max <- max(
+  sapply(regulon_deltas_by_cluster_severe[target_clusters], function(x) max(x$deltaPagoda, na.rm = TRUE)),
+  sapply(regulon_deltas_by_cluster_moderate[target_clusters], function(x) max(x$deltaPagoda, na.rm = TRUE))
+)
+
+# Receptor→TF imp.perm * sign(spearman.cor)
+global_receptor_tf_col_max <- max(
+  sapply(c(decipher_scores_by_regulon_and_cluster_severe[target_clusters], decipher_scores_by_regulon_and_cluster_moderate[target_clusters]), function(cluster_df) {
+    if (!is.null(cluster_df)) {
+      df <- cluster_df %>% mutate(col = imp.perm * sign(spearman.cor))
+      max(abs(df$col), na.rm = TRUE)
+    } else {
+      0
+    }
+  })
+)
+
+# Sender→Ligand frac.normalized.counts
+global_sender_ligand_max <- max(
+  feature_statistics_severe %>% filter(cluster %in% target_clusters) %>% pull(sum.counts) / feature_statistics_severe %>% filter(cluster %in% target_clusters) %>% pull(n.cell),
+  feature_statistics_moderate  %>% filter(cluster %in% target_clusters) %>% pull(sum.counts) / feature_statistics_moderate  %>% filter(cluster %in% target_clusters) %>% pull(n.cell),
+  na.rm = TRUE
+)
+global_sender_ligand_max <- 2
+
+
+# Ligand→Receptor decipher_score
+global_decipher_score_max <- max(
+  sapply(decipher_scores_severe[target_clusters], function(x) max(abs(x$decipher_score), na.rm = TRUE)),
+  sapply(decipher_scores_moderate[target_clusters], function(x) max(abs(x$decipher_score), na.rm = TRUE))
+)
+
 # Generate network plots for Severe condition
 for (cl in target_clusters) {
+
   generate_network_plot("SevCOVID_Azimuthl2", cl,
-                        decipher_scores_severe, 
-                        decipher_scores_by_regulon_and_cluster_severe,
-                        regulon_deltas_by_cluster_severe, 
-                        feature_statistics_severe,
-                        sender_cts, 
-                        output_dir)
-}
+                      decipher_scores_severe, 
+                      decipher_scores_by_regulon_and_cluster_severe,
+                      regulon_deltas_by_cluster_severe, 
+                      feature_statistics_severe,
+                      sender_cts, 
+                      output_dir,
+                      top_interactions = NULL,
+                      global_deltaPagoda_max = global_deltaPagoda_max,
+                      global_receptor_tf_col_max = global_receptor_tf_col_max,
+                      global_sender_ligand_max = global_sender_ligand_max,
+                      global_decipher_score_max = global_decipher_score_max)
+
+                        }
+
 
 # Generate network plots for Moderate condition
 for (cl in target_clusters) {
+
   generate_network_plot("MilCOVID_Azimuthl2", cl,
-                        decipher_scores_moderate, 
-                        decipher_scores_by_regulon_and_cluster_moderate,
-                        regulon_deltas_by_cluster_moderate, 
-                        feature_statistics_moderate,
-                        sender_cts, 
-                        output_dir)
+                      decipher_scores_moderate, 
+                      decipher_scores_by_regulon_and_cluster_moderate,
+                      regulon_deltas_by_cluster_moderate, 
+                      feature_statistics_moderate,
+                      sender_cts, 
+                      output_dir,
+                      top_interactions = NULL,
+                      global_deltaPagoda_max = global_deltaPagoda_max,
+                      global_receptor_tf_col_max = global_receptor_tf_col_max,
+                      global_sender_ligand_max = global_sender_ligand_max,
+                      global_decipher_score_max = global_decipher_score_max)
+
                         }
 
                         #top_interactions = c("CD38-PECAM1","ENAM-CD63","SLAMF7-SLAMF7", "SIGLEC1-SPN", "CCL3L1-CCR1"))
