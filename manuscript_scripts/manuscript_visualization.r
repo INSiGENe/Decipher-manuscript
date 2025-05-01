@@ -34,10 +34,6 @@ library(ggbeeswarm)
 # It should return a list where each element corresponds to a cell type,
 # and contains a dataframe with 'name' (regulon) and 'deltaPagoda' columns.
 load_regulon_data <- function(file_path, cell_types) {
-  # --- This is a PLACEHOLDER ---
-  # Replace this with your actual code to load the .rds file
-  # and subset/process it as needed.
-  # Example:
   tryCatch({
       data_list <- readRDS(file_path)
       # Ensure it's filtered for selected cell types if the file contains more
@@ -56,7 +52,6 @@ load_regulon_data <- function(file_path, cell_types) {
       # Return an empty list or handle appropriately
       return(list())
   })
-  # --- End PLACEHOLDER ---
 }
 
 get_deltaPagoda <- function(identity, regulon_list, regulon) {
@@ -2390,23 +2385,23 @@ generate_network_plot <- function(condition_label, cluster_name,
 
 # 3. Load Data for Severe and Moderate Conditions
 # Severe data
-decipher_scores_severe <- readRDS("Manuscript_jan_2025/results/SevCOVID_Azimuthl2/data/decipher_scores_by_cluster.rds")
-decipher_scores_by_regulon_and_cluster_severe <- readRDS("Manuscript_jan_2025/results/SevCOVID_Azimuthl2/data/decipher_scores_by_regulon_and_cluster.rds")
-regulon_deltas_by_cluster_severe <- readRDS("Manuscript_jan_2025/results/SevCOVID_Azimuthl2/data/regulon_deltas_by_cluster.rds")
-feature_statistics_severe <- readRDS("Manuscript_jan_2025/results/SevCOVID_Azimuthl2/data/feature_statistics.rds")
+decipher_scores_severe <- readRDS("results/SevCOVID_Azimuthl2/data/decipher_scores_by_cluster.rds")
+decipher_scores_by_regulon_and_cluster_severe <- readRDS("results/SevCOVID_Azimuthl2/data/decipher_scores_by_regulon_and_cluster.rds")
+regulon_deltas_by_cluster_severe <- readRDS("results/SevCOVID_Azimuthl2/data/regulon_deltas_by_cluster.rds")
+feature_statistics_severe <- readRDS("results/SevCOVID_Azimuthl2/data/feature_statistics.rds")
 
 # Moderate data
-decipher_scores_moderate <- readRDS("Manuscript_jan_2025/results/MilCOVID_Azimuthl2/data/decipher_scores_by_cluster.rds")
-decipher_scores_by_regulon_and_cluster_moderate <- readRDS("Manuscript_jan_2025/results/MilCOVID_Azimuthl2/data/decipher_scores_by_regulon_and_cluster.rds")
-regulon_deltas_by_cluster_moderate <- readRDS("Manuscript_jan_2025/results/MilCOVID_Azimuthl2/data/regulon_deltas_by_cluster.rds")
-feature_statistics_moderate <- readRDS("Manuscript_jan_2025/results/MilCOVID_Azimuthl2/data/feature_statistics.rds")
+decipher_scores_moderate <- readRDS("results/MilCOVID_Azimuthl2/data/decipher_scores_by_cluster.rds")
+decipher_scores_by_regulon_and_cluster_moderate <- readRDS("results/MilCOVID_Azimuthl2/data/decipher_scores_by_regulon_and_cluster.rds")
+regulon_deltas_by_cluster_moderate <- readRDS("results/MilCOVID_Azimuthl2/data/regulon_deltas_by_cluster.rds")
+feature_statistics_moderate <- readRDS("results/MilCOVID_Azimuthl2/data/feature_statistics.rds")
 
 # 4. Specify Parameters and Generate Networks
 
 # Define target receiver clusters and sender cell types
 target_clusters <- c("CD14_Mono", "CD16_Mono")
-sender_cts <- c("Eryth", "NK", "cDC2", "CD16_Mono", "CD14_Mono", "CD8_TEM")
-output_dir <- "Manuscript_jan_2025/figures"  # adjust if needed
+sender_cts <- c("Eryth", "NK", "cDC2", "CD16_Mono", "CD14_Mono", "CD8_TEM","Platelet","pDC")
+output_dir <- "figures"  # adjust if needed
 
 # Generate network plots for Severe condition
 for (cl in target_clusters) {
@@ -2420,14 +2415,17 @@ for (cl in target_clusters) {
 }
 
 # Generate network plots for Moderate condition
-for (cl in target_clusters[2]) {
+for (cl in target_clusters) {
   generate_network_plot("MilCOVID_Azimuthl2", cl,
-                        decipher_scores_moderate, decipher_scores_by_regulon_and_cluster_moderate,
-                        regulon_deltas_by_cluster_moderate, feature_statistics_moderate,
-                        sender_cts, output_dir,
-                        
-                        top_interactions = c("CD38-PECAM1","ENAM-CD63","SLAMF7-SLAMF7", "SIGLEC1-SPN", "CCL3L1-CCR1"))
-}
+                        decipher_scores_moderate, 
+                        decipher_scores_by_regulon_and_cluster_moderate,
+                        regulon_deltas_by_cluster_moderate, 
+                        feature_statistics_moderate,
+                        sender_cts, 
+                        output_dir)
+                        }
+
+                        #top_interactions = c("CD38-PECAM1","ENAM-CD63","SLAMF7-SLAMF7", "SIGLEC1-SPN", "CCL3L1-CCR1"))
 
 
 

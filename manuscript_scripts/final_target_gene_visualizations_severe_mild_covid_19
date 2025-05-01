@@ -1,0 +1,386 @@
+library(igraph)
+library(dplyr)
+
+
+#functions ----
+
+# Initialize an empty data frame for edges and combined log2FC data
+initialize_data_frames <- function() {
+  list(
+    edges = data.frame(),
+    combined_data = data.frame()
+  )
+}
+
+# Extract target genes and average log fold change (avg_log2FC) for each regulon
+extract_regulon_data <- function(regulons, capped_regulons_all_clusters, significant_regulon_markers_by_cluster,selected_ct) {
+  data <- initialize_data_frames()
+
+  for (gene in regulons) {
+    regulon_data <- significant_regulon_markers_by_cluster[[selected_ct]][[gene]]
+    em_data <- capped_regulons_all_clusters[[selected_ct]] %>% filter(source == gene)
+
+    data$edges <- rbind(data$edges, data.frame(from = gene, to = em_data$target))
+    data$combined_data <- rbind(data$combined_data, regulon_data[, c("regulon", "tg_gene", "avg_log2FC")])
+  }
+
+  data
+}
+
+# Create color mapping for log2FC values
+generate_log2fc_colors <- function(log2fc_values, num_colors = 100) {
+  valid_log2fc <- log2fc_values[log2fc_values != -999 & !is.na(log2fc_values)]
+  max_abs_log2fc <- max(abs(valid_log2fc), na.rm = TRUE)
+  breaks <- seq(-max_abs_log2fc, max_abs_log2fc, length.out = num_colors + 1)
+  color_palette <- colorRampPalette(c("cornflowerblue", "white", "coral1"))(num_colors)
+
+  colors <- cut(log2fc_values, breaks = breaks, labels = color_palette, include.lowest = TRUE)
+  colors <- as.character(colors)
+  colors[log2fc_values == -999 | is.na(log2fc_values)] <- "white"
+
+  colors
+}
+
+# Set vertex attributes (color, size, label size) for the graph
+set_vertex_attributes <- function(g, log2fc_colors, regulons) {
+  vertex_colors <- rep("white", vcount(g))
+  vertex_colors[V(g)$name %in% names(log2fc_colors)] <- log2fc_colors[V(g)$name %in% names(log2fc_colors)]
+  vertex_colors[V(g)$name %in% regulons] <- "darkgoldenrod1"
+
+  vertex_size <- ifelse(V(g)$name %in% regulons, 10, 5)
+  vertex_label_cex <- ifelse(V(g)$name %in% regulons, 1.0, 0.6)
+
+  list(colors = vertex_colors, sizes = vertex_size, label_cex = vertex_label_cex)
+}
+
+# Main function to create and plot the graph
+plot_regulon_graph <- function(data, regulons) {
+  g <- graph_from_data_frame(data$edges, directed = FALSE)
+  log2fc_values <- setNames(data$combined_data$avg_log2FC, data$combined_data$tg_gene)
+  log2fc_colors <- generate_log2fc_colors(log2fc_values)
+
+  vertex_attrs <- set_vertex_attributes(g, log2fc_colors, regulons)
+
+  # png("overlap_tatata.png", height = 40, width = 40, units = "cm", res = 300)
+  # plot(
+  #   g,
+  #   vertex.label = V(g)$name,
+  #   vertex.color = vertex_attrs$colors,
+  #   vertex.size = vertex_attrs$sizes,
+  #   vertex.label.cex = vertex_attrs$label_cex,
+  #   edge.color = "gray"
+  # )
+  # dev.off()
+}
+
+
+#parameters ----
+
+# Read this https://www.nature.com/articles/srep16923
+
+comparison_name <- "MilCOVID_Azimuthl2"
+data_path <- file.path("results",comparison_name,"data")
+capped_regulons_all_clusters <- readRDS(file.path(data_path,"capped_regulons_all_clusters.rds"))
+regulon_deltas_by_cluster <- readRDS(file.path(data_path,"regulon_deltas_by_cluster.rds"))
+significant_regulon_markers_by_cluster <- readRDS(file.path(data_path,"significant_regulon_markers_by_cluster.rds"))
+n_pubmed <- 50
+
+#names(capped_regulons_all_clusters)
+for(selected_ct in c("CD14_Mono","CD16_Mono")){
+  # Run the refactored code
+  regulons <- regulon_deltas_by_cluster[[selected_ct]] %>%
+    filter(class == "real") %>%
+    arrange(desc(deltaPagoda)) %>%
+    dplyr::slice_head(n=10) %>%
+    pull(name)
+  data <- extract_regulon_data(regulons, capped_regulons_all_clusters, significant_regulon_markers_by_cluster, selected_ct)
+  plot_regulon_graph(data, regulons)
+
+  library(gplots)
+
+  # Create a binary matrix
+  binary_matrix <- data$edges %>%
+    mutate(value = 1) %>%  # Assign 1 for each edge
+    tidyr::pivot_wider(names_from = to, values_from = value, values_fill = 0) %>%
+    tibble::column_to_rownames("from")
+
+
+  # Filter columns where more than one 'from' talks to a 'to'
+  binary_matrix <- binary_matrix[, colSums(binary_matrix) > 1]
+
+  #see frequency of genes mentioned in pubmed
+  library(rentrez)
+
+  # Define your list of genes
+  genes <- colnames(binary_matrix)  # Replace with your genes of interest
+
+  # # Function to get PubMed count for a gene
+  get_pubmed_count <- function(gene) {
+    search_result <- entrez_search(db = "pubmed", term = gene)
+    return(search_result$count)
+  }
+
+  # # Apply the function to each gene and store the results in a data frame
+  PubMed_Count = sapply(genes, get_pubmed_count)
+  gene_counts <- data.frame(
+    Gene = genes,
+    PubMed_Count = PubMed_Count
+  )
+
+  top_genes <- gene_counts %>%
+    filter(Gene %in% genes) %>%
+    arrange(desc(PubMed_Count)) %>%
+    top_n(n = n_pubmed, wt = PubMed_Count) %>%
+    pull(Gene)
+
+  col_names <- colnames(binary_matrix)
+  col_names[!col_names %in% top_genes] <- ""
+
+  # Convert binary_matrix to matrix format
+  binary_matrix_mat <- as.matrix(binary_matrix)
+  # Define the color palette with custom logic for red and white
+  for(i in 1:nrow(binary_matrix_mat)){
+    for(j in 1:ncol(binary_matrix_mat)){
+      if(binary_matrix_mat[i,j] == 1 & colnames(binary_matrix_mat)[j] %in% top_genes)
+        binary_matrix_mat[i,j] <- 1.2
+    }
+  }
+  my_palette <- c("white", "black", "red")
+  file_name <- paste(selected_ct,"tg_heatmaps.png")
+  file_dir <- file.path("figures")
+
+  library(data.table)
+
+  # Perform hierarchical clustering on rows and columns
+  row_dendrogram <- hclust(dist(binary_matrix_mat))   # Hierarchical clustering on rows
+  col_dendrogram <- hclust(dist(t(binary_matrix_mat))) # Hierarchical clustering on columns
+
+  # Order the matrix based on clustering
+  binary_matrix_ordered <- binary_matrix_mat[row_dendrogram$order, col_dendrogram$order]
+
+
+  # Convert the ordered matrix to a data frame for ggplot2
+  binary_matrix_df <- as.data.frame(binary_matrix_ordered)
+  binary_matrix_df$row <- factor(rownames(binary_matrix_ordered), levels = rownames(binary_matrix_ordered)) # Set ordered row levels
+
+  # Melt the data for ggplot2
+  binary_matrix_melted <- melt(binary_matrix_df, id.vars = "row")
+
+  # Create the heatmap
+
+  # Update the heatmap plot
+  p <- ggplot(binary_matrix_melted, aes(x = row, y = variable, fill = value)) +
+    geom_tile(color = "white") +
+    scale_fill_gradientn(colors = my_palette,
+                         breaks = c(-0.1, 0.9, 1.1, 1.2),
+                         limits = c(-0.1, 1.2),
+                         guide = "none") +
+    labs(title = paste(comparison_name, selected_ct)) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 8, hjust = 0.5),
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6),
+      # Conditionally set y-axis labels
+      axis.text.y = element_text(size = 4),
+      axis.title = element_blank(),
+      plot.margin = unit(c(1, 1, 1, 1), "lines")
+    ) +
+    scale_y_discrete(labels = function(x) ifelse(x %in% top_genes, x, ""))  # Conditional row labels
+  filename <- paste0(comparison_name,"_",selected_ct,"_tgs_heatmap_pubmed.png")
+  ggsave(file.path("figures",filename),p)
+}
+
+
+
+
+# Run the refactored code
+regulons <- regulon_deltas_by_cluster[[selected_ct]] %>%
+  filter(class == "real") %>%
+  arrange(desc(deltaPagoda)) %>%
+  dplyr::slice_head(n=10) %>%
+  pull(name)
+data <- extract_regulon_data(regulons, capped_regulons_all_clusters, significant_regulon_markers_by_cluster, selected_ct)
+plot_regulon_graph(data, regulons)
+
+library(gplots)
+
+# Create a binary matrix
+binary_matrix <- data$edges %>%
+  mutate(value = 1) %>%  # Assign 1 for each edge
+  tidyr::pivot_wider(names_from = to, values_from = value, values_fill = 0) %>%
+  tibble::column_to_rownames("from")
+
+
+# Filter columns where more than one 'from' talks to a 'to'
+binary_matrix <- binary_matrix[, colSums(binary_matrix) > 1]
+
+# Plot the binary heatmap
+# heatmap.2(
+#   as.matrix(binary_matrix),
+#   trace = "none",
+#   col = c("white", "black"),
+#   density.info = "none",
+#   main = NA,
+#   cexRow = 0.7
+# )
+
+
+
+#see frequency of genes mentioned in pubmed
+library(rentrez)
+
+# Define your list of genes
+genes <- colnames(binary_matrix)  # Replace with your genes of interest
+
+# # Function to get PubMed count for a gene
+# get_pubmed_count <- function(gene) {
+#   search_result <- entrez_search(db = "pubmed", term = gene)
+#   return(search_result$count)
+# }
+
+# # Apply the function to each gene and store the results in a data frame
+# gene_counts <- data.frame(
+#   Gene = genes,
+#   PubMed_Count = sapply(genes, get_pubmed_count)
+# )
+#
+# # Display the result
+# print(gene_counts)
+
+top_genes <- gene_counts_all_relevant_to_dataset %>%
+  filter(Gene %in% genes) %>%
+  arrange(desc(PubMed_Count)) %>%
+  top_n(n = 30, wt = PubMed_Count) %>%
+  pull(Gene)
+
+col_names <- colnames(binary_matrix)
+col_names[!col_names %in% top_genes] <- ""
+#
+#
+# # Plot the binary heatmap with selective row names
+# heatmap.2(
+#   as.matrix(binary_matrix),
+#   trace = "none",
+#   col = c("white", "black"),
+#   density.info = "none",
+#   main = NA,
+#   cexRow = 0.7,
+#   labCol = col_names,  # Set selective row labels,
+#   cexCol = 0.5
+# )
+
+
+# Convert binary_matrix to matrix format
+binary_matrix_mat <- as.matrix(binary_matrix)
+# Define the color palette with custom logic for red and white
+for(i in 1:nrow(binary_matrix_mat)){
+  for(j in 1:ncol(binary_matrix_mat)){
+    if(binary_matrix_mat[i,j] == 1 & colnames(binary_matrix_mat)[j] %in% top_genes)
+     binary_matrix_mat[i,j] <- 1.2
+  }
+}
+my_palette <- c("white", "black", "red")
+file_name <- paste(selected_ct,"tg_heatmaps.png")
+file_dir <- file.path(data_path,"monodcs_to_cd4")
+dir.create(file_dir)
+png(file.path(file_dir,file_name))
+# Plot the binary heatmap with selective row names
+heatmap.2(
+  binary_matrix_mat,
+  trace = "none",
+  col = my_palette,
+  breaks = c(-0.1, 0.9, 1.1, 1.2),
+  density.info = "none",
+  main = NA,
+  cexRow = 0.5,
+  labCol = col_names,  # Set selective row labels,
+  cexCol = 0.4  )
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# doing something to speed up pubmed retrieval
+
+library(dplyr)
+
+# Combine all data frames in capped_regulons_all_clusters into one data frame
+combined_df <- bind_rows(capped_regulons_all_clusters, .id = "cluster")
+
+# Remove rows where 'source' contains 'sample' (e.g., "sample1", "sample2", etc.)
+combined_df <- combined_df %>%
+  filter(!grepl("^sample\\d+", source))
+
+# Count the occurrences of each unique target across all data frames
+target_counts <- combined_df %>%
+  group_by(target) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+# Display the result
+print(target_counts)
+
+table(target_counts$count >1)
+
+genes_to_query <- target_counts$target[which(target_counts$count >1)]
+
+# Apply the function to each gene and store the results in a data frame
+gene_counts_all_relevant_to_datset <- data.frame(
+  Gene = genes_to_query,
+  PubMed_Count = sapply(genes_to_query, get_pubmed_count)
+)
+
+
+library(progress)
+
+# Initialize an empty data frame to store results
+gene_counts_all_relevant_to_dataset <- data.frame(Gene = character(), PubMed_Count = integer(), stringsAsFactors = FALSE)
+
+
+# Initialize the progress bar
+pb <- progress_bar$new(
+  format = "  Querying [:bar] :percent in :elapsed",
+  total = length(genes_to_query),
+  clear = FALSE,
+  width = 60
+)
+
+
+# Loop through each gene and retrieve the PubMed count
+for (gene in genes_to_query) {
+  # Add a delay to avoid overloading the API
+  Sys.sleep(0.5)
+
+  # Try to get the count, with error handling
+  count <- tryCatch({
+    search_result <- entrez_search(db = "pubmed", term = gene)
+    search_result$count
+  }, error = function(e) {
+    message(paste("Error retrieving data for gene:", gene))
+    NA  # Assign NA if there is an error
+  })
+
+  # Append the result to the data frame
+  gene_counts_all_relevant_to_dataset <- rbind(
+    gene_counts_all_relevant_to_dataset,
+    data.frame(Gene = gene, PubMed_Count = count, stringsAsFactors = FALSE)
+  )
+
+  # Update the progress bar
+  pb$tick()
+
+}
+gene_counts_all_relevant_to_dataset <- readRDS("gene_counts_all_relevant_to_dataset.rds")
+
+saveRDS(gene_counts_all_relevant_to_dataset,"gene_counts_all_relevant_to_dataset.rds")
