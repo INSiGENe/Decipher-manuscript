@@ -87,6 +87,7 @@ capped_regulons_all_clusters <- readRDS(file.path(data_path,"capped_regulons_all
 regulon_deltas_by_cluster <- readRDS(file.path(data_path,"regulon_deltas_by_cluster.rds"))
 significant_regulon_markers_by_cluster <- readRDS(file.path(data_path,"significant_regulon_markers_by_cluster.rds"))
 n_pubmed <- 40
+#scale_y_discrete(position = "right") #do this for severe and comment out for moderate
 
 #names(capped_regulons_all_clusters)
 for(selected_ct in c("CD14_Mono","CD16_Mono")){
@@ -187,7 +188,7 @@ for(selected_ct in c("CD14_Mono","CD16_Mono")){
       axis.title = element_blank(),
       plot.margin = unit(c(1, 1, 1, 1), "lines")
     ) +
-    scale_y_discrete(position = "right")
+    scale_y_discrete(position = "right") #do this for severe and comment out for moderate
     #scale_y_discrete(labels = function(x) ifelse(x %in% top_genes, x, ""))  # Conditional row labels
   filename <- paste0(comparison_name,"_",selected_ct,"_tgs_heatmap_pubmed.png")
   ggsave(file.path("figures",filename),p,width = 12,height = 5,units="cm")
