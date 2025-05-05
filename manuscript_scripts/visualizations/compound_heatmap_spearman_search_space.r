@@ -120,7 +120,8 @@ p <- ggplot() +
       hjust  = 1              # right-justify along the diagonal
     ),
     axis.text.y  = element_text(face = "bold", size = 17,vjust=1),
-    panel.grid   = element_blank()
+    panel.grid   = element_blank(),
+    legend.position = "bottom"
   )
 
-ggsave(file.path(figures_folder,"big_heatmap_v2.png"),p)
+ggsave(file.path(figures_folder,"big_heatmap_v3.png"),p)

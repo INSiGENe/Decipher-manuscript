@@ -9,7 +9,7 @@ library(ggplot2)
 all_runs_dat_1 <- list()
 all_runs_dat_2 <- list()
 
-N <- 18
+N <- 80
 # Loop through all 100 runs
 for (i in 1:N) {
   # Load the data
@@ -75,8 +75,6 @@ p <- ggplot(interaction_consistency, aes(x = interaction, y = proportion, fill =
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
-  library(ggplot2)
-
 # Calculate total count per interaction across all cell types
 interaction_totals <- interaction_consistency %>%
   group_by(interaction) %>%
@@ -92,27 +90,38 @@ interaction_consistency$interaction <- factor(
   levels = interaction_totals$interaction[order(interaction_totals$total_count,decreasing = FALSE)]
 )
 
-# Now plot again
-library(ggplot2)
+top20_interactions <- interaction_consistency %>%
+  arrange(desc(proportion)) %>%
+  slice_head(n = 30)
 
-p <- ggplot(interaction_consistency, aes(x = interaction, y = Cells, fill = count)) +
+top20_mapped <- top20_interactions %>%
+  mutate(Cells = case_when(
+    grepl("^B_", Cells)                     ~ "B",
+    grepl("^CD14_plus_Monocytes", Cells)    ~ "CD14+ Mono",
+    grepl("^CD4_T", Cells)                  ~ "CD4 T",
+    grepl("^CD8", Cells)                    ~ "CD8 T",
+    TRUE                                    ~ Cells  # fallback if unmatched
+  ))
+  
+p <- ggplot(top20_mapped, aes(x = Cells, y = interaction, fill = count)) +
   geom_tile(color = "white") +
-  scale_fill_gradient(low = "white", high = "steelblue") +
+  scale_fill_viridis_c(option = "D", name = "Count") +  # Viridis scale
+  scale_y_discrete(position = "right") +
   labs(
     title = NULL,
     x = NULL,
-    y = "Cell Type",
+    y = NULL,
     fill = "Count"
   ) +
   theme_minimal(base_size = 14) +
   theme(
-    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10), # ligand-receptor 90 degrees
-    axis.text.y = element_text(angle = 0, vjust = 0.5, hjust = 1, size = 10), # cell types 0 degrees
+    axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 1, size = 17,face="bold"),
+    axis.text.y = element_text(angle = 0, vjust = 0.5, hjust = 1, size = 13), 
     panel.grid = element_blank(),
     legend.position = "bottom"     # move legend to bottom
   )
 
-ggsave("figures/proportions_runs_top_10_flipped.png", p, width = 12, height = 4.5)
+ggsave(file.path(figures_folder,"proportions_runs_top_10_flipped.png"), p, width = 4.2, height = 8)
 
 # 1. Rename the Cells
 interaction_consistency <- interaction_consistency %>%

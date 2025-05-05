@@ -362,7 +362,11 @@ getSet <- function(method_result, n) {
   sorted_indices <- order(method_result[[score_col]], decreasing = TRUE, na.last = TRUE)
   sorted_method_result <- method_result[sorted_indices, , drop = FALSE] # Use drop=FALSE for safety
   interactions <- as.character(sorted_method_result[[interaction_col]])
-  return(head(interactions, n))
+  # Get unique interactions only
+  unique_interactions <- unique(as.character(sorted_method_result[[interaction_col]]))
+  return(head(unique_interactions, n))
+
+  #return(head(interactions, n))
 }
 
 # --- Helper function to calculate sizes of ALL specific intersections ---
@@ -474,6 +478,7 @@ create_flag_color_scale <- function(methods) {
 ## analysis below
 ##########################
 
+set.seed(1)
 figures_folder <- "figures_02_05_2025"
 dir.create(figures_folder,recursive = TRUE)
 
@@ -550,7 +555,7 @@ p <- ggplot(interaction_counts, aes(y = method, x = interaction_count, fill = me
   geom_boxplot(outlier.shape = NA, width = 0.6) +
   geom_jitter(height = 0.2, size = 2.8, alpha = 0.8) +  # changed from width to height since x/y are flipped
   scale_fill_manual(values = method_colors) +
-  scale_x_log10(position = "top",breaks = custom_breaks) +  # place x-axis labels at the top
+  scale_x_log10(position = "bottom",breaks = custom_breaks) +  # place x-axis labels at the top
   labs(
     x = "Number of Interactions",
     y = NULL
@@ -568,7 +573,7 @@ p <- ggplot(interaction_counts, aes(y = method, x = interaction_count, fill = me
     
   )
 
-ggsave(file.path(figures_folder,"boxplot_number_of_interactions_by_method.png"), plot = p, width = 6.5, height = 4, dpi = 300)
+ggsave(file.path(figures_folder,"boxplot_number_of_interactions_by_method.png"), plot = p, width = 5, height = 4, dpi = 300)
 
 #==== violin plot score distribution ====
 # Check if variables exist
@@ -588,14 +593,14 @@ plot_violin_scores_by_method <- ggplot(
   ) +
 
   # same colour palette / order
-  scale_fill_manual(values = method_colors, breaks = desired_method_order) +
+  scale_fill_manual(values = method_colors, breaks = rev(desired_method_order)) +
 
   # numeric axis at the top, pseudo-log like in your box plot
   scale_x_continuous(
     trans  = scales::pseudo_log_trans(sigma = 0.1, base = 10),
     breaks = c(-10, -1, 0, 1, 10, 100),
-    position = "top",
-    name = "Interaction Prioritization Score"
+    position = "bottom",
+    name = "Prioritization Score"
   ) +
 
   # categorical axis order, but hide ticks and title
@@ -617,7 +622,7 @@ plot_violin_scores_by_method <- ggplot(
 
 # Save the Plot
 output_filename_violin <- "violin_scores_by_method.png"
-ggsave(file.path(figures_folder,output_filename_violin), plot = plot_violin_scores_by_method, width = 5, height = 4, dpi = 300)
+ggsave(file.path(figures_folder,output_filename_violin), plot = plot_violin_scores_by_method, width = 3.5, height = 4, dpi = 300)
 
 
 #==== overlap ====
@@ -1220,7 +1225,7 @@ for (ds in names(datasets)) {
     dataset_path <- datasets[[ds]]
     pre_processing_filepath <- file.path(dataset_path, "pre_processing")
     meta_path <- "manuscript_analysis/data_for_meta_comparisons"
-    output_figures_filepath <- file.path(dataset_path, figures_folder)
+    output_figures_filepath <- file.path(dataset_path, "figures")
     reference_filepath <- "reference_data"
     decipher_filepath <- file.path(dataset_path, "data")
     seurat_object_oi <- readRDS(file.path(decipher_filepath,"pseudobulk_seurat.rds"))
@@ -1333,7 +1338,7 @@ p <- ggplot(results_df, aes(x = method, y = value)) +
   theme_minimal(base_size = 14) +
   theme(legend.position = "none", 
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-ggsave("figures/variance_w_boxplot_beeswarm_auc_plot.png", plot = p, width = 4, height = 6, dpi = 300)
+ggsave(file.path(figures_folder,"variance_w_boxplot_beeswarm_auc_plot.png"), plot = p, width = 4, height = 6, dpi = 300)
 
 #V2
 # --- Prepare Data: Order Methods ---
@@ -1400,7 +1405,7 @@ p_updated <- ggplot(results_df, aes(x = method, y = value)) +
   geom_beeswarm(
     aes(color = method),   # Color points by method
     size = 4.0,            # Adjust point size if needed
-    cex = 1,               # Use 'size', not 'cex' for ggplot point size control
+    cex = 5,               # Use 'size', not 'cex' for ggplot point size control
     priority = "density",
     groupOnX = TRUE        # Ensure beeswarm groups correctly on discrete x-axis
   ) +
@@ -1425,27 +1430,14 @@ p_updated <- ggplot(results_df, aes(x = method, y = value)) +
 
   # Labels and Theme
   labs(y = "AUROC target prediction", x = NULL) + # x = NULL removes x-axis title
-  theme_minimal(base_size = 14) +
+  theme_bw(base_size = 14) +
   theme(legend.position = "none",
-        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) # Rotate labels
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1,size=17,face="bold"),
+        panel.grid = element_blank()) # Rotate labels
 
 # --- Save the Plot ---
-output_filename_updated <- "figures/variance_w_boxplot_beeswarm_auc_plot_updated.png"
-dir.create("figures", showWarnings = FALSE)
-
-save_result_updated <- tryCatch({
-    ggsave(output_filename_updated, plot = p_updated, width = 5, height = 6, dpi = 300) # Adjusted width slightly
-    TRUE
-}, error = function(e) {
-    warning("Failed to save the updated plot: ", e$message, call. = FALSE)
-    FALSE
-})
-
-if (save_result_updated) {
-    print(paste("Updated plot saved to", output_filename_updated))
-} else {
-    print("Updated plot was generated but could not be saved automatically.")
-}
+output_filename_updated <- file.path(figures_folder,"variance_w_boxplot_beeswarm_auc_plot_updated.png")
+ggsave(output_filename_updated, plot = p_updated, width = 4, height = 8, dpi = 300) # Adjusted width slightly
 
 #basic
 
@@ -2043,6 +2035,11 @@ plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=8,dataset_name="Mi
 #cDC2
 plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=8,dataset_name="SevCOVID_Azimuthl2_cDC2_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("cDC2"))
 plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=8,dataset_name="MilCOVID_Azimuthl2_cDC2_prior", abs_decipher_plot_limit = 20,priority_receiver_cells = c("cDC2"))
+
+
+#alll
+plotDecipherPrioritizedMap("results/SevCOVID_Azimuthl2",top_n=5,dataset_name="SevCOVID_Azimuthl2_all", abs_decipher_plot_limit = 20)
+plotDecipherPrioritizedMap("results/MilCOVID_Azimuthl2",top_n=5,dataset_name="MilCOVID_Azimuthl2_all", abs_decipher_plot_limit = 20)
 
 
 
@@ -3139,7 +3136,7 @@ print("Generating full overlap summary plot...")
     print(plot_overlap_full_summary)
 
     # Save the plot - likely needs to be wide
-    ggsave("figures/overlap_all_intersections_boxplot.png", plot = plot_overlap_full_summary, width = 16, height = 7, dpi = 300) # Increased width
+    ggsave(file.path(figures_folder,"overlap_all_intersections_boxplot.png"), plot = plot_overlap_full_summary, width = 16, height = 7, dpi = 300) # Increased width
     print("Full overlap plot saved to figures/overlap_all_intersections_boxplot.png")
 
 
