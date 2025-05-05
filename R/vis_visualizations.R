@@ -539,7 +539,7 @@ plotBubble <- function(df,color.var,size.var,stroke.var,plot.position,col.min.va
 #' @importFrom grDevices png dev.off
 #' @importFrom utils write.csv
 #' @import patchwork
-plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cells = NULL,sc_feature_statistics=FALSE,primary_ct = NULL,split_by_direction = FALSE,direction = c("pos","neg"),dataset_name,abs_decipher_plot_limit = NULL,priority_receiver_cells = NULL
+plotDecipherPrioritizedMap <- function(dataset_path,top_n,selected_receiver_cells = NULL,sc_feature_statistics=FALSE,primary_ct = NULL,split_by_direction = FALSE,direction = c("pos","neg"),dataset_name,abs_decipher_plot_limit = NULL,priority_receiver_cells = NULL,width=NULL,height=NULL
 ){
   decipher_path <- file.path(dataset_path,"data")
   #read data ----
@@ -784,13 +784,17 @@ decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters
     x_lab= "RCT",
     y_lab = "")
   # Helper function to handle file saving
-  save_plot_and_data <- function(filename_prefix, ligand_plot, decipher_plot, receptor_plot, base_data, dataset_path) {
+  save_plot_and_data <- function(filename_prefix, ligand_plot, decipher_plot, receptor_plot, base_data, dataset_path,width = NULL,height = NULL) {
     # Construct file paths
     filename_png <- paste0(filename_prefix, ".png")
     filename_csv <- paste0(filename_prefix, ".csv")
 
     # Save plot as PNG
-    png(file.path(dataset_path, "figures", filename_png), width = 21, height = 11, units = "cm", res = 600)
+    if(is.null(width) | is.null(height)){
+          png(file.path(dataset_path, "figures", filename_png), width = 21, height = 11, units = "cm", res = 600)
+    } else {
+      png(file.path(dataset_path, "figures", filename_png), width = width, height = height, units = "cm", res = 600)
+    }
     print(ligand_plot + decipher_plot + receptor_plot + patchwork::plot_layout(widths = c(2, 1, 1)))
     dev.off()
 
@@ -822,7 +826,7 @@ decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters
   }
 
   # Call the helper function to save plots and data
-  save_plot_and_data(filename_prefix, ligand_bubble_plot, decipher_bubble_plot, receptor_bubble_plot, base_data, dataset_path)
+  save_plot_and_data(filename_prefix, ligand_bubble_plot, decipher_bubble_plot, receptor_bubble_plot, base_data, dataset_path,width,height)
 
 
 }
