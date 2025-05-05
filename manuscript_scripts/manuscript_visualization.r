@@ -474,7 +474,7 @@ create_flag_color_scale <- function(methods) {
 ## analysis below
 ##########################
 
-figures_folder <- "figures_25_04_2025"
+figures_folder <- "figures_02_05_2025"
 dir.create(figures_folder,recursive = TRUE)
 
 # ==== clean up results ====
@@ -540,91 +540,90 @@ interaction_counts <- do.call(rbind, lapply(names(results_preprocessed), functio
 }))
 
 # Ensure correct order and factor levels
-interaction_counts$method <- factor(interaction_counts$method, levels = desired_method_order)
+interaction_counts$method <- factor(interaction_counts$method, levels = rev(desired_method_order))
+
+# Define the breaks you want to keep (excluding the smallest and largest ones)
+custom_breaks <- c(1e3, 1e4, 1e5)
 
 # Plot
-p <- ggplot(interaction_counts, aes(x = method, y = interaction_count, fill = method)) +
+p <- ggplot(interaction_counts, aes(y = method, x = interaction_count, fill = method)) +
   geom_boxplot(outlier.shape = NA, width = 0.6) +
-  geom_jitter(width = 0.2, size = 2.8, alpha = 0.8) +  # increased point size by ~40%
+  geom_jitter(height = 0.2, size = 2.8, alpha = 0.8) +  # changed from width to height since x/y are flipped
   scale_fill_manual(values = method_colors) +
-  scale_y_log10() +
+  scale_x_log10(position = "top",breaks = custom_breaks) +  # place x-axis labels at the top
   labs(
-    x = NULL,
-    y = "Number of Interactions"
+    x = "Number of Interactions",
+    y = NULL
   ) +
-  theme_bw(base_size = 12) +  # using theme_bw as a base
+  theme_bw(base_size = 12) +
   theme(
     legend.position = "none",
-    # Updated tick labels with ~20% size increase and bold formatting:
-    axis.text.x = element_text(angle = 0, vjust = 1, size = 17, face = "bold"),
-    axis.text.y = element_text(size = 17, face = "bold"),
-    # Updated axis titles with ~50% size increase and bold formatting:
+    # X-axis at the top, horizontal text
+    axis.text.x = element_text(angle = 0, vjust = 0.5, size = 17, face = "bold"),
     axis.title.x = element_text(size = 18, face = "bold"),
+    # Y-axis on left, horizontal (perpendicular to axis)
+    axis.text.y = element_text(size = 17, face = "bold"),
     axis.title.y = element_text(size = 18, face = "bold"),
-    # Optionally, you can enforce a bold base for all text if desired:
     text = element_text(face = "bold")
+    
   )
 
-
-ggsave(file.path(figures_folder,"boxplot_number_of_interactions_by_method.png"), plot = p, width = 8, height = 4, dpi = 300)
+ggsave(file.path(figures_folder,"boxplot_number_of_interactions_by_method.png"), plot = p, width = 6.5, height = 4, dpi = 300)
 
 #==== violin plot score distribution ====
 # Check if variables exist
-if (!exists("combined_scores_df")) stop("DataFrame 'combined_scores_df' not found.")
-if (!exists("method_colors")) stop("Color vector 'method_colors' not found.")
-if (!exists("desired_method_order")) stop("Order vector 'desired_method_order' not found.")
 
 # Generate the Violin Plot
-plot_violin_scores_by_method <- ggplot(combined_scores_df,
-                                        aes(x = method,
-                                            y = prioritization_score,
-                                            fill = method)) +
+plot_violin_scores_by_method <- ggplot(
+  combined_scores_df,
+  aes(y = method,                     # flip: categorical axis on Y
+      x = prioritization_score,       # numeric axis on X
+      fill = method)
+) +
+  geom_violin(
+    trim = FALSE,
+    alpha = 0.7,
+    scale = "width",
+    draw_quantiles = c(0.25, 0.5, 0.75)
+  ) +
 
-  geom_violin(trim = FALSE,
-              alpha = 0.7,
-              scale = "width",
-              draw_quantiles = c(0.25, 0.5, 0.75)) +
+  # same colour palette / order
+  scale_fill_manual(values = method_colors, breaks = desired_method_order) +
 
-  scale_fill_manual(values = method_colors, name = "Method", breaks = desired_method_order) +
-
-  scale_y_continuous(
-    trans = scales::pseudo_log_trans(sigma = 0.1, base = 10),
+  # numeric axis at the top, pseudo-log like in your box plot
+  scale_x_continuous(
+    trans  = scales::pseudo_log_trans(sigma = 0.1, base = 10),
     breaks = c(-10, -1, 0, 1, 10, 100),
+    position = "top",
     name = "Interaction Prioritization Score"
   ) +
 
-  scale_x_discrete(limits = desired_method_order, name = NULL) +  # match x-axis label with boxplot
+  # categorical axis order, but hide ticks and title
+  scale_y_discrete(limits = desired_method_order, name = NULL) +
 
   theme_bw(base_size = 12) +
   theme(
     legend.position = "none",
-    axis.text.x = element_text(angle = 0, vjust = 1, size = 17, face = "bold"),
-    axis.text.y = element_text(size = 17, face = "bold"),
+    # X-axis (now across the top)
+    axis.text.x  = element_text(angle = 0, vjust = 0.5, size = 17, face = "bold"),
     axis.title.x = element_text(size = 18, face = "bold"),
-    axis.title.y = element_text(size = 18, face = "bold"),
+    # Suppress Y-axis ticks/labels/title
+    axis.text.y  = element_blank(),
+    axis.title.y = element_blank(),
     text = element_text(face = "bold")
   ) +
   labs(fill = "Method")
 
 
-
 # Save the Plot
 output_filename_violin <- "violin_scores_by_method.png"
-ggsave(file.path(figures_folder,output_filename_violin), plot = plot_violin_scores_by_method, width = 8, height = 4, dpi = 300)
-
-
-
+ggsave(file.path(figures_folder,output_filename_violin), plot = plot_violin_scores_by_method, width = 5, height = 4, dpi = 300)
 
 
 #==== overlap ====
 n_top <- 100
 method_names_expected <- c("Decipher", "NicheNet", "LIANA+", "NATMI", "Connectome")
 all_intersection_data <- list()
-
-# Ensure 'results_for_correlation' list is populated
-if (!exists("results_for_correlation") || length(results_for_correlation) == 0) {
-    stop("The 'results_for_correlation' list was not found or is empty.")
-}
 
 print(paste("Processing", length(results_for_correlation), "datasets for full overlap analysis..."))
 dataset_names_to_process <- names(results_for_correlation)
