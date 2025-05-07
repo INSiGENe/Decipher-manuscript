@@ -1573,6 +1573,107 @@ save_grouped_plots(
 cat("Script finished. Plots saved in:", file.path(base_comparison_path, , output_folder_name), "\n")
 
 
+# single_TF_heatmap: one cell-type, two conditions, top N by |delta|
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(tibble)    # for enframe()
+
+single_TF_heatmap <- function(cell_type,
+                              sort_by    = c("moderate","severe"),
+                              top_n      = 20,
+                              deltas_list,
+                              global_max) {
+  sort_by   <- match.arg(sort_by)
+  sort_cond <- if (sort_by == "moderate") "Moderate" else "Severe"
+
+  # helper: extract a named vector from either a numeric vector or your 3-col df
+  vec_from <- function(x) {
+    if (is.data.frame(x)) {
+      if (all(c("deltaPagoda","name") %in% names(x))) {
+        v <- x$deltaPagoda
+        names(v) <- x$name
+        return(v)
+      } else {
+        stop("Data.frame must have columns 'deltaPagoda' and 'name'.")
+      }
+    } else if (is.numeric(x) && !is.null(names(x))) {
+      return(x)
+    } else {
+      stop("Each element must be a named numeric vector or a data.frame with 'deltaPagoda'+'name'.")
+    }
+  }
+
+  # pull out moderate & severe vectors
+  mod_vec <- vec_from(deltas_list$moderate[[cell_type]])
+  sev_vec <- vec_from(deltas_list$severe  [[cell_type]])
+
+  # turn into tibbles
+  mod_df <- enframe(mod_vec, name="TF", value="Moderate")
+  sev_df <- enframe(sev_vec, name="TF", value="Severe")
+
+  # join & pivot
+  df_long <- full_join(mod_df, sev_df, by="TF") %>%
+    pivot_longer(c(Moderate,Severe),
+                 names_to="Condition",
+                 values_to="Delta")
+
+  # pick top N by |Delta| in sort_cond
+  top_tfs <- df_long %>%
+    filter(Condition == sort_cond, !is.na(Delta)) %>%
+    arrange(desc(abs(Delta))) %>%
+    slice_head(n = top_n) %>%
+    arrange(Delta) %>%
+    pull(TF)
+
+  df_top <- df_long %>%
+    filter(TF %in% top_tfs) %>%
+    mutate(
+      TF        = factor(TF, levels = top_tfs),
+      Condition = factor(Condition, levels = c("Moderate","Severe"))
+    )
+
+  # symmetric color limits
+  lim <- max(abs(df_top$Delta), na.rm = TRUE)
+
+  # plot
+  ggplot(df_top, aes(TF, Condition, fill = Delta)) +
+    geom_tile(color = "white") +
+    scale_fill_gradient2(
+      low      = "blue",
+      mid      = "white",
+      high     = "red",
+      midpoint = 0,
+      limits   = c(-global_max, global_max),
+      na.value = "grey80"
+    ) +
+    labs(title = paste0(cell_type, " (sorted by",sort_by,")"), x = "Regulon", y = NULL) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title       = element_text(hjust = 0.5),
+      axis.text.x      = element_text(angle = 45, hjust = 1),
+      panel.grid       = element_blank(),
+      legend.position = "none"
+    )
+}
+
+
+absolute_max <- find_absolute_max(regulon_deltas_list)
+
+cell_type <- "CD16_Mono"
+sort_by <- "moderate"
+top_n = 20
+p <- single_TF_heatmap(
+  cell_type   = cell_type,
+  sort_by     = sort_by,
+  top_n       = top_n,
+  deltas_list = regulon_deltas_list,
+  global_max = absolute_max
+)
+
+file_name <- paste0("diff_tf_activity_",cell_type,"_", sort_by, "_", top_n, ".png")
+ggsave(file.path(figures_folder,file_name), p, width = 8, height = 2)
+
 
 
 
