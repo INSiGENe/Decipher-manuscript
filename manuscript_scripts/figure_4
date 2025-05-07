@@ -133,32 +133,11 @@ combine_deg_counts <- function(df_severe, df_mild) {
 
 # ---- reproducible seed ----
 set.seed(123)
+figures_folder <- "Manuscript_jan_2025/figures_02_05_2025"
 
 # load data ----
 combined <- readRDS("pre_processing_test/data/SevMilCOVID/combined_seurat_for_processing_azimuth_mapped.rds")
 
-# umap plot ----
-# Base UMAP plot without labels or legend
-p <- DimPlot(
-  combined,
-  reduction = "umap",
-  split.by = "severity_group",
-  group.by = "predicted.celltype.l2",
-  pt.size = 0.5
-) + theme(legend.position = "bottom")
-
-# Save the plot
-ggsave("Manuscript_jan_2025/figures/umap_split_by_condition.png", plot = p, width = 10, height = 6, dpi = 300)
-
-# umap CD63 expression ----
-p <- FeaturePlot(
-  combined,
-  features = "CD63",
-  reduction = "umap",
-  split.by = "condition",
-  pt.size = 0.5
-) + theme(legend.position = "right")
-ggsave("figures/umap_CD63_expression.png", plot = p, width = 10, height = 6, dpi = 300)
 
 # abundance V1 ----
 metadata <- combined@meta.data %>%
@@ -972,7 +951,8 @@ df_sev <- output$results$SevCOVID
 df_mild <- output$results$MilCOVID
 seurat_objs <- output$seurat_objects  # Retain these for downstream analysis
 
-celltype_props <- calculate_celltype_proportions(seurat_objs)
+
+#celltype_props <- calculate_celltype_proportions(seurat_objs)
 celltype_props_normalized <- calculate_condition_normalized_proportions(seurat_objs)
 
 celltype_props_normalized <- celltype_props_normalized %>%
@@ -1002,7 +982,7 @@ celltype_props_normalized_plot <- ggplot(celltype_props_normalized, aes(x = Prop
     legend.position = "bottom"
   )
 
-ggsave("Manuscript_jan_2025/figures/celltype_props_normalized_plot.png",
+ggsave(file.path(figures_folder,"celltype_props_normalized_plot.png"),
        plot = celltype_props_normalized_plot, width = 5, height = 6, dpi = 300)
 
 
@@ -1079,7 +1059,7 @@ degs_Severe_moderate_plot <- ggplot(abundance_degs, aes(x = Cluster, y = Percent
     legend.title = element_blank()
     )
 
-ggsave("Manuscript_jan_2025/figures/degs_Severe_moderate.png",
+ggsave(file.path(figures_folder,"degs_Severe_moderate.png"),
        plot = degs_Severe_moderate_plot, width = 4, height = 6, dpi = 300)
 
 
@@ -1117,7 +1097,7 @@ combined_plot <- celltype_props_normalized_plot +
                  plot_layout(ncol = 2, widths = c(0.4, 0.6)) & 
                  theme(legend.position = "bottom")
 
-ggsave("Manuscript_jan_2025/figures/combined_composition_and_degs.png",
+ggsave(file.path(figures_folder,"combined_composition_and_degs.png"),
        plot = combined_plot, width = 10, height = 10, dpi = 300)
 
 
@@ -1159,11 +1139,502 @@ combined_plot <- (
   theme(legend.position = "bottom")
 
 
-ggsave("Manuscript_jan_2025/figures/combined_composition_and_degs_and_text.png",
+ggsave(file.path(figures_folder,"combined_composition_and_degs_and_text.png"),
        plot = combined_plot, width = 10, height = 10, dpi = 300)
 
 
 #####################
-##### ok back to the heatmaps#
+#PCA
 #####################
+#parameters
+base_comparison_path <- "Manuscript_jan_2025"
+results_path <- file.path(base_comparison_path, "results")
+output_folder_name <- file.path("Manuscript_jan_2025",figures_folder)
+
+conditions <- c(
+  moderate =  "MilCOVID_Azimuthl2", # Folder name for moderate data
+  severe   =  "SevCOVID_Azimuthl2"    # Folder name for severe data
+)
+
+# Define the specific cell types (receiver cells) you want to analyze
+selected_receiver_cells <- c( "Eryth", "CD16_Mono", "HSPC",    "CD4_TCM",  "Plasmablast",    "B_intermediate", "B_naive","CD8_Naive","NK","CD8_TEM","pDC","cDC2","Platelet","CD14_Mono","CD4_CTL" )
+
+
+# Dynamically load data based on conditions defined above
+regulon_deltas_list <- lapply(names(conditions), function(cond_name) {
+  folder_name <- conditions[[cond_name]]
+  file_path <- file.path(results_path, folder_name, "data/regulon_deltas_by_cluster.rds")
+  cat("Loading data for:", cond_name, "from:", file_path, "\n")
+  load_regulon_data(file_path, selected_receiver_cells)
+})
+
+# Set names of the main list (e.g., regulon_deltas_list$moderate, regulon_deltas_list$severe)
+names(regulon_deltas_list) <- names(conditions)
+
+# ==== Plot PCA of regulons ====
+library(purrr)
+long_moderate <- get_long_deltas(regulon_deltas_list$moderate, "Moderate")
+long_severe   <- get_long_deltas(regulon_deltas_list$severe, "Severe")
+
+combined_long <- bind_rows(long_moderate, long_severe)
+
+# 2. Pivot to wide format: rows = Cluster+Condition, cols = TFs
+wide_deltas <- combined_long %>%
+  select(Cluster, Condition, name, deltaPagoda) %>%
+  pivot_wider(names_from = name, values_from = deltaPagoda, values_fill = 0) %>%
+  unite(Cluster_Condition, Cluster, Condition, sep = "_")
+
+# 3. Run PCA
+deltas_mat <- wide_deltas %>% column_to_rownames("Cluster_Condition") %>% as.matrix()
+#filter for informative features and run PCA
+min_presence <- 0.8 * nrow(deltas_mat)
+deltas_mat_filtered <- deltas_mat[, colSums(deltas_mat != 0) >= min_presence]
+pca_res <- prcomp(deltas_mat_filtered, scale. = TRUE)
+
+# 4. Extract scores and metadata
+pca_df <- as.data.frame(pca_res$x[, 1:2])
+pca_df$Cluster_Condition <- rownames(pca_df)
+
+cluster_condition_map <- combined_long %>%
+  mutate(Cluster_Condition = paste(Cluster, Condition, sep = "_")) %>%
+  distinct(Cluster_Condition, Cluster, Condition)
+
+pca_df <- pca_df %>%
+  left_join(cluster_condition_map, by = "Cluster_Condition")
+
+moderate_clusters <- pca_df %>% filter(Condition == "Moderate") %>% pull(Cluster)
+severe_clusters   <- pca_df %>% filter(Condition == "Severe") %>% pull(Cluster)
+
+# Clusters that appear only in Moderate
+unique_moderate_clusters <- setdiff(moderate_clusters, severe_clusters)
+
+pca_df <- pca_df %>%
+  mutate(label_text = ifelse(
+    Condition == "Severe" | Cluster %in% unique_moderate_clusters,
+    Cluster,
+    NA_character_
+  ))
+
+# 5. Plot
+ # for pseudo log transformation
+
+# Define custom colors
+condition_colors <- c("Moderate" = "#91C8F6", "Severe" = "#E4B731")  # light blue and gold
+
+# Match Moderate and Severe by Cluster
+cluster_pairs <- intersect(moderate_clusters, severe_clusters)
+
+segment_df <- map_dfr(cluster_pairs, function(clust) {
+  pt1 <- pca_df %>% filter(Cluster == clust, Condition == "Moderate")
+  pt2 <- pca_df %>% filter(Cluster == clust, Condition == "Severe")
+  
+  dist <- sqrt((pt1$PC1 - pt2$PC1)^2 + (pt1$PC2 - pt2$PC2)^2)
+  
+  tibble(
+    Cluster = clust,
+    x = pt1$PC1, y = pt1$PC2,
+    xend = pt2$PC1, yend = pt2$PC2,
+    dist = dist
+  )
+})
+
+install.packages("ggnewscale")
+library(ggnewscale)
+PCA_plot <- ggplot(pca_df, aes(x = PC1, y = PC2)) +
+  # First scale: point color by Condition
+  geom_point(aes(color = Condition), size = 4) +
+  scale_color_manual(values = condition_colors, name = NULL,
+                     guide = guide_legend(override.aes = list(size = 4))) +
+
+  # Reset color scale
+  new_scale_color() +
+
+  # Add line segments with a new color scale (Euclidean distance)
+  geom_segment(data = segment_df, 
+               aes(x = x, y = y, xend = xend, yend = yend, color = dist),
+               inherit.aes = FALSE, linetype = "dashed", size = 1) +
+  scale_color_gradient(
+  name = "Euclidean distance",
+  low = "#DCE6F2",  # light gray-blue
+  high = "#08306B"  # deep navy blue
+) +
+  geom_text_repel(aes(label = label_text), color = "black", size = 4, max.overlaps = Inf) +
+
+  # Axes and theme
+  scale_x_continuous(trans = pseudo_log_trans()) +
+  scale_y_continuous(trans = pseudo_log_trans()) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    legend.box = "horizontal",            # <-- this puts legends side by side
+    legend.spacing.x = unit(1, "cm"),     # spacing between the two
+    legend.title = element_text(hjust = 0.5),
+    plot.title = element_blank()
+  )
+
+
+# Save
+ggsave(file.path(figures_folder,"pca_plot_custom.png"), PCA_plot, width = 3, height = 6)
+
+# ==== Test ====
+
+# Get loadings from PCA result
+# Get variance explained
+pca_var <- pca_res$sdev^2
+pca_var_explained <- pca_var / sum(pca_var)
+
+# View percentage of variance explained by PC1 and PC2
+pca_var_explained[1:2]
+
+#ok so let's do the loadings as part of the plot above
+loadings <- as.data.frame(pca_res$rotation[, 1:2])  # Just PC1 and PC2 for now
+loadings$TF <- rownames(loadings)
+
+# Arrange by absolute contribution to PC1
+top_PC1 <- loadings %>% arrange(desc(abs(PC1))) %>% head(10)
+
+# Arrange by absolute contribution to PC2
+top_PC2 <- loadings %>% arrange(desc(abs(PC2))) %>% head(10)
+
+p1 <- ggplot(top_PC1, aes(x = reorder(TF, PC1), y = PC1)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Top TFs contributing to PC1", x = "TF", y = "Loading") +
+  theme_minimal()
+
+p2 <- ggplot(top_PC2, aes(x = reorder(TF, PC2), y = PC2)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Top TFs contributing to PC2", x = "TF", y = "Loading") +
+  theme_minimal()
+
+# Save
+ggsave(file.path(figures_folder,"p1.png"), p1, width = 8, height = 6)
+ggsave(file.path(figures_folder,"p2.png"), p2, width = 8, height = 6)
+
+# ==== test 2 =====
+# Define custom colors
+condition_colors <- c("Moderate" = "#91C8F6", "Severe" = "#E4B731")  # light blue and gold
+
+# Calculate segments for connecting points
+cluster_pairs <- intersect(
+  pca_df %>% filter(Condition == "Moderate") %>% pull(Cluster),
+  pca_df %>% filter(Condition == "Severe") %>% pull(Cluster)
+)
+
+segment_df <- purrr::map_dfr(cluster_pairs, function(clust) {
+  pt1 <- pca_df %>% filter(Cluster == clust, Condition == "Moderate")
+  pt2 <- pca_df %>% filter(Cluster == clust, Condition == "Severe")
+  dist <- sqrt((pt1$PC1 - pt2$PC1)^2)
+  tibble(
+    Cluster = clust,
+    x = pt1$PC1, xend = pt2$PC1,
+    y = pt1$Cluster, yend = pt2$Cluster,
+    dist = dist
+  )
+})
+
+pca_df <- pca_df %>%
+  mutate(Cluster = factor(Cluster, levels = cleanSymbols(shared_cluster_order)))
+
+
+# Plot
+p <- ggplot(pca_df, aes(x = PC1, y = Cluster)) +
+  # Dashed line by distance
+  geom_segment(data = segment_df,
+               aes(x = x, xend = xend, y = y, yend = yend, color = dist),
+               linetype = "dashed", size = 1) +
+  scale_color_gradient(
+    name = "Distance",
+    low = "#DCE6F2",
+    high = "#08306B"
+  ) +
+  ggnewscale::new_scale_color() +
+  scale_y_discrete(limits = cleanSymbols(shared_cluster_order)) +
+
+  # Plot points
+  geom_point(aes(color = Condition), size = 4) +
+  scale_color_manual(values = condition_colors, name = "Condition",
+                     guide = guide_legend(override.aes = list(size = 4))) +
+
+  # Axis transformation and theme tweaks
+  scale_x_continuous(trans = pseudo_log_trans(base = 10)) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    axis.text = element_text(face = "bold"),
+    axis.title = element_text(face = "bold"),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank()
+  ) +
+  labs(x = "PC1", y = "Cluster")
+
+# Save with better filename
+ggsave(file.path(figures_folder,"pca_PC1_by_cluster.png"), p, width = 4, height = 6)
+
+
+library(patchwork)
+
+final_plot <- (
+     text_plot
+  +  celltype_props_normalized_plot
+  +  degs_Severe_moderate_plot
+  +  p
+) +
+  plot_layout(
+    ncol   = 4,
+    widths = c(0.12, 0.3, 0.3, 0.2)
+  ) &
+  theme(legend.position = "bottom")
+
+ggsave(
+  file.path(figures_folder, "combined_with_pca.png"),
+  final_plot,
+  width  = 9,
+  height = 6,
+  dpi    = 300
+)
+
+
+# ok last one
+# 1. Prepare diff_df using cluster_condition_map
+diff_df <- deltas_mat_filtered %>%
+  as.data.frame() %>%
+  rownames_to_column("Cluster_Condition") %>%
+  left_join(cluster_condition_map, by = "Cluster_Condition") %>%
+  pivot_longer(
+    cols = -c(Cluster_Condition, Cluster, Condition),
+    names_to = "TF",
+    values_to = "Value"
+  ) %>% select(!Cluster_Condition) %>%
+  pivot_wider(
+    names_from   = Condition,
+    values_from  = Value,
+    values_fn    = mean
+  ) %>%
+  mutate(
+    Diff = Severe - Moderate
+  ) %>%
+  filter(TF %in% top_PC1$TF) %>%
+  mutate(
+    TF      = factor(TF, levels = top_PC1$TF),
+    Cluster = factor(Cluster, levels = cleanSymbols(shared_cluster_order))
+  )
+
+#ok trying again
+# Create all combinations of TF and Cluster
+full_grid <- expand_grid(
+  TF      = levels(diff_df$TF),
+  Cluster = levels(diff_df$Cluster)
+)
+
+# Join your existing data to the full grid
+diff_df_complete <- full_grid %>%
+  left_join(diff_df, by = c("TF", "Cluster"))
+
+
+# Explicitly relevel Cluster with your desired order
+diff_df_complete$Cluster <- factor(diff_df_complete$Cluster, levels = cleanSymbols(shared_cluster_order))
+
+
+# Format PC1 variance as percentage
+pc1_var_percent <- round(pca_var_explained[1] * 100, 1)
+
+# Now plot
+heatmap_plot <- ggplot(diff_df_complete, aes(x = TF, y = Cluster, fill = Diff)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low      = "blue",
+    mid      = "white",
+    high     = "red",
+    midpoint = 0,
+    name     = "Severe − Moderate",
+    na.value = "grey90"  # Color for missing values
+  ) +
+  labs(x = paste0("loadings (", pc1_var_percent, "%)")) +  # Add dynamic x-axis title
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.y     = element_blank(),
+    axis.ticks.y    = element_blank(),
+    axis.title.y      = element_blank(),
+    axis.text.x     = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    legend.position = "bottom"
+  )
+
+ggsave(
+  file.path(figures_folder, "diff_loading_heatmap.png"),
+  heatmap_plot,
+  width  = 11,
+  height = 6,
+  dpi    = 300
+)
+
+# 3. Combine with existing plots
+library(patchwork)
+
+final_plot <- (
+     text_plot
+  +  celltype_props_normalized_plot
+  +  degs_Severe_moderate_plot
+  +  p
+  +  heatmap_plot
+) +
+  plot_layout(
+    ncol   = 5,
+    widths = c(0.12, 0.30, 0.30, 0.20, 0.20)
+  ) &
+  theme(legend.position = "bottom")
+
+# 4. Save the composite figure
+ggsave(
+  file.path(figures_folder, "combined_with_pca_and_heatmap.png"),
+  final_plot,
+  width  = 11,
+  height = 6,
+  dpi    = 300
+)
+
+
+# TF activity deltas
+
+# ==== TF activity deltas (Severe vs Mild) ====
+base_comparison_path <- "Manuscript_jan_2025"
+results_path <- file.path(base_comparison_path, "results")
+output_folder_name <- "figures" 
+
+# Define the specific cell types (receiver cells) you want to analyze
+selected_receiver_cells <- c( "Eryth", "CD16_Mono", "HSPC",    "CD4_TCM",  "Plasmablast",    "B_intermediate", "B_naive","CD8_Naive","NK","CD8_TEM","pDC","cDC2","Platelet","CD14_Mono","CD4_CTL" )
+
+# Number of top regulons (TFs) to display in each heatmap
+top_n_regulons <- 10
+
+# Number of cell types to combine per output PNG file
+clusters_per_group_in_output <- 1 # Adjust as needed (e.g., 1, 2, 3)
+
+# Define condition names and the subfolders where their data resides
+# The names ('moderate', 'severe') will be used throughout the script
+conditions <- c(
+  moderate =  "MilCOVID_Azimuthl2", # Folder name for moderate data
+  severe   =  "SevCOVID_Azimuthl2"    # Folder name for severe data
+)
+
+# Dynamically load data based on conditions defined above
+regulon_deltas_list <- lapply(names(conditions), function(cond_name) {
+  folder_name <- conditions[[cond_name]]
+  file_path <- file.path(results_path, folder_name, "data/regulon_deltas_by_cluster.rds")
+  cat("Loading data for:", cond_name, "from:", file_path, "\n")
+  load_regulon_data(file_path, selected_receiver_cells)
+})
+
+# Set names of the main list (e.g., regulon_deltas_list$moderate, regulon_deltas_list$severe)
+names(regulon_deltas_list) <- names(conditions)
+
+# Refine selected_receiver_cells to only those present in the loaded data (at least in the first condition)
+# This prevents errors if a specified cell type wasn't found in the files.
+initial_cell_count <- length(selected_receiver_cells)
+if (length(regulon_deltas_list) > 0 && !is.null(regulon_deltas_list[[1]])) {
+    selected_receiver_cells <- intersect(selected_receiver_cells, names(regulon_deltas_list[[1]]))
+} else {
+    warning("Could not validate selected_receiver_cells against loaded data. Proceeding with the original list.")
+}
+final_cell_count <- length(selected_receiver_cells)
+cat("Initial selected cell types:", initial_cell_count, "\n")
+cat("Validated selected cell types found in data:", final_cell_count, "\n")
+if(final_cell_count == 0) {
+    stop("No valid selected cell types found in the loaded data. Please check 'selected_receiver_cells' and data files.")
+}
+
+# Calculate Global Color Scale Limit
+absolute_max <- find_absolute_max(regulon_deltas_list)
+cat("Global absolute max deltaPagoda for scaling:", absolute_max, "\n")
+# Ensure absolute_max is not zero or negative, set a minimum limit if needed
+if(is.na(absolute_max) || absolute_max <= 0) {
+    warning("Could not determine a valid absolute max deltaPagoda. Setting scale limit to 1.")
+    absolute_max <- 1
+}
+
+# Execute plot generation
+generated_plots <- generate_sorted_plots(selected_receiver_cells, regulon_deltas_list, conditions, top_n_regulons, absolute_max)
+
+# Create combined plots with titles (one combined plot per cell type)
+celltype_combined_plots <- create_combined_plots_per_celltype(generated_plots, selected_receiver_cells)
+
+# Function to save combined plots in groups
+save_grouped_plots(
+    combined_plots = celltype_combined_plots,
+    clusters_per_group = clusters_per_group_in_output,
+    output_dir_base = base_comparison_path, # Use the base path
+    output_folder_name = output_folder_name
+)
+
+cat("Script finished. Plots saved in:", file.path(base_comparison_path, , output_folder_name), "\n")
+
+
+
+
+
+# ==== Old code ====
+
+
+# ==== loadings heat map ====
+# ok now I want to take these variables and do a heatmap with cell_types + condition in the y-axis and TFs in the x-axis (these are the top ten loadings for PC1)
+#I want the heatmap to go from blue to red and basically I have two conditions, moderate and severe
+#so I want M_NK, then S_NK, then M_cDC2, then S_cDC2 and so on. I want the legend to be at the bottom.
+top_PC1
+deltas_mat_filtered
+and cluster_condition_map
+cell_types <- c("NK","cDC2","CD16_Mono","CD14_Mono")
+
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(ggplot2)
+library(forcats)
+
+# 1. Get top 10 TFs based on PC1 loadings
+top_PC1_TFs <- top_PC1$TF
+
+# 2. Extract the deltaPagoda matrix and convert to long
+heatmap_data <- deltas_mat_filtered[, top_PC1_TFs] %>%
+  as.data.frame() %>%
+  rownames_to_column("Cluster_Condition") %>%
+  pivot_longer(-Cluster_Condition, names_to = "TF", values_to = "deltaPagoda") %>%
+  left_join(cluster_condition_map, by = "Cluster_Condition")
+
+# 3. Filter for selected cell types
+heatmap_data <- heatmap_data %>%
+  filter(Cluster %in% cell_types) %>%
+  mutate(
+    Condition_short = ifelse(Condition == "Moderate", "M", "S"),
+    Cluster_label = paste0(Condition_short, "_", Cluster)
+  )
+
+# 4. Factor levels for correct ordering
+heatmap_data <- heatmap_data %>%
+  mutate(Cluster_label = factor(Cluster_label,
+    levels = as.vector(t(outer(c("M", "S"), cell_types, paste, sep = "_")))
+  ))
+
+# 5. Plot the heatmap
+heatmap_plot <- ggplot(heatmap_data, aes(x = TF, y = Cluster_label, fill = deltaPagoda)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "blue", high = "red", mid = "white", midpoint = 0,
+    name = "TF delta"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    axis.text.y = element_text(face = "bold"),
+    axis.title = element_blank(),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold")
+  )
+
+# Save it
+ggsave("Manuscript_jan_2025/figures/PC1_top_TF_heatmap.png", heatmap_plot, width = 4, height = 4)
+
 
