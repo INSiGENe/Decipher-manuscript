@@ -369,7 +369,7 @@ results_path <- file.path(base_comparison_path, "results")
 output_folder_name <- file.path("Manuscript_jan_2025",figures_folder)
 
 conditions <- c(
-  moderate =  "MilCOVID_Azimuthl2", # Folder name for moderate data
+  mild =  "MilCOVID_Azimuthl2", # Folder name for moderate data
   severe   =  "SevCOVID_Azimuthl2"    # Folder name for severe data
 )
 
@@ -390,7 +390,7 @@ names(regulon_deltas_list) <- names(conditions)
 
 # ==== Plot PCA of regulons ====
 library(purrr)
-long_moderate <- get_long_deltas(regulon_deltas_list$moderate, "Moderate")
+long_moderate <- get_long_deltas(regulon_deltas_list$mild, "Mild")
 long_severe   <- get_long_deltas(regulon_deltas_list$severe, "Severe")
 
 combined_long <- bind_rows(long_moderate, long_severe)
@@ -419,7 +419,7 @@ cluster_condition_map <- combined_long %>%
 pca_df <- pca_df %>%
   left_join(cluster_condition_map, by = "Cluster_Condition")
 
-moderate_clusters <- pca_df %>% filter(Condition == "Moderate") %>% pull(Cluster)
+moderate_clusters <- pca_df %>% filter(Condition == "Mild") %>% pull(Cluster)
 severe_clusters   <- pca_df %>% filter(Condition == "Severe") %>% pull(Cluster)
 
 # Clusters that appear only in Moderate
@@ -436,13 +436,13 @@ pca_df <- pca_df %>%
  # for pseudo log transformation
 
 # Define custom colors
-condition_colors <- c("Moderate" = "#91C8F6", "Severe" = "#E4B731")  # light blue and gold
+condition_colors <- c("Mild" = "#91C8F6", "Severe" = "#E4B731")  # light blue and gold
 
 # Match Moderate and Severe by Cluster
 cluster_pairs <- intersect(moderate_clusters, severe_clusters)
 
 segment_df <- map_dfr(cluster_pairs, function(clust) {
-  pt1 <- pca_df %>% filter(Cluster == clust, Condition == "Moderate")
+  pt1 <- pca_df %>% filter(Cluster == clust, Condition == "Mild")
   pt2 <- pca_df %>% filter(Cluster == clust, Condition == "Severe")
   
   dist <- sqrt((pt1$PC1 - pt2$PC1)^2 + (pt1$PC2 - pt2$PC2)^2)
@@ -476,16 +476,16 @@ top_PC2 <- loadings %>% arrange(desc(abs(PC2))) %>% head(10)
 
 # ==== test 2 =====
 # Define custom colors
-condition_colors <- c("Moderate" = "#91C8F6", "Severe" = "#E4B731")  # light blue and gold
+condition_colors <- c("Mild" = "#91C8F6", "Severe" = "#E4B731")  # light blue and gold
 
 # Calculate segments for connecting points
 cluster_pairs <- intersect(
-  pca_df %>% filter(Condition == "Moderate") %>% pull(Cluster),
+  pca_df %>% filter(Condition == "Mild") %>% pull(Cluster),
   pca_df %>% filter(Condition == "Severe") %>% pull(Cluster)
 )
 
 segment_df <- purrr::map_dfr(cluster_pairs, function(clust) {
-  pt1 <- pca_df %>% filter(Cluster == clust, Condition == "Moderate")
+  pt1 <- pca_df %>% filter(Cluster == clust, Condition == "Mild")
   pt2 <- pca_df %>% filter(Cluster == clust, Condition == "Severe")
   dist <- sqrt((pt1$PC1 - pt2$PC1)^2)
   tibble(
@@ -509,7 +509,9 @@ p <- ggplot(pca_df, aes(x = PC1, y = Cluster)) +
   scale_color_gradient(
     name = "Distance",
     low = "#DCE6F2",
-    high = "#08306B"
+    high = "#08306B",
+    guide = guide_colorbar(title.position = "top", title.hjust = 0.5,
+                         barwidth = 4, barheight = 0.4)
   ) +
   ggnewscale::new_scale_color() +
   scale_y_discrete(limits = cleanSymbols(shared_cluster_order)) +
@@ -517,7 +519,8 @@ p <- ggplot(pca_df, aes(x = PC1, y = Cluster)) +
   # Plot points
   geom_point(aes(color = Condition), size = 4) +
   scale_color_manual(values = condition_colors, name = "Condition",
-                     guide = guide_legend(override.aes = list(size = 4))) +
+                     guide = guide_legend(override.aes = list(size = 4),ncol = 1,title.position = "top",
+    title.hjust = 0.5)) +
 
   # Axis transformation and theme tweaks
   scale_x_continuous(trans = pseudo_log_trans(base = 10)) +
@@ -528,9 +531,12 @@ p <- ggplot(pca_df, aes(x = PC1, y = Cluster)) +
     axis.text = element_text(face = "bold"),
     axis.title = element_text(face = "bold"),
     legend.position = "bottom",
-    legend.title = element_text(face = "bold"),
+    legend.box = "vertical",
     axis.title.y = element_blank(),
-    axis.text.y = element_blank()
+    axis.text.y = element_blank(),
+    legend.key.size = unit(0.4, "cm"),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11, face = "bold")
   ) +
   labs(x = "PC1", y = "Cluster")
 
@@ -555,8 +561,8 @@ final_plot <- (
 ggsave(
   file.path(figures_folder, "combined_with_pca.png"),
   final_plot,
-  width  = 9,
-  height = 6,
+  width  = 10,
+  height = 8,
   dpi    = 300
 )
 
@@ -578,7 +584,7 @@ diff_df <- deltas_mat_filtered %>%
     values_fn    = mean
   ) %>%
   mutate(
-    Diff = Severe - Moderate
+    Diff = Severe - Mild
   ) %>%
   filter(TF %in% top_PC1$TF) %>%
   mutate(
@@ -613,8 +619,14 @@ heatmap_plot <- ggplot(diff_df_complete, aes(x = TF, y = Cluster, fill = Diff)) 
     mid      = "white",
     high     = "red",
     midpoint = 0,
-    name     = "Severe − Moderate",
-    na.value = "grey90"  # Color for missing values
+    name     = "Δ TF Activity",
+    na.value = "grey90",  # Color for missing values
+    guide = guide_colorbar(
+    title.position = "top",
+    title.hjust = 0.5,
+    barwidth = 6,
+    barheight = 0.4
+  )
   ) +
   labs(x = paste0("loadings (", pc1_var_percent, "%)")) +  # Add dynamic x-axis title
   theme_minimal(base_size = 14) +
@@ -623,7 +635,11 @@ heatmap_plot <- ggplot(diff_df_complete, aes(x = TF, y = Cluster, fill = Diff)) 
     axis.ticks.y    = element_blank(),
     axis.title.y      = element_blank(),
     axis.text.x     = element_text(angle = 90, vjust = 0.5, hjust = 1),
-    legend.position = "bottom"
+    legend.position = "bottom",
+    legend.key.height = unit(0.4, "cm"),
+    legend.key.width  = unit(2, "cm"),
+    legend.title = element_text(size = 11, face = "bold"),
+    legend.text  = element_text(size = 10)
   )
 
 ggsave(
@@ -655,12 +671,13 @@ ggsave(
   file.path(figures_folder, "combined_with_pca_and_heatmap.png"),
   final_plot,
   width  = 11,
-  height = 6,
+  height = 8,
   dpi    = 300
 )
 
 
 # TF activity deltas
+#didn't change moderate to mild here
 
 # ==== TF activity deltas (Severe vs Mild) ====
 base_comparison_path <- "Manuscript_jan_2025"
