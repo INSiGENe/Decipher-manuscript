@@ -30,7 +30,7 @@ load_seurat <- function(path) {
   readRDS(rds_path)
 }
 de_by_cluster <- function(seurat_obj, case_group, control_group, logfc_threshold, up_col, down_col) {
-  seurat_obj$cluster <- as.character(seurat_obj$predicted.celltype.l2)
+  seurat_obj$cluster <- as.character(seurat_obj$Cluster)
   clusters <- unique(seurat_obj$cluster)
   results <- list()
 
@@ -114,6 +114,7 @@ calculate_condition_normalized_proportions <- function(seurat_objects) {
 
   bind_rows(proportions_list)
 }
+
 combine_deg_counts <- function(df_severe, df_mild) {
   full_join(df_severe, df_mild, by = "Cluster") %>%
     replace_na(list(
@@ -156,71 +157,24 @@ df_sev <- output$results$SevCOVID
 df_mild <- output$results$MilCOVID
 seurat_objs <- output$seurat_objects  # Retain these for downstream analysis
 
-
 #celltype_props <- calculate_celltype_proportions(seurat_objs)
 celltype_props_normalized <- calculate_condition_normalized_proportions(seurat_objs)
 
 celltype_props_normalized <- celltype_props_normalized %>%
   filter(!(severity_group == "Healthy" & Dataset == "MilCOVID")) %>%
   select(-Dataset) %>%
-  group_by(predicted.celltype.l2) %>%
+  rename("Cluster" = "predicted.celltype.l2") %>%
+  group_by(Cluster) %>%
   mutate(Proportion = NormalizedCount / sum(NormalizedCount) * 100) %>%
   ungroup() %>%
   mutate(severity_group = ifelse(severity_group == "Moderate", "Mild", severity_group)) %>%
-  mutate(severity_group = factor(severity_group, levels = c("Severe", "Mild", "Healthy")))
-
-
-# Plot
-celltype_props_normalized_plot <- ggplot(celltype_props_normalized, aes(x = Proportion, y = predicted.celltype.l2, fill = severity_group)) +
-  geom_col(width = 0.7) +
-  scale_fill_manual(
-    values = c(
-      "Healthy" = "#A6CEE3",   # Light Blue
-      "Moderate" = "#FFFACD",  # Light Yellow
-      "Severe" = "#FFD700"     # Dark Yellow
-    )
-  ) +
-  labs(x = "Proportion (%)", y = "Cell Type") +
-  theme_minimal(base_size = 12) +
-  theme(
-    legend.title = element_blank(),
-    axis.text.y = element_text(size = 10),
-    panel.grid.major.y = element_blank(),
-    legend.position = "bottom"
-  )
-
-# Plot
-celltype_props_normalized_plot <- ggplot(celltype_props_normalized, aes(x = Proportion, y = predicted.celltype.l2, fill = severity_group)) +
-  geom_col(width = 0.7) +
-  scale_fill_manual(
-    values = c(
-      "Healthy" = "#A6CEE3",   # Light Blue
-      "Mild" = "#FFFACD",      # Light Yellow (was Moderate)
-      "Severe" = "#FFD700"     # Dark Yellow
-    )
-  ) +
-  labs(x = "Proportion (%)", y = "Cell Type") +
-  theme_minimal(base_size = 12) +
-  theme(
-    legend.title = element_blank(),
-    axis.text.y = element_text(size = 10),
-    panel.grid.major.y = element_blank(),
-    legend.position = "bottom",
-    legend.box = "vertical"  # ⬅️ Ensures vertical stacking
-  ) +
-  guides(fill = guide_legend(ncol = 1))  # ⬅️ One column = vertical
-
-# Save plot
-ggsave(file.path(figures_folder, "celltype_props_normalized_plot.png"),
-       plot = celltype_props_normalized_plot, width = 5, height = 6, dpi = 300)
+  mutate(severity_group = factor(severity_group, levels = c("Healthy", "Mild", "Severe"))) 
 
 
 #used to be called "final_res"
 deg_summary_by_cluster <- combine_deg_counts(df_sev, df_mild)
 
 write.csv(deg_summary_by_cluster, "final_deg_table.csv")
-
-message("Done! Wrote final_deg_table.csv with columns: Cluster, Severe_Up, Severe_Down, Mild_Up, Mild_Down.")
 
 # Reshape
 abundance_degs <- deg_summary_by_cluster %>%
@@ -236,9 +190,7 @@ abundance_degs <- deg_summary_by_cluster %>%
       grepl("Down", Group) ~ "Down"
     ),
     ColorGroup = paste(Condition, Direction, sep = "_")
-  )
-
-abundance_degs <- abundance_degs %>%
+  ) %>%
   group_by(Cluster) %>%
   mutate(Percent = 100 * Count / sum(Count)) %>%
   ungroup()
@@ -271,9 +223,8 @@ custom_colors <- c(
 
 # Ensure ordering matches shared_cluster_order
 cluster_abundance <- celltype_props_normalized %>%
-  group_by(predicted.celltype.l2) %>%
-  summarise(TotalNormalized = sum(NormalizedCount), .groups = "drop") %>%
-  rename("Cluster" = "predicted.celltype.l2")
+  group_by(Cluster) %>%
+  summarise(TotalNormalized = sum(NormalizedCount), .groups = "drop")
 # Join abundance info
 abundance_degs <- abundance_degs %>%
   left_join(cluster_abundance, by = "Cluster") %>%
@@ -286,6 +237,14 @@ abundance_degs <- abundance_degs %>%
 half_total_df <- abundance_degs %>%
   group_by(Cluster) %>%
   summarise(half_total = sum(Count) / 2)
+
+abundance_degs <- abundance_degs %>%
+  mutate(Cluster = factor(Cluster, levels = cluster_order))
+
+shared_cluster_order <- levels(abundance_degs$Cluster)
+
+celltype_props_normalized <- celltype_props_normalized %>%
+  mutate(Cluster = factor(Cluster, levels = shared_cluster_order))
 
 
 # Plot
@@ -319,39 +278,31 @@ ggsave(file.path(figures_folder,"degs_Severe_moderate.png"),
        plot = degs_Severe_moderate_plot, width = 4, height = 6, dpi = 300)
 
 
+# Plot
+celltype_props_normalized_plot <- ggplot(celltype_props_normalized, aes(x = Proportion, y = Cluster, fill = severity_group)) +
+  geom_col(width = 0.7) +
+  scale_fill_manual(
+    values = c(
+      "Healthy" = "#A6CEE3",   # Light Blue
+      "Mild" = "#FFFACD",      # Light Yellow (was Moderate)
+      "Severe" = "#FFD700"     # Dark Yellow
+    )
+  ) +
+  labs(x = "Proportion (%)", y = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.title = element_blank(),
+    #axis.text.y = element_text(size = 10),
+    axis.text.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    legend.position = "bottom",
+    legend.box = "vertical"  # ⬅️ Ensures vertical stacking
+  ) +
+  guides(fill = guide_legend(ncol = 1))  # ⬅️ One column = vertical
 
-abundance_degs <- abundance_degs %>%
-  mutate(Cluster = factor(Cluster, levels = cluster_order))
-
-shared_cluster_order <- levels(abundance_degs$Cluster)
-celltype_props_normalized <- celltype_props_normalized %>% rename("Cluster" = "predicted.celltype.l2")
-
-celltype_props_normalized <- celltype_props_normalized %>%
-  mutate(Cluster = factor(Cluster, levels = shared_cluster_order))
-
-#celltype_props_normalized_plot <- ggplot(celltype_props_normalized, aes(x = Proportion, y = Cluster, fill = severity_group)) +
-#  geom_col(width = 0.7) +
-#  geom_vline(xintercept = 33.3, linetype = "dashed", color = "gray40") +  # <- Add this line
-#  geom_vline(xintercept = 66.6, linetype = "dashed", color = "gray40") +  # <- Add this line
-#  scale_fill_manual(
-#    values = c(
-#      "Healthy" = "#A6CEE3",   # Light Blue
-#      "Moderate" = "#FFFACD",  # Light Yellow
-#      "Severe" = "#FFD700"     # Dark Yellow
-#    )
-#  ) +
-#  labs(x = "Proportion (%)", y = "Cell Type") +
-#  theme_minimal(base_size = 12) +
-#  theme(
-#    legend.title = element_blank(),
-#    axis.title.y = element_blank(),
-#    axis.text.y = element_blank(),
-#    axis.ticks.y = element_blank(),
-#    panel.grid.major.y = element_blank(),
-#    legend.position = "bottom"
-#  )
-
-
+# Save plot
+ggsave(file.path(figures_folder, "celltype_props_normalized_plot.png"),
+       plot = celltype_props_normalized_plot, width = 5, height = 6, dpi = 300)
 
 combined_plot <- celltype_props_normalized_plot + 
                  degs_Severe_moderate_plot +
@@ -364,16 +315,16 @@ ggsave(file.path(figures_folder,"combined_composition_and_degs.png"),
 
 # Ensure ordering matches shared_cluster_order
 text_data <- celltype_props_normalized %>%
-  group_by(predicted.celltype.l2) %>%
+  group_by(Cluster) %>%
   summarise(TotalNormalized = sum(NormalizedCount), .groups = "drop") %>%
   mutate(TotalNormalized = 100*TotalNormalized/3) %>%
   mutate(
-    predicted.celltype.l2 = factor(predicted.celltype.l2, levels = shared_cluster_order),
+    Cluster = factor(Cluster, levels = shared_cluster_order),
     Label = sprintf("%.2f", TotalNormalized)
   )
 
 
-text_plot <- ggplot(text_data, aes(y = predicted.celltype.l2, x = 1, label = Label)) +
+text_plot <- ggplot(text_data, aes(y = Cluster, x = 1, label = Label)) +
   geom_text(size = 4.5) +
   scale_x_continuous(breaks = NULL) +
   labs(x = "Total cells (%)", y = "Cell Type") +
@@ -407,6 +358,11 @@ ggsave(file.path(figures_folder,"combined_composition_and_degs_and_text.png"),
 #####################
 #PCA
 #####################
+
+install.packages("ggnewscale")
+library(ggnewscale)
+
+
 #parameters
 base_comparison_path <- "Manuscript_jan_2025"
 results_path <- file.path(base_comparison_path, "results")
@@ -499,46 +455,6 @@ segment_df <- map_dfr(cluster_pairs, function(clust) {
   )
 })
 
-install.packages("ggnewscale")
-library(ggnewscale)
-PCA_plot <- ggplot(pca_df, aes(x = PC1, y = PC2)) +
-  # First scale: point color by Condition
-  geom_point(aes(color = Condition), size = 4) +
-  scale_color_manual(values = condition_colors, name = NULL,
-                     guide = guide_legend(override.aes = list(size = 4))) +
-
-  # Reset color scale
-  new_scale_color() +
-
-  # Add line segments with a new color scale (Euclidean distance)
-  geom_segment(data = segment_df, 
-               aes(x = x, y = y, xend = xend, yend = yend, color = dist),
-               inherit.aes = FALSE, linetype = "dashed", size = 1) +
-  scale_color_gradient(
-  name = "Euclidean distance",
-  low = "#DCE6F2",  # light gray-blue
-  high = "#08306B"  # deep navy blue
-) +
-  geom_text_repel(aes(label = label_text), color = "black", size = 4, max.overlaps = Inf) +
-
-  # Axes and theme
-  scale_x_continuous(trans = pseudo_log_trans()) +
-  scale_y_continuous(trans = pseudo_log_trans()) +
-  theme_minimal(base_size = 14) +
-  theme(
-    legend.position = "bottom",
-    legend.box = "horizontal",            # <-- this puts legends side by side
-    legend.spacing.x = unit(1, "cm"),     # spacing between the two
-    legend.title = element_text(hjust = 0.5),
-    plot.title = element_blank()
-  )
-
-
-# Save
-ggsave(file.path(figures_folder,"pca_plot_custom.png"), PCA_plot, width = 3, height = 6)
-
-# ==== Test ====
-
 # Get loadings from PCA result
 # Get variance explained
 pca_var <- pca_res$sdev^2
@@ -557,21 +473,6 @@ top_PC1 <- loadings %>% arrange(desc(abs(PC1))) %>% head(10)
 # Arrange by absolute contribution to PC2
 top_PC2 <- loadings %>% arrange(desc(abs(PC2))) %>% head(10)
 
-p1 <- ggplot(top_PC1, aes(x = reorder(TF, PC1), y = PC1)) +
-  geom_col() +
-  coord_flip() +
-  labs(title = "Top TFs contributing to PC1", x = "TF", y = "Loading") +
-  theme_minimal()
-
-p2 <- ggplot(top_PC2, aes(x = reorder(TF, PC2), y = PC2)) +
-  geom_col() +
-  coord_flip() +
-  labs(title = "Top TFs contributing to PC2", x = "TF", y = "Loading") +
-  theme_minimal()
-
-# Save
-ggsave(file.path(figures_folder,"p1.png"), p1, width = 8, height = 6)
-ggsave(file.path(figures_folder,"p2.png"), p2, width = 8, height = 6)
 
 # ==== test 2 =====
 # Define custom colors
