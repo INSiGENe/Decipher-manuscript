@@ -58,10 +58,16 @@ border_df <- expand.grid(
 ## 4. plot—with one fill scale for Spearman (upper triangle)
 ##    and a second for k_value (lower triangle)
 p <- ggplot() +
-
+  # Diagonal override
+  geom_tile(
+    data = heat_df %>% filter(big_row == big_col),
+    aes(x = x, y = y),
+    fill = "lightgray",
+    inherit.aes = FALSE
+  ) +
   # upper tri: Spearman
   geom_tile(
-    data = heat_df %>% filter(big_row <= big_col),
+    data = heat_df %>% filter(big_row < big_col),
     aes(x, y, fill = Spearman)
   ) +
   scale_fill_gradient2(
@@ -106,7 +112,7 @@ p <- ggplot() +
   ) +
   scale_y_reverse(
     expand = c(0,0),
-    breaks = (0:4)*4 + 2.5,
+    breaks = (0:4)*4 + 1.5,
     labels = method_order
   ) +
 

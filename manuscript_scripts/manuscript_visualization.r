@@ -479,7 +479,7 @@ create_flag_color_scale <- function(methods) {
 ##########################
 
 set.seed(1)
-figures_folder <- "figures_02_05_2025"
+figures_folder <- "figures_16_05_2025"
 dir.create(figures_folder,recursive = TRUE)
 
 # ==== clean up results ====
@@ -604,7 +604,7 @@ plot_violin_scores_by_method <- ggplot(
   ) +
 
   # categorical axis order, but hide ticks and title
-  scale_y_discrete(limits = desired_method_order, name = NULL) +
+  scale_y_discrete(limits = rev(desired_method_order), name = NULL) +
 
   theme_bw(base_size = 12) +
   theme(
@@ -1388,15 +1388,16 @@ print("Generating plot...")
 p_updated <- ggplot(results_df, aes(x = method, y = value)) +
 
   # 1. Lines - Mapped to 'line_color', using first color scale
-  geom_line(aes(group = dataset, color = line_color), size = 1, alpha = 0.6) +
-  scale_color_manual(
-    # name = "Line Group", # Optional legend name
-    values = line_color_map, # Use the map created above
-    guide = "none" # Hide legend for lines
-  ) +
+  #geom_line(aes(group = dataset, color = line_color), size = 1, alpha = 0.6) +
+  geom_line(aes(group = dataset, color = "lightgray"), size = 1, alpha = 0.6) +
+  #scale_color_manual(
+  #  # name = "Line Group", # Optional legend name
+  #  values = line_color_map, # Use the map created above
+  #  guide = "none" # Hide legend for lines
+  #) +
 
   # *** Introduce a new scale for color ***
-  new_scale_color() +
+  #new_scale_color() +
 
   # 2. Boxplot - Neutral colors (Plot after lines, before points?)
   geom_boxplot(outlier.shape = NA, width = 0.25, alpha = 0.4, color = "black", fill = "lightgray") +
@@ -1407,7 +1408,8 @@ p_updated <- ggplot(results_df, aes(x = method, y = value)) +
     size = 4.0,            # Adjust point size if needed
     cex = 5,               # Use 'size', not 'cex' for ggplot point size control
     priority = "density",
-    groupOnX = TRUE        # Ensure beeswarm groups correctly on discrete x-axis
+    groupOnX = TRUE,        # Ensure beeswarm groups correctly on discrete x-axis
+    alpha = 0.5
   ) +
   # Second color scale specifically for the beeswarm points
   scale_color_manual(

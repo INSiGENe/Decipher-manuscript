@@ -9,7 +9,7 @@ library(ggplot2)
 all_runs_dat_1 <- list()
 all_runs_dat_2 <- list()
 
-N <- 80
+N <- 100
 # Loop through all 100 runs
 for (i in 1:N) {
   # Load the data
