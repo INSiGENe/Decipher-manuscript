@@ -487,7 +487,7 @@ plotBubble <- function(df,color.var,size.var,stroke.var,plot.position,col.min.va
 
   this.plot <- ggplot(df,aes_string(y="interaction", x=x_var,fill = color.var)) +
     geom_point(aes_string(size = size.var,stroke=stroke.var), shape = 21) +
-    labs(x = x_lab, y = y_lab) +
+    labs(x = NULL, y = y_lab) +
     theme_bw()+
     scale_fill_gradient2(
       low = "blue",
@@ -496,15 +496,15 @@ plotBubble <- function(df,color.var,size.var,stroke.var,plot.position,col.min.va
       midpoint = 0,
       space = "Lab",
       na.value = "grey50",
-      guide = "colourbar",
+      guide = guide_colorbar(title.position = "top", title.hjust = 0.5),
       aesthetics = "fill",
       limits = c(col.min.val,col.max.val)
     )+ggtitle(label = plot.title)+ guides(size = "none")+
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5,size=5),
-          axis.text.y = element_text(size=5),
+    theme(axis.text.x = element_text(angle = 45, vjust = 0.5,size=10),
+          axis.text.y = element_text(size=10),
           legend.position = "bottom",
           legend.key.size = unit(0.4, 'cm'),           # Smaller legend keys
-          legend.text = element_text(size = 6),        # Smaller legend text
+          legend.text = element_text(size = 10),        # Smaller legend text
           plot.margin = ggplot2::margin(t = 10, r = 0, b = 0, l = 2, unit = "pt"),
           plot.title = element_text(hjust = 0.5))
 
