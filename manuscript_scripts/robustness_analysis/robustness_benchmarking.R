@@ -222,3 +222,31 @@ saveRDS(decipher_scores_by_regulon_and_cluster,file.path(output_data_filepath,pa
 
 }
 
+
+dataset_path <- file.path(output_data_filepath,"for_plotting")
+output_figures_filepath <- file.path(dataset_path,"figures")
+output_data_filepath <- file.path(dataset_path,"data")
+dir.create(output_data_filepath,recursive = TRUE)
+dir.create(output_figures_filepath,recursive=TRUE)
+saveRDS(decipher_scores_by_regulon_and_cluster,file.path(output_data_filepath,"decipher_scores_by_regulon_and_cluster.rds"))
+saveRDS(regulon_scores_by_cluster,file.path(output_data_filepath,"regulon_scores_by_cluster.rds"))
+saveRDS(interaction_potential_by_clusters,file.path(output_data_filepath,"interaction_potential_by_clusters.rds"))
+saveRDS(regulon_deltas_by_cluster,file.path(output_data_filepath,"regulon_deltas_by_cluster.rds"))
+saveRDS(significant_regulons_by_cluster,file.path(output_data_filepath,"significant_regulons_by_cluster.rds"))
+saveRDS(significant_regulon_markers_by_cluster,file.path(output_data_filepath,"significant_regulon_markers_by_cluster.rds"))
+saveRDS(interaction_deltas_by_cluster,file.path(output_data_filepath,"interaction_deltas_by_cluster.rds"))
+saveRDS(regulon_grns_by_cluster,file.path(output_data_filepath,"regulon_grns_by_cluster.rds"))
+saveRDS(lr_markers_by_cluster,file.path(output_data_filepath,"lr_markers_by_cluster.rds"))
+saveRDS(de_markers_by_cluster,file.path(output_data_filepath,"de_markers_by_cluster.rds"))
+saveRDS(feature_statistics,file.path(output_data_filepath,"feature_statistics.rds"))
+saveRDS(decipher_seurat_lr,file.path(output_data_filepath,"decipher_seurat_lr.rds"))
+saveRDS(L.set,file.path(output_data_filepath,"L_set.rds"))
+saveRDS(decipher_scores_by_cluster,file.path(output_data_filepath,"decipher_scores_by_cluster.rds"))
+saveRDS(interaction_potentials_matrix_clusters_all_clusters,file.path(output_data_filepath,"interaction_potentials_matrix_clusters_all_clusters.rds"))
+saveRDS(expressed_receptors_all_clusters, file.path(output_data_filepath, "expressed_receptors_all_clusters.rds"))
+saveRDS(capped_regulons_all_clusters, file.path(output_data_filepath, "capped_regulons_all_clusters.rds"))
+saveRDS(L_set_relevant_features_all_clusters, file.path(output_data_filepath, "L_set_relevant_features_all_clusters.rds"))
+
+
+#plot for a particular seeda
+plotDecipherPrioritizedMap(dataset_path,top_n=4,dataset_name="sample_1", abs_decipher_plot_limit = 20,width=21,height=9)

@@ -500,8 +500,9 @@ plotBubble <- function(df,color.var,size.var,stroke.var,plot.position,col.min.va
       aesthetics = "fill",
       limits = c(col.min.val,col.max.val)
     )+ggtitle(label = plot.title)+ guides(size = "none")+
-    theme(axis.text.x = element_text(angle = 45, vjust = 0.5,size=10),
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5,size=10),
           axis.text.y = element_text(size=10),
+          axis.title.y = element_text(size = 12, face = "bold"),
           legend.position = "bottom",
           legend.key.size = unit(0.4, 'cm'),           # Smaller legend keys
           legend.text = element_text(size = 10),        # Smaller legend text
@@ -717,6 +718,16 @@ decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters
       mutate(size_ligand = if_else(ligand.frac > 0.05,ligand.frac,NA))
   }
 
+  if (dataset_name == "sample_1") {
+    base_data_ligand <- base_data_ligand %>%
+      mutate(receiver_cluster = case_when(
+        grepl("B", receiver_cluster) ~ "B",
+        grepl("CD14", receiver_cluster) ~ "CD14+ M",
+        grepl("CD4", receiver_cluster) ~ "CD4 T",
+        grepl("CD8", receiver_cluster) ~ "CD8 T",
+        TRUE ~ receiver_cluster  # Keep original if no match
+      ))
+  }
 
   ligand_bubble_plot <- plotBubble(
     df = base_data_ligand,
@@ -758,6 +769,17 @@ decipher_top_interactions_all_clusters <- decipher_top_interactions_all_clusters
         TRUE ~ decipher_score
       ))
 
+  }
+
+  if (dataset_name == "sample_1") {
+    base_data_decipher <- base_data_decipher %>%
+      mutate(receiver_cluster = case_when(
+        grepl("B", receiver_cluster) ~ "B",
+        grepl("CD14", receiver_cluster) ~ "CD14+ M",
+        grepl("CD4", receiver_cluster) ~ "CD4 T",
+        grepl("CD8", receiver_cluster) ~ "CD8 T",
+        TRUE ~ receiver_cluster  # Keep original if no match
+      ))
   }
 
   decipher_bubble_plot <- plotBubble(
