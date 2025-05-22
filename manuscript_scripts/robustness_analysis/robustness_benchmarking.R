@@ -64,7 +64,7 @@ seurat_oi$orig.condition <- seurat_oi[["condition"]]
 #map conditions to case and control because the code internally has 'case' and 'control'references
 
 
-for(i in 71:100){
+for(i in 1:100){
 set.seed(i)
 selected_random_seed <- i
 # THIS CODE SNIPPET MESSES THINGS UP!
