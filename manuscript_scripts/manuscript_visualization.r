@@ -179,7 +179,7 @@ generate_heatmap_plot <- function(data, tfs, condition_names, absolute_max, cond
       legend.position = "bottom",
       plot.title = element_text(size = rel(1.2), face = "bold", hjust = 0.5)
     ) +
-    ggtitle(paste("Top", top_n, "Regulons (Sorted by", condition_label, ")"))
+    ggtitle(paste("Top", top_n, "TFs (Sorted by ", condition_label, ")"))
 }
 
 # Main function
@@ -198,7 +198,7 @@ generate_sorted_plots <- function(selected_receiver_cells, regulon_deltas_list, 
 
     plots[[selected_ct]] <- list()
 
-    for (cond in c("moderate", "severe")) {
+    for (cond in c("mild", "severe")) {
       top_tfs <- get_top_tfs(heatmap_data_full, cond, top_n)
 
       plot <- generate_heatmap_plot(
@@ -225,12 +225,12 @@ create_combined_plots_per_celltype <- function(plots, selected_receiver_cells) {
   combined_plots <- list()
   for (selected_ct in selected_receiver_cells) {
     # Check if both plots exist for this cell type
-    plot_moderate <- plots[[selected_ct]][["moderate_sorted"]]
+    plot_mild <- plots[[selected_ct]][["mild_sorted"]]
     plotsevere <- plots[[selected_ct]][["severe_sorted"]]
 
     # Create placeholder plots if one or both are missing
     placeholder_plot <- ggplot() + theme_void() + ggtitle("Data Not Available") + theme(plot.title = element_text(hjust = 0.5))
-    if (is.null(plot_moderate)) plot_moderate <- placeholder_plot
+    if (is.null(plot_mild)) plot_mild <- placeholder_plot
     if (is.null(plotsevere)) plotsevere <- placeholder_plot
 
     # Create title plot
@@ -238,7 +238,7 @@ create_combined_plots_per_celltype <- function(plots, selected_receiver_cells) {
       theme(plot.title = element_text(hjust = 0.5, size = 20, face = "bold"))
 
     # Combine the two heatmaps side-by-side
-    heatmaps <- wrap_plots(plot_moderate, plotsevere, ncol = 2)
+    heatmaps <- wrap_plots(plot_mild, plotsevere, ncol = 2)
 
     # Stack title above heatmaps
     combined_plots[[selected_ct]] <- wrap_plots(title, heatmaps, ncol = 1, heights = c(0.1, 1)) # Adjust height ratio for title

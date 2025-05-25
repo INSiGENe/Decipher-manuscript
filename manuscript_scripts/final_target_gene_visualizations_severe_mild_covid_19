@@ -80,7 +80,7 @@ plot_regulon_graph <- function(data, regulons) {
 #parameters ----
 
 # Read this https://www.nature.com/articles/srep16923
-
+set.seed(123)
 comparison_name <- "SevCOVID_Azimuthl2"
 data_path <- file.path("results",comparison_name,"data")
 capped_regulons_all_clusters <- readRDS(file.path(data_path,"capped_regulons_all_clusters.rds"))
