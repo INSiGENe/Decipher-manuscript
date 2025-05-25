@@ -1908,7 +1908,7 @@ build_receptor_tf_edges <- function(top_interactions,global_receptor_tf_col_max)
     rename(from = receptor, to = regulon) %>%
     #mutate(weight = rescale(weight, to = c(1, 5)))
     #mutate(weight = 5 * imp.perm / max(imp.perm, na.rm = TRUE),
-    mutate(weight = 5 * imp.perm / global_receptor_tf_col_max,
+    mutate(weight = 7.5 * imp.perm / global_receptor_tf_col_max,
        colour = imp.perm * sign(spearman.cor))  # scale colour later
   receptor_tf_edges
 }
@@ -2031,7 +2031,7 @@ plot_graph <- function(g, output_file, cluster_name, condition_label) {
   plot(g,
        layout = layout,
        vertex.label = V(g)$name,
-       vertex.label.cex = 1.2,       # Font size
+       vertex.label.cex = 0.9,       # Font size
        vertex.label.font = 2,        # Font weight (2 = bold)
        vertex.label.color = "black",
        main = paste(cluster_name, " (", condition_label, ")", sep = " "),
@@ -2091,6 +2091,8 @@ generate_network_plot <- function(condition_label, cluster_name,
   plot_graph(g, output_file, cluster_name, condition_label)
 }
 
+set.seed(1)
+
 
 # 3. Load Data for Severe and Moderate Conditions
 # Severe data
@@ -2110,7 +2112,7 @@ feature_statistics_moderate <- readRDS("results/MilCOVID_Azimuthl2/data/feature_
 # Define target receiver clusters and sender cell types
 target_clusters <- c("CD14_Mono", "CD16_Mono")
 sender_cts <- c("Eryth", "NK", "cDC2", "CD16_Mono", "CD14_Mono", "CD8_TEM","Platelet","pDC")
-output_dir <- "figures"  # adjust if needed
+output_dir <- "figures_16_05_2025"  # adjust if needed
 
 #calculate global stats
 # GLOBAL SCALING VALUES
@@ -2138,7 +2140,7 @@ global_sender_ligand_max <- max(
   feature_statistics_moderate  %>% filter(cluster %in% target_clusters) %>% pull(sum.counts) / feature_statistics_moderate  %>% filter(cluster %in% target_clusters) %>% pull(n.cell),
   na.rm = TRUE
 )
-global_sender_ligand_max <- 2
+global_sender_ligand_max <- 1
 
 
 # Ligand→Receptor decipher_score
@@ -2160,9 +2162,9 @@ for (cl in target_clusters) {
                       top_interactions = NULL,
                       global_deltaPagoda_max = global_deltaPagoda_max,
                       global_receptor_tf_col_max = global_receptor_tf_col_max,
-                      global_sender_ligand_max = global_sender_ligand_max,
-                      global_decipher_score_max = global_decipher_score_max,
-                      n_top_regulons = 8)
+                      global_sender_ligand_max = global_sender_ligand_max/1.2,
+                      global_decipher_score_max = global_decipher_score_max/1.5,
+                      n_top_regulons = 10)
 
                         }
 
@@ -2180,9 +2182,9 @@ for (cl in target_clusters) {
                       top_interactions = NULL,
                       global_deltaPagoda_max = global_deltaPagoda_max,
                       global_receptor_tf_col_max = global_receptor_tf_col_max,
-                      global_sender_ligand_max = global_sender_ligand_max,
-                      global_decipher_score_max = global_decipher_score_max,
-                      n_top_regulons = 8)
+                      global_sender_ligand_max = global_sender_ligand_max/1.2,
+                      global_decipher_score_max = global_decipher_score_max/1.5,
+                      n_top_regulons = 10)
 
                         }
 
