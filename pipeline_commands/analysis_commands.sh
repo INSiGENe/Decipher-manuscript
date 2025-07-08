@@ -1,143 +1,37 @@
-cd projects/Manuscript_jan_2025
+
 #################################
-####### Build Docker images ############
+####### Download Docker images ############
 #################################
+#TODO: add docker images to dockerHub and include commands to download docker files here
+
+####### Alternative: Build Docker images ############
 docker build -t decipherc2c-docker:1.0.5 -f Dockerfile_decipherc2c_docker_1.0.5 .
 docker build -t manuscript_pre_processing:1.0.3 -f Dockerfile_manuscript_pre_processing .
 
 #################################
-####### Download datasets ############
+####### Analysis ############
 #################################
-mkdir -p data/cz_placenta_infection && \
-wget -O data/cz_placenta_infection/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/50bbe1a2-5f27-47f5-a809-046459a4ae5e.h5ad"
+#navigate to analysis directory
+mkdir projects/analysis
+cd projects/analysis
 
-
-mkdir -p data/human_kidney_v1.5 && \
-wget -O data/human_kidney_v1.5/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/f5b6d620-76df-45c5-9524-e5631be0e44a.h5ad"
-
-mkdir -p data/cz_periheart && \
-wget -O data/cz_periheart/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/66c82e1b-e3ce-48dc-b1db-52546dbd4e44.h5ad"
-
-mkdir -p data/cz_carebank && \
-wget -O data/cz_carebank/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/e67f1a92-0371-4657-b15e-a4934f9ab733.h5ad"
-
-mkdir -p data/cz_rcc && \
-wget -O data/cz_rcc/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/bf28d870-0750-443d-bb54-ec664b8f40c3.h5ad"
-
-mkdir -p data/cz_rcc && \
-wget -O data/cz_rcc/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/bf28d870-0750-443d-bb54-ec664b8f40c3.h5ad"
-
-mkdir -p data/cz_influenza && \
-wget -O data/cz_influenza/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/5f4efede-b295-4be4-aded-eb8b9a946382.h5ad"
-
-mkdir -p data/cz_afib_macrophages && \
-wget -O data/cz_afib_macrophages/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/bca7945f-69e7-4bab-92d3-90e6af99c7ac.h5ad"
-
-mkdir -p data/cz_hpap_t1d_islets && \
-wget -O data/cz_hpap_t1d_islets/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/f89a618b-fe4b-404e-bd39-7c574529b1f5.h5ad"
-
-mkdir -p data/cz_dev_gut_crohns && \
-wget -O data/cz_dev_gut_crohns/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/518edb4f-1e86-4af3-99e4-0a599a94e9fe.h5ad"
-
-mkdir -p data/cz_hnscc_hpv && \
-wget -O data/cz_hnscc_hpv/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/85981f97-aaa8-4c45-b920-7522727ea58c.h5ad"
-
-mkdir -p data/cz_ra_pbmc && \
-wget -O data/cz_ra_pbmc/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/ac9c13da-7134-4d09-8086-d0933cbdba41.h5ad"
-
-mkdir -p data/cz_cf_bronchial_biopsy && \
-wget -O data/cz_cf_bronchial_biopsy/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/a6657cae-5daa-45cd-b1b4-cf08a07d3a7e.h5ad"
-
-
-#severe-mild covid
-#!/bin/bash
-
-# Parent directory name
-parent_dir="data/SevMilCOVID"
-mkdir -p "$parent_dir"
-
-# Base URL
-base_url="https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE155673&format=file&file="
-
-# Only real RNA samples available in GEO
-samples=(cov01 cov02 cov03 cov04 cov07 cov08 cov09 cov10 cov11 cov12 cov17 cov18)
-
-# Loop from cov01 to cov18
-for sample_id in "${samples[@]}"; do
-  folder="${parent_dir}/${sample_id}"
-  mkdir -p "$folder"
-
-  for suffix in "barcodes.tsv.gz" "matrix.mtx.gz"; do
-    filename="GSE155673_${sample_id}_${suffix}"
-    url="${base_url}${filename}"
-    outpath="${folder}/${filename}"
-
-    echo "Downloading $filename into $folder"
-    curl -s -L "$url" -o "$outpath"
-
-    # Check if it downloaded a valid gzip
-    if file "$outpath" | grep -qv "gzip compressed data"; then
-      echo "❌ $filename not valid. Removing."
-      rm "$outpath"
-    fi
-  done
-done
-
-
-# common Files to download
-files=(
-  "GSE155673_barcodes.tsv.gz"
-  "GSE155673_features.tsv.gz"
-  "GSE155673_totalseq_a_hto.csv.gz"
-)
-
-# Download each file into the parent directory
-for filename in "${files[@]}"; do
-  url="${base_url}${filename}"
-  echo "Downloading $filename into $parent_dir"
-  curl -s -L "$url" -o "${parent_dir}/${filename}"
-done
-
+# annotate datasets without annotations
+# run azimuth on SevMildCOVID
 cd data/SevMildCOVID
-
-# Unzip all .gz files in the root directory and delete the .gz files
-echo "Unzipping root-level files..."
-gunzip *.gz
-
-# Loop through each subfolder starting with 'cov' and unzip files inside, deleting .gz files
-for d in cov*/; do
-  echo "Unzipping files in $d..."
-  gunzip "${d}"*.gz
-done
-
-# now do azimuth
 docker run -it --rm -v "$(pwd):/workspace" -w /workspace satijalab/azimuth:0.5.0 bash
 
-
-#################################
-####### Convert anndata objects to R-based objects (Seurat) ############
-#################################
+#### Convert anndata objects to R-based objects (Seurat) ####
+#trigger environment
 docker run -it -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
+
+#general command form
 python3 scripts/preprocess_ann_object.py dataset_key
-#example
+
+#commands for each dataset
 python3 scripts/preprocess_ann_object.py cz_cf_bronchial_biopsy
 
-#################################
-####### Process Initial Seurat object for downstream analyses ############
-#################################
+#### Process initial object for downstream analyses ####
+#TODO: convert this to a static docker image (now that analysis is complete)
 export RENV_PATHS_CACHE_HOST=/opt/local/renv/cache
 # The path *inside* the container that we will mount it to.
 export RENV_PATHS_CACHE_CONTAINER=/renv/cache
@@ -150,8 +44,11 @@ docker run -it --rm \
     manuscript_pre_processing:1.0.3 \
     bash
 
-#run custom pre-processing if exists first, this sets it up for preprocess_object_for_analysis
-#SevMilCovid (Severe and Moderate Covid-19 datasets)
+#### --------------------------------- ####
+####  Custom pre-processing (selected) ####
+#### --------------------------------- ####
+# run azimuth on SevMildCOVID
+#TODO: understand why we have three different SevMilCOVID folders here?
 Rscript scripts/custom_pre_processing_SevMilCovid.r SevCOVID
 Rscript scripts/custom_pre_processing_SevMilCovid.r MilCOVID
 
@@ -161,91 +58,125 @@ Rscript scripts/custom_pre_processing_SevMilCovid_Azimuth.r MilCOVID_Azimuthl1
 Rscript scripts/custom_pre_processing_SevMilCovid_Azimuth.r SevCOVID_Azimuthl2
 Rscript scripts/custom_pre_processing_SevMilCovid_Azimuth.r MilCOVID_Azimuthl2
 
+#### ----------------------------- ####
+####  Generic pre-processing (all) ####
+#### ----------------------------- ####
+#TODO: distinguish between CZ pipeline and custom pipelines
 
-#then run
 Rscript scripts/preprocess_object_for_analysis.R dataset_key
 
-
-
-#################################
-# Run scCODA analysis ###########
-#################################
+#### run scCODA analysis for SevMildCOVID ####
 docker run -it \
   -v "$(pwd):/workspace" \
   -w /workspace \
   wollmilchsau/scanpy_sccoda:latest
 python3
+#TODO: check this python3 command here
 
+#TODO: operate from a single-directory, rather than move folders
+#TODO: here what's being moved is the scoda output I guess? check
 sudo mkdir -p Manuscript_jan_2025/results/SevCOVID_Azimuthl2/sccoda
 sudo mkdir -p Manuscript_jan_2025/results/MilCOVID_Azimuthl2/sccoda
 sudo mv pre_processing_test/data/SevMilCOVID/results_sccoda_severe_vs_healthy.csv Manuscript_jan_2025/results/SevCOVID_Azimuthl2/sccoda
 sudo mv pre_processing_test/data/SevMilCOVID/results_sccoda_moderate_vs_healthy.csv Manuscript_jan_2025/results/MilCOVID_Azimuthl2/sccoda
 
-
-#################################
-####### Move results to analysis folder ############
-#################################
+#### Move results to analysis folder ####
+#TODO: operate from a single-directory, rather than move folders
+#generic command
 sudo mv pre_processing_test/results/dataset_key Manuscript_jan_2025/results/
 
-#example
+#commands for all datasets
 sudo mv pre_processing_test/results/MilCOVID_Azimuthl2 Manuscript_jan_2025/results/
 
-#################################
-####### Run cytosig analysis ############
-#################################
+
+#### ----------------------- ####
+####       Run Cytosig       ####
+#### ----------------------- ####
+#TODO: operate from a single analysis directory
 cd projects/Manuscript_jan_2025
+
+#analysis container
 docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intelligence-suite
+
+#generic analysis command
 bash scripts/cytosig_run.sh dataset_key
 
-#example
+#commands for all datasets
 bash scripts/cytosig_run.sh MilCOVID_Azimuthl2
 
-#################################
-####### Run CellOracle analysis ############
-#################################
+#### ----------------------- ####
+#### Run CellOracle analysis ####
+#### ----------------------- ####
+
+#analysis container
 docker run -it -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
+
+#generic analysis command
+#NOTE: if you want to run multiple CellOracle analyses in parallel, constraining the number of cores per analysis prevents overflow
 taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py dataset_key
 
-#example
+#example of running two datasets in parallel (each with its own docker container initialized)
 taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py SevCOVID_Azimuthl2
 taskset -c 4-7 python3 scripts/cell_oracle_apr_2025.py MilCOVID_Azimuthl2
 
+#commands for all datasets
 
-#################################
-####### Decipher ############
-#################################
+#### ----------------------- ####
+####      Run Decipher       ####
+#### ----------------------- ####
+#analysis container
 docker run -it -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5 bash
+
+#generic analysis command
 Rscript scripts/decipher_pipeline_v1_modularized.R dataset_key
 
-#example
+#commands for all datasets
 Rscript scripts/decipher_pipeline_v1_modularized.R SevCOVID_Azimuthl2_k0
 
 
-#################################
-####### Connectome ############
-#################################
+#### ----------------------- ####
+####      Run Connectome     ####
+#### ----------------------- ####
+#analysis container
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/connectome:latest bash
-Rscript scripts/connectome_analysis.R MilCOVID_Azimuthl2
 
-#################################
-####### NicheNet ############
-#################################
+#generic analysis command
+Rscript scripts/connectome_analysis.R dataset_key
+
+#commands for all datasets
+
+#### ----------------------- ####
+####      Run NicheNet       ####
+#### ----------------------- ####
+
+#analysis container
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest bash
-Rscript scripts/nichenet_analysis.R SevCOVID_Azimuthl2
 
-#################################
-####### NATMI ############
-#################################
+#generic analysis command
+Rscript scripts/nichenet_analysis.R dataset_key
+
+#### ----------------------- ####
+####        Run NATMI        ####
+#### ----------------------- ####
+
+#analysis container
 docker run -it -v "$(pwd):/workspace" -w /workspace asrhou/natmi  
-bash scripts/natmi_analysis.sh MilCOVID_Azimuthl2
 
-#################################
-############# LIANA+ ############
-#################################
+#generic analysis command
+bash scripts/natmi_analysis.sh dataset_key
+
+#### ----------------------- ####
+####        Run LIANA+       ####
+#### ----------------------- ####
+
+#analysis container
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus bash
-python3 scripts/liana_plus_analysis.py MilCOVID_Azimuthl2
 
+#generic analysis command
+python3 scripts/liana_plus_analysis.py dataset_key
 
+#TODO: convert first tranche of analyses to this more generic format?
+#TODO: re-analyze? crazy but maybe not such a bad idea?
 
 
 

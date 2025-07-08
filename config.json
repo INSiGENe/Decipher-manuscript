@@ -34,21 +34,13 @@
       "repository": "GEO",
       "download_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE155673",
       "description": "Systems biological assessment of immunity to mild versus severe COVID-19 infection in humans",
-      "abbreviation": "SevCOVID_Azimuthl2_k0",
       "url": "https://www.science.org/doi/10.1126/science.abc6261"
     },
     "global":{
       "dataset_name": "lupus",
-      "subset_logic": {
-        "disease_state": ["na", "managed"],
-        "sex": ["female"],
-        "self_reported_ethnicity": ["Asian"],
-        "Processing_Cohort": ["4.0"]
-      }
+      "min_genes_per_cell": 200
     },
     "pre_processing_for_analysis": {
-      "input_path": "data/SevCOVID_Azimuthl2_k0/preprocessing",
-      "output_path": "results/SevCOVID_Azimuthl2_k0",
       "cluster_meta_field": "predicted.celltype.l2",
       "condition_meta_field": "severity_group",
       "individual_meta_field": "orig.ident",
