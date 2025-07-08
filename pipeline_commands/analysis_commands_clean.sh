@@ -25,10 +25,10 @@ docker run -it --rm -v "$(pwd):/workspace" -w /workspace satijalab/azimuth:0.5.0
 docker run -it -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
 
 #general command form
-python3 scripts/preprocess_h5ad.py dataset_key
+python3 scripts/1_preprocess_h5ad.py dataset_key
 
 #commands for each dataset
-python3 scripts/preprocess_h5ad.py lupus
+python3 scripts/1_preprocess_h5ad.py lupus
 
 #### Process initial object for downstream analyses ####
 #TODO: convert this to a static docker image (now that analysis is complete)
@@ -52,18 +52,18 @@ docker run -it --rm \
 Rscript scripts/custom_pre_processing_SevMilCovid.r SevCOVID
 Rscript scripts/custom_pre_processing_SevMilCovid.r MilCOVID
 
-Rscript scripts/custom_pre_processing_SevMilCovid_Azimuth.r SevCOVID_Azimuthl1
-Rscript scripts/custom_pre_processing_SevMilCovid_Azimuth.r MilCOVID_Azimuthl1
+Rscript scripts/1.1_preprocess_SevMilCovid_Azimuth.r SevCOVID_Azimuthl1
+Rscript scripts/1.1_preprocess_SevMilCovid_Azimuth.r MilCOVID_Azimuthl1
 
-Rscript scripts/custom_pre_processing_SevMilCovid_Azimuth.r SevCOVID_Azimuthl2
-Rscript scripts/custom_pre_processing_SevMilCovid_Azimuth.r MilCOVID_Azimuthl2
+Rscript scripts/1.1_preprocess_SevMilCovid_Azimuth.r SevCOVID_Azimuthl2
+Rscript scripts/1.1_preprocess_SevMilCovid_Azimuth.r MilCOVID_Azimuthl2
 
 #### ----------------------------- ####
 ####  Generic pre-processing (all) ####
 #### ----------------------------- ####
 #TODO: distinguish between CZ pipeline and custom pipelines
 
-Rscript scripts/preprocess_object_for_analysis.R dataset_key
+Rscript scripts/2_preprocess_object_for_analysis.R dataset_key
 
 #### run scCODA analysis for SevMildCOVID ####
 docker run -it \
@@ -99,10 +99,10 @@ cd projects/Manuscript_jan_2025
 docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intelligence-suite
 
 #generic analysis command
-bash scripts/cytosig_run.sh dataset_key
+bash scripts/3_cytosig_run.sh dataset_key
 
 #commands for all datasets
-bash scripts/cytosig_run.sh MilCOVID_Azimuthl2
+bash scripts/3_cytosig_run.sh MilCOVID_Azimuthl2
 
 #### ----------------------- ####
 #### Run CellOracle analysis ####
@@ -113,11 +113,11 @@ docker run -it -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproduc
 
 #generic analysis command
 #NOTE: if you want to run multiple CellOracle analyses in parallel, constraining the number of cores per analysis prevents overflow
-taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py dataset_key
+taskset -c 0-3 python3 scripts/5_cell_oracle.py dataset_key
 
 #example of running two datasets in parallel (each with its own docker container initialized)
-taskset -c 0-3 python3 scripts/cell_oracle_apr_2025.py SevCOVID_Azimuthl2
-taskset -c 4-7 python3 scripts/cell_oracle_apr_2025.py MilCOVID_Azimuthl2
+taskset -c 0-3 python3 scripts/5_cell_oracle.py SevCOVID_Azimuthl2
+taskset -c 4-7 python3 scripts/5_cell_oracle.py MilCOVID_Azimuthl2
 
 #commands for all datasets
 
@@ -128,10 +128,10 @@ taskset -c 4-7 python3 scripts/cell_oracle_apr_2025.py MilCOVID_Azimuthl2
 docker run -it -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5 bash
 
 #generic analysis command
-Rscript scripts/decipher_pipeline_v1_modularized.R dataset_key
+Rscript scripts/6_decipher_pipeline_v1_modularized.R dataset_key
 
 #commands for all datasets
-Rscript scripts/decipher_pipeline_v1_modularized.R SevCOVID_Azimuthl2_k0
+Rscript scripts/6_decipher_pipeline_v1_modularized.R SevCOVID_Azimuthl2_k0
 
 
 #### ----------------------- ####
@@ -141,7 +141,7 @@ Rscript scripts/decipher_pipeline_v1_modularized.R SevCOVID_Azimuthl2_k0
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/connectome:latest bash
 
 #generic analysis command
-Rscript scripts/connectome_analysis.R dataset_key
+Rscript scripts/7_connectome_analysis.R dataset_key
 
 #commands for all datasets
 
@@ -153,7 +153,7 @@ Rscript scripts/connectome_analysis.R dataset_key
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest bash
 
 #generic analysis command
-Rscript scripts/nichenet_analysis.R dataset_key
+Rscript scripts/8_nichenet_analysis.R dataset_key
 
 #### ----------------------- ####
 ####        Run NATMI        ####
@@ -163,7 +163,7 @@ Rscript scripts/nichenet_analysis.R dataset_key
 docker run -it -v "$(pwd):/workspace" -w /workspace asrhou/natmi  
 
 #generic analysis command
-bash scripts/natmi_analysis.sh dataset_key
+bash scripts/9_natmi_analysis.sh dataset_key
 
 #### ----------------------- ####
 ####        Run LIANA+       ####
@@ -173,7 +173,7 @@ bash scripts/natmi_analysis.sh dataset_key
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus bash
 
 #generic analysis command
-python3 scripts/liana_plus_analysis.py dataset_key
+python3 scripts/10_liana_plus_analysis.py dataset_key
 
 #TODO: convert first tranche of analyses to this more generic format?
 #TODO: re-analyze? crazy but maybe not such a bad idea?
@@ -299,13 +299,3 @@ bash scripts/lupus/lupus_7_cytosig_analysis_feb_2025.sh #running
 bash scripts/sepsis/sepsis_7_cytosig_analysis_feb_2025.sh #running
 bash scripts/tnbc/tnbc_7_cytosig_analysis_feb_2025.sh
 
-
-
-docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intelligence-suite
-bash scripts/cytosig_run.sh cz_placenta_infection #done
-bash scripts/cytosig_run.sh cz_rcc #running
-bash scripts/cytosig_run.sh cz_human_kidney_v1.5  #running
-
-
-python3 scripts/cytosig_run.sh cz_influenza
-python3 scripts/cytosig_clean.py cz_influenza
