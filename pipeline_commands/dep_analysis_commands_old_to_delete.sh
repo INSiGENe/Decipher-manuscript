@@ -1,3 +1,16 @@
+#TODO: convert this to a static docker image (now that analysis is complete)
+export RENV_PATHS_CACHE_HOST=/opt/local/renv/cache
+# The path *inside* the container that we will mount it to.
+export RENV_PATHS_CACHE_CONTAINER=/renv/cache
+docker run -it --rm \
+    --memory=180g --memory-swap=185g \
+    -e "RENV_PATHS_CACHE=${RENV_PATHS_CACHE_CONTAINER}" \
+    -v "${RENV_PATHS_CACHE_HOST}:${RENV_PATHS_CACHE_CONTAINER}" \
+    -v "$(pwd):/app" \
+    -w /app \
+    manuscript_pre_processing:1.0.3 \
+    bash
+
 
 #################################
 ####### Download Docker images ############

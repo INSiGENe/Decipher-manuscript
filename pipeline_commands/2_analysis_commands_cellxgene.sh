@@ -9,13 +9,7 @@ docker pull ebasto/decipher-manuscript-connectome@sha256:851edafd24ec10d67cd9eda
 docker pull ebasto/decipher-manuscript-nichenetr@sha256:146e50752019a18d4125729c3d4b09ccd88a11e188525dc48eb9dcdcb72967ec
 docker pull ebasto/decipher-manuscript-natmi@sha256:1269438fa798330eba47d51ac910d76a6298fb471c6e9449685a0a1dbb2282b7 
 docker pull ebasto/decipher-manuscript-liana-plus:1.0.0@sha256:d300ec7872d9a0cf8ae91fc05798f56a3aa3982657bb3883f21bcef63b8ee580
-docker pull ebasto/decipher-manuscript-decipherc2c:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a
-#TODO: missing manuscript_pre_processing
-
-####### Alternative: Build Docker images ############
-docker build -t decipherc2c-docker:1.0.5 -f Dockerfile_decipherc2c_docker_1.0.5 .
-docker build -t manuscript_pre_processing:1.0.3 -f Dockerfile_manuscript_pre_processing .
-
+docker pull ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a
 #################################
 ####### Analysis ############
 #################################
@@ -30,7 +24,7 @@ docker run -it --rm -v "$(pwd):/workspace" -w /workspace satijalab/azimuth:0.5.0
 
 #### Convert anndata objects to R-based objects (Seurat) ####
 #trigger environment
-docker run -it -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-celloracle@sha256:419f15c53249e4c09a0c361b8e9ab0857d46c1e797d0f3c40af35a1ce583c1b1
 
 #general command form
 python3 scripts/analysis_cellxgene_datasets/1_preprocess_h5ad.py dataset_key
@@ -39,23 +33,11 @@ python3 scripts/analysis_cellxgene_datasets/1_preprocess_h5ad.py dataset_key
 python3 scripts/analysis_cellxgene_datasets/1_preprocess_h5ad.py lupus
 
 #### Process initial object for downstream analyses ####
-#TODO: convert this to a static docker image (now that analysis is complete)
-export RENV_PATHS_CACHE_HOST=/opt/local/renv/cache
-# The path *inside* the container that we will mount it to.
-export RENV_PATHS_CACHE_CONTAINER=/renv/cache
-docker run -it --rm \
-    --memory=180g --memory-swap=185g \
-    -e "RENV_PATHS_CACHE=${RENV_PATHS_CACHE_CONTAINER}" \
-    -v "${RENV_PATHS_CACHE_HOST}:${RENV_PATHS_CACHE_CONTAINER}" \
-    -v "$(pwd):/app" \
-    -w /app \
-    manuscript_pre_processing:1.0.3 \
-    bash
-
 docker run -it --rm --memory=180g --memory-swap=185g \
   -v "$(pwd):/app" -w /app \
-  ebasto/decipher-manuscript-decipherc2c:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a \
+  ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a \
   bash
+
 #### --------------------------------- ####
 ####  Custom pre-processing (selected) ####
 #### --------------------------------- ####
@@ -75,6 +57,11 @@ Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r
 #### ----------------------------- ####
 #TODO: distinguish between CZ pipeline and custom pipelines
 
+docker run -it --rm --memory=180g --memory-swap=185g \
+  -v "$(pwd):/app" -w /app \
+  ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a \
+  bash
+  
 Rscript scripts/analysis_cellxgene_datasets/2_preprocess_object_for_analysis.R dataset_key
 
 #### run scCODA analysis for SevMildCOVID ####
