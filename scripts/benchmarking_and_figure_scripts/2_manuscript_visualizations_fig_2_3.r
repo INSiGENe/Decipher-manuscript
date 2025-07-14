@@ -30,46 +30,19 @@ library(ggbeeswarm)
 # --- Assume your previous code has run and populated 'results_preprocessed' ---
 
 # ==== functions ====
-# Assumed function to load regulon data (replace with your actual loading mechanism)
-# It should return a list where each element corresponds to a cell type,
-# and contains a dataframe with 'name' (regulon) and 'deltaPagoda' columns.
 load_regulon_data <- function(file_path, cell_types) {
-  tryCatch({
-      data_list <- readRDS(file_path)
-      # Ensure it's filtered for selected cell types if the file contains more
-      data_list <- data_list[intersect(names(data_list), cell_types)]
-      # Add basic validation
-      if(!is.list(data_list)) stop("Loaded data is not a list.")
-      if(length(data_list) > 0) {
-          first_el <- data_list[[1]]
-          if(!is.data.frame(first_el) || !all(c("name", "deltaPagoda") %in% colnames(first_el))) {
-              stop("Dataframe structure is incorrect. Needs 'name' and 'deltaPagoda' columns.")
-          }
-      }
-      return(data_list)
-  }, error = function(e) {
-      warning(paste("Error loading or validating file:", file_path, "-", e$message))
-      # Return an empty list or handle appropriately
-      return(list())
-  })
-}
+  data_list <- readRDS(file_path)
+  # Ensure only regulons for selected cell types are loaded
+  data_list <- data_list[intersect(names(data_list), cell_types)]
+  return(data_list)
 
 get_deltaPagoda <- function(identity, regulon_list, regulon) {
   identity_char <- as.character(identity)
-  if (is.null(regulon_list) || !identity_char %in% names(regulon_list)) {
-    # warning(paste("Identity", identity_char, "not found in provided regulon list. Returning NA."))
-    return(NA)
-  }
   df <- regulon_list[[identity_char]]
-  if (is.null(df) || !is.data.frame(df) || !all(c("name", "deltaPagoda") %in% colnames(df))) {
-    # warning(paste("Required columns ('name', 'deltaPagoda') missing or data invalid for identity", identity_char, ". Returning NA."))
-    return(NA)
-  }
   if (regulon %in% df$name) {
     # Handle potential multiple matches (shouldn't happen with unique names)
     return(df$deltaPagoda[df$name == regulon][1])
   } else {
-    # warning(paste("Regulon", regulon, "not found for identity", identity_char, ". Returning NA."))
     return(NA)
   }
 }
@@ -518,7 +491,6 @@ method_colors <- c(
   "LIANA+" = "#2ca02c",
   "Connectome" = "#d62728",
   "NATMI" = "#9467bd"
-  # Add more if needed
 )
 
 # Optional: Remove datasets/methods with zero rows if any slipped through
