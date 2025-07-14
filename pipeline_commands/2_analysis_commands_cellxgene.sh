@@ -4,6 +4,29 @@
 #################################
 #TODO: add docker images to dockerHub and include commands to download docker files here
 
+docker pull \ 
+  ebasto/decipher-manuscript-cytosig@sha256:583a450ae25f91686dbf9db9b3297d7f82f81f87b809f520daf226c3a661b11b
+
+docker pull \
+  ebasto/decipher-manuscript-celloracle@sha256:419f15c53249e4c09a0c361b8e9ab0857d46c1e797d0f3c40af35a1ce583c1b1
+
+docker pull \
+  ebasto/decipher-manuscript-decipherc2c@sha256:7e43d263693b4c2a87a7a9459dcb1fd5ecc5a969ef84a7b3b3c2b71205efafb5
+
+docker pull \
+  ebasto/decipher-manuscript-connectome@sha256:851edafd24ec10d67cd9eda8c07f611a22baf13da5667acd539bb8a390c05973
+
+docker pull \
+  ebasto/decipher-manuscript-nichenetr@sha256:146e50752019a18d4125729c3d4b09ccd88a11e188525dc48eb9dcdcb72967ec
+
+docker pull \
+  ebasto/decipher-manuscript-natmi@sha256:1269438fa798330eba47d51ac910d76a6298fb471c6e9449685a0a1dbb2282b7 
+
+\
+docker pull \
+  ebasto/decipher-manuscript-liana-plus:1.0.0@sha256:d300ec7872d9a0cf8ae91fc05798f56a3aa3982657bb3883f21bcef63b8ee580
+
+
 ####### Alternative: Build Docker images ############
 docker build -t decipherc2c-docker:1.0.5 -f Dockerfile_decipherc2c_docker_1.0.5 .
 docker build -t manuscript_pre_processing:1.0.3 -f Dockerfile_manuscript_pre_processing .
@@ -25,10 +48,10 @@ docker run -it --rm -v "$(pwd):/workspace" -w /workspace satijalab/azimuth:0.5.0
 docker run -it -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
 
 #general command form
-python3 scripts/1_preprocess_h5ad.py dataset_key
+python3 scripts/analysis_cellxgene_datasets/1_preprocess_h5ad.py dataset_key
 
 #commands for each dataset
-python3 scripts/1_preprocess_h5ad.py lupus
+python3 scripts/analysis_cellxgene_datasets/1_preprocess_h5ad.py lupus
 
 #### Process initial object for downstream analyses ####
 #TODO: convert this to a static docker image (now that analysis is complete)
@@ -49,21 +72,21 @@ docker run -it --rm \
 #### --------------------------------- ####
 # run azimuth on SevMildCOVID
 #TODO: understand why we have three different SevMilCOVID folders here?
-Rscript scripts/custom_pre_processing_SevMilCovid.r SevCOVID
-Rscript scripts/custom_pre_processing_SevMilCovid.r MilCOVID
+Rscript scripts/analysis_cellxgene_datasets/custom_pre_processing_SevMilCovid.r SevCOVID
+Rscript scripts/analysis_cellxgene_datasets/custom_pre_processing_SevMilCovid.r MilCOVID
 
-Rscript scripts/1.1_preprocess_SevMilCovid_Azimuth.r SevCOVID_Azimuthl1
-Rscript scripts/1.1_preprocess_SevMilCovid_Azimuth.r MilCOVID_Azimuthl1
+Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r SevCOVID_Azimuthl1
+Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r MilCOVID_Azimuthl1
 
-Rscript scripts/1.1_preprocess_SevMilCovid_Azimuth.r SevCOVID_Azimuthl2
-Rscript scripts/1.1_preprocess_SevMilCovid_Azimuth.r MilCOVID_Azimuthl2
+Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r SevCOVID_Azimuthl2
+Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r MilCOVID_Azimuthl2
 
 #### ----------------------------- ####
 ####  Generic pre-processing (all) ####
 #### ----------------------------- ####
 #TODO: distinguish between CZ pipeline and custom pipelines
 
-Rscript scripts/2_preprocess_object_for_analysis.R dataset_key
+Rscript scripts/analysis_cellxgene_datasets/2_preprocess_object_for_analysis.R dataset_key
 
 #### run scCODA analysis for SevMildCOVID ####
 docker run -it \
@@ -96,28 +119,28 @@ sudo mv pre_processing_test/results/MilCOVID_Azimuthl2 Manuscript_jan_2025/resul
 cd projects/Manuscript_jan_2025
 
 #analysis container
-docker run -it -v "$(pwd):/workspace" -w /workspace data2intelligence/data2intelligence-suite
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-cytosig@sha256:583a450ae25f91686dbf9db9b3297d7f82f81f87b809f520daf226c3a661b11b
 
 #generic analysis command
-bash scripts/3_cytosig_run.sh dataset_key
+bash scripts/analysis_cellxgene_datasets/3_cytosig_run.sh dataset_key
 
 #commands for all datasets
-bash scripts/3_cytosig_run.sh MilCOVID_Azimuthl2
+bash scripts/analysis_cellxgene_datasets/3_cytosig_run.sh MilCOVID_Azimuthl2
 
 #### ----------------------- ####
 #### Run CellOracle analysis ####
 #### ----------------------- ####
 
 #analysis container
-docker run -it -v "$(pwd):/workspace" -w /workspace celloracle-improved-reproducibility:latest
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-celloracle@sha256:419f15c53249e4c09a0c361b8e9ab0857d46c1e797d0f3c40af35a1ce583c1b1
 
 #generic analysis command
 #NOTE: if you want to run multiple CellOracle analyses in parallel, constraining the number of cores per analysis prevents overflow
-taskset -c 0-3 python3 scripts/5_cell_oracle.py dataset_key
+taskset -c 0-3 python3 scripts/analysis_cellxgene_datasets/5_cell_oracle.py dataset_key
 
 #example of running two datasets in parallel (initialize a distinct docker container for each)
-taskset -c 0-3 python3 scripts/5_cell_oracle.py SevCOVID_Azimuthl2
-taskset -c 4-7 python3 scripts/5_cell_oracle.py MilCOVID_Azimuthl2
+taskset -c 0-3 python3 scripts/analysis_cellxgene_datasets/5_cell_oracle.py SevCOVID_Azimuthl2
+taskset -c 4-7 python3 scripts/analysis_cellxgene_datasets/5_cell_oracle.py MilCOVID_Azimuthl2
 
 #commands for all datasets
 
@@ -125,23 +148,23 @@ taskset -c 4-7 python3 scripts/5_cell_oracle.py MilCOVID_Azimuthl2
 ####      Run Decipher       ####
 #### ----------------------- ####
 #analysis container
-docker run -it -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5 bash
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-decipherc2c@sha256:7e43d263693b4c2a87a7a9459dcb1fd5ecc5a969ef84a7b3b3c2b71205efafb5 bash
 
 #generic analysis command
-Rscript scripts/6_decipher_pipeline_v1_modularized.R dataset_key
+Rscript scripts/analysis_cellxgene_datasets/6_decipher_pipeline_v1_modularized.R dataset_key
 
 #commands for all datasets
-Rscript scripts/6_decipher_pipeline_v1_modularized.R SevCOVID_Azimuthl2_k0
+Rscript scripts/analysis_cellxgene_datasets/6_decipher_pipeline_v1_modularized.R SevCOVID_Azimuthl2_k0
 
 
 #### ----------------------- ####
 ####      Run Connectome     ####
 #### ----------------------- ####
 #analysis container
-docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/connectome:latest bash
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-connectome@sha256:851edafd24ec10d67cd9eda8c07f611a22baf13da5667acd539bb8a390c05973 bash
 
 #generic analysis command
-Rscript scripts/7_connectome_analysis.R dataset_key
+Rscript scripts/analysis_cellxgene_datasets/7_connectome_analysis.R dataset_key
 
 #commands for all datasets
 
@@ -150,27 +173,27 @@ Rscript scripts/7_connectome_analysis.R dataset_key
 #### ----------------------- ####
 
 #analysis container
-docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/nichenetr:latest bash
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-nichenetr@sha256:146e50752019a18d4125729c3d4b09ccd88a11e188525dc48eb9dcdcb72967ec bash
 
 #generic analysis command
-Rscript scripts/8_nichenet_analysis.R dataset_key
+Rscript scripts/analysis_cellxgene_datasets/8_nichenet_analysis.R dataset_key
 
 #### ----------------------- ####
 ####        Run NATMI        ####
 #### ----------------------- ####
 
 #analysis container
-docker run -it -v "$(pwd):/workspace" -w /workspace asrhou/natmi  
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-natmi@sha256:1269438fa798330eba47d51ac910d76a6298fb471c6e9449685a0a1dbb2282b7 
 
 #generic analysis command
-bash scripts/9_natmi_analysis.sh dataset_key
+bash scripts/analysis_cellxgene_datasets/9_natmi_analysis.sh dataset_key
 
 #### ----------------------- ####
 ####        Run LIANA+       ####
 #### ----------------------- ####
 
 #analysis container
-docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/liana_plus bash
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-liana-plus:1.0.0@sha256:d300ec7872d9a0cf8ae91fc05798f56a3aa3982657bb3883f21bcef63b8ee580 bash
 
 #generic analysis command
-python3 scripts/10_liana_plus_analysis.py dataset_key
+python3 scripts/analysis_cellxgene_datasets/10_liana_plus_analysis.py dataset_key

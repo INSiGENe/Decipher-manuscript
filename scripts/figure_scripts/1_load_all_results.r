@@ -86,17 +86,19 @@ results_for_correlation <- list()  # will store results_to_compare for correlati
 results_for_comparison  <- list()  # will store results_to_compare for method comparison
 
 
-# Loop over each dataset
+# Loop and load each dataset
 for (ds in names(datasets)) {
-  # --- Here you would load/process your data for the current dataset ---
   # Define file paths and directories for the current dataset
   dataset_path <- datasets[[ds]]
   pre_processing_filepath <- file.path(dataset_path, "pre_processing")
+  # figure output filepaths
   meta_path <- "manuscript_analysis/data_for_meta_comparisons"
   output_figures_filepath <- file.path(dataset_path, "figures")
+  # general reference file paths
   reference_filepath <- "reference_data"
   nichenet_reference_filepath <- file.path("reference_data", "nichenet")
   decipher_filepath <- file.path(dataset_path, "data")
+  # result filepaths
   nichenet_filepath <- file.path(dataset_path, "nichenet/data")
   connectome_filepath <- file.path(dataset_path, "connectome/data")
   liana_filepath <- file.path(dataset_path, "liana/data")
@@ -134,6 +136,7 @@ for (ds in names(datasets)) {
   results_to_compare_correlation <- lapply(names(results_to_compare_full), function(name) {
     prepareForCorrelation(name, results_to_compare_full[[name]])
   })
+  
   names(results_to_compare_correlation) <- names(results_to_compare_full)
   results_for_correlation[[ds]] <- results_to_compare_correlation
 
