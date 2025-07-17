@@ -257,4 +257,117 @@ assign_tf_family_colors_to_each_regulon <- function(top_30_regulons_delta_matrix
 }
 
 
+#' Safely load a CSV or RDS file
+#'
+#' Attempts to read a file based on its extension.  
+#' If the file does not exist or an error occurs during loading,  
+#' a message is emitted and `NULL` is returned.
+#'
+#' @param filepath Character. Path to the file to load.
+#' @param ... Additional arguments passed to `read.csv()` when loading CSV files.
+#'
+#' @return The contents of the file (usually a data frame or R object), or `NULL` if the file  
+#'   is missing, unsupported, or an error is thrown.
+#'
+#'
+#' @export
+safe_load <- function(filepath, ...) {
+  if (!file.exists(filepath)) {
+    message("Skipping missing file: ", filepath)
+    return(NULL)
+  }
 
+  ext <- tools::file_ext(filepath)
+
+  tryCatch({
+    switch(ext,
+      "rds" = readRDS(filepath),
+      "csv" = read.csv(filepath, ...),
+      stop(paste("Unsupported file type:", ext))
+    )
+  }, error = function(e) {
+    message("Error loading file: ", filepath, " — ", e$message)
+    return(NULL)
+  })
+}
+
+
+
+#' Conditionally add an element to a list
+#'
+#' Adds \`value\` into the provided list under \`name\` if \`value\` is not \`NULL\`.  
+#' If \`value\` is a data frame, only the columns \`sender\`, \`receiver\`,  
+#' \`interaction\`, \`prioritization_score\`, and \`scaled_score\` are retained.
+#'
+#' @param lst A named list to which the new element may be added.
+#' @param name Character. The name under which to store \`value\` in \`lst\`.
+#' @param value The object to add. If it is \`NULL\`, nothing is added.  
+#'   If it is a data frame, only the specified columns are kept.
+#'
+#' @return The updated list, with \`value\` added under \`name\` if it was non-NULL.
+#'
+#' @importFrom dplyr select
+#' @export
+add_if_not_null <- function(lst, name, value) {
+  if (!is.null(value)) {
+    if (is.data.frame(value)) {
+      lst[[name]] <- value %>% select(sender, receiver, interaction, prioritization_score, scaled_score)
+    } else {
+      lst[[name]] <- value  # If it's not a data frame, just store it as-is
+    }
+  }
+  lst
+}
+
+
+#' Get top regulons by absolute deltaPagoda value
+#'
+#' Selects the top \`n\` regulons for a given condition based on the
+#' largest absolute \`DeltaPagoda\` values, then returns them ordered
+#' by their signed \`DeltaPagoda\`.
+#'
+#' @param data A data frame containing at least the columns
+#'   \`"Comparison"\`, \`"DeltaPagoda"\`, and \`"TF"\`.
+#' @param condition Character. The condition name to filter on
+#'   (matches the \`Comparison\` column).
+#' @param top_n Integer. The number of top regulons (by absolute
+#'   \`DeltaPagoda\`) to return.
+#'
+#' @return A character vector of regulon names (\`TF\`), length
+#'   \`<= top_n\`, ordered by ascending \`DeltaPagoda\`.
+#'
+#'
+#' @importFrom dplyr filter arrange slice_head pull
+#' @export
+get_top_tfs <- function(data, condition, top_n) {
+  data %>%
+    filter(Comparison == condition, !is.na(DeltaPagoda)) %>%
+    arrange(desc(abs(DeltaPagoda))) %>%
+    slice_head(n = top_n) %>%
+    arrange(DeltaPagoda) %>%
+    pull(TF)
+}
+
+
+#' Create a pseudo-logarithmic transformation
+#'
+#' Constructs a bidirectional transformation that behaves like a logarithm
+#' but handles zero and negative values gracefully via a signed log1p.
+#' Useful for plotting scales that span negative and positive values.
+#'
+#' @param base Numeric. The logarithm base. Defaults to 10.
+#'
+#' @return A \`trans\` object (from the **scales** package) with
+#'   \`transform\`, \`inverse\`, and \`domain\` defined for signed data.
+#'
+#'
+#' @importFrom scales trans_new
+#' @export
+pseudo_log_trans <- function(base = 10) {
+  trans_new(
+    name = paste0("pseudo_log", base),
+    transform = function(x) sign(x) * log1p(abs(x)) / log(base),
+    inverse = function(x) sign(x) * (base^abs(x) - 1),
+    domain = c(-Inf, Inf)
+  )
+}

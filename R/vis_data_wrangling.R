@@ -1679,3 +1679,335 @@ prepareDecipherResultsForOverlapPlot <- function(df_for_comparison,decipher_scor
 
 
 
+#' Prepare a data frame for correlation analysis
+#'
+#' If the input is `NULL`, returns `NULL`.  For the special case of the
+#' “Decipher” method, selects and orders the pre-aggregated scores;
+#' otherwise, delegates to `prepareDataForCorrelationAnalysis()`.
+#'
+#' @param name Character. The name of the method or dataset (e.g. `"Decipher"`).
+#' @param df A data frame containing at least the columns required for
+#'   correlation analysis.  May be `NULL`.
+#'
+#' @return A data frame ready for correlation analysis, or `NULL` if `df` was `NULL`.
+#'
+#'
+#' @importFrom dplyr select arrange
+#' @export
+prepareForCorrelation <- function(name, df) {
+  if (is.null(df)) return(NULL)
+  
+  if (name == "Decipher") {
+    #different for Decipher since scores are already aggregated across sender cell types
+    df %>%
+      select(interaction, receiver, prioritization_score) %>%
+      arrange(prioritization_score)
+  } else {
+    prepareDataForCorrelationAnalysis(df)
+  }
+}
+
+#' Load and validate regulon deltaPagoda data
+#'
+#' Reads an RDS file containing a named list of data frames for various cell types,
+#' filters it to only include the specified `cell_types`, and checks that each
+#' element is a data frame with the required columns `"name"` and `"deltaPagoda"`.
+#' Any errors during loading or validation emit a warning and return an empty list.
+#'
+#' @param file_path Character. Path to the `.rds` file containing the regulon data.
+#' @param cell_types Character vector. Names of cell types to retain from the loaded list.
+#'
+#' @return A named list of data frames (one per cell type in `cell_types`), each
+#'   with columns `"name"` and `"deltaPagoda"`. Returns an empty list if the file
+#'   cannot be read or fails validation.
+#'
+#'
+#' @export
+load_regulon_data <- function(file_path, cell_types) {
+  tryCatch({
+      data_list <- readRDS(file_path)
+      # Ensure it's filtered for selected cell types if the file contains more
+      data_list <- data_list[intersect(names(data_list), cell_types)]
+      # Add basic validation
+      if(!is.list(data_list)) stop("Loaded data is not a list.")
+      if(length(data_list) > 0) {
+          first_el <- data_list[[1]]
+          if(!is.data.frame(first_el) || !all(c("name", "deltaPagoda") %in% colnames(first_el))) {
+              stop("Dataframe structure is incorrect. Needs 'name' and 'deltaPagoda' columns.")
+          }
+      }
+      return(data_list)
+  }, error = function(e) {
+      warning(paste("Error loading or validating file:", file_path, "-", e$message))
+      # Return an empty list or handle appropriately
+      return(list())
+  })
+}
+
+#' Retrieve a regulon’s deltaPagoda value for a given identity
+#'
+#' Safely extracts the \`deltaPagoda\` value for a specified \`regulon\` from
+#' a named list of data frames (one per identity). Returns \`NA\` if the
+#' identity or regulon is not present or if the data frame structure is invalid.
+#'
+#' @param identity A character or factor representing the identity (e.g., cell type).
+#' @param regulon_list A named list where each element is a data frame containing
+#'   columns \`"name"\` and \`"deltaPagoda"\`, indexed by identity names.
+#' @param regulon Character. The regulon name whose \`deltaPagoda\` value should be retrieved.
+#'
+#' @return A numeric \`deltaPagoda\` value if found; otherwise \`NA\`.
+#'
+#'
+#' @export
+get_deltaPagoda <- function(identity, regulon_list, regulon) {
+  identity_char <- as.character(identity)
+  if (is.null(regulon_list) || !identity_char %in% names(regulon_list)) {
+    # warning(paste("Identity", identity_char, "not found in provided regulon list. Returning NA."))
+    return(NA)
+  }
+  df <- regulon_list[[identity_char]]
+  if (is.null(df) || !is.data.frame(df) || !all(c("name", "deltaPagoda") %in% colnames(df))) {
+    # warning(paste("Required columns ('name', 'deltaPagoda') missing or data invalid for identity", identity_char, ". Returning NA."))
+    return(NA)
+  }
+  if (regulon %in% df$name) {
+    # Handle potential multiple matches (shouldn't happen with unique names)
+    return(df$deltaPagoda[df$name == regulon][1])
+  } else {
+    # warning(paste("Regulon", regulon, "not found for identity", identity_char, ". Returning NA."))
+    return(NA)
+  }
+}
+
+#' Find the absolute maximum deltaPagoda across conditions
+#'
+#' Iterates through a list of lists of data frames, each representing
+#' deltaPagoda values for various conditions and cell types, and returns
+#' the largest absolute deltaPagoda. If no valid values are found, returns 1.
+#'
+#' @param deltas_list_of_lists A list whose elements are themselves lists of
+#'   data frames. Each data frame should contain a numeric column named
+#'   \`deltaPagoda\`.
+#'
+#' @return A single numeric value: the maximum absolute
+#'   \`deltaPagoda\` across all provided data frames, or \`1\` if none are valid.
+#'
+#'
+#' @export
+find_absolute_max <- function(deltas_list_of_lists) {
+  max_val <- -Inf # Initialize with negative infinity
+  for (cond_list in deltas_list_of_lists) {
+      if (!is.null(cond_list) && length(cond_list) > 0) {
+          cond_max <- sapply(cond_list, function(df) {
+              if (!is.null(df) && is.data.frame(df) && "deltaPagoda" %in% colnames(df) && nrow(df) > 0) {
+                  current_max <- max(abs(df$deltaPagoda), na.rm = TRUE)
+                  # Handle case where all deltaPagoda are NA or df is empty after NA removal
+                  if (is.infinite(current_max)) {
+                    return(-Inf) # Return -Inf if no valid values
+                  } else {
+                    return(current_max)
+                  }
+              } else {
+                  return(-Inf) # Return -Inf for invalid/empty dataframes
+              }
+          })
+          # Filter out -Inf before taking the max for the condition
+          valid_cond_max <- cond_max[is.finite(cond_max)]
+          if (length(valid_cond_max) > 0) {
+             max_val <- max(max_val, max(valid_cond_max, na.rm = TRUE), na.rm = TRUE)
+          }
+      }
+  }
+   # If max_val is still -Inf (no valid data found), return a default like 1 or NA
+  return(ifelse(is.finite(max_val), max_val, 1))
+}
+
+
+
+#' Convert regulon deltas into long format
+#'
+#' Takes a named list of data frames (one per cluster) and a condition label,
+#' filters each data frame to retain only rows where `class == "real"`, adds
+#' `Cluster` and `Condition` columns, and binds them into a single data frame.
+#'
+#' @param regulon_deltas A named list of data frames.  Each element represents
+#'   a cluster’s regulon data and must include a column `class`.
+#' @param condition Character. A label (e.g. `"moderate"` or `"severe"`) to
+#'   assign in the `Condition` column for all rows.
+#'
+#' @return A data frame in long format with:
+#'   - All rows from each input data frame where `class == "real"`.  
+#'   - A `Cluster` column giving the source list element name.  
+#'   - A `Condition` column set to the provided `condition` value.
+#'
+#'
+#' @importFrom dplyr bind_rows filter
+#' @export
+get_long_deltas <- function(regulon_deltas, condition) {
+  bind_rows(lapply(names(regulon_deltas), function(ct) {
+    df <- regulon_deltas[[ct]] %>%
+      filter(class == "real")  # Keep only real TFs
+    df$Cluster <- ct
+    df$Condition <- condition
+    return(df)
+  }))
+}
+
+
+
+
+#' Extract the top N interaction identifiers from a method result
+#'
+#' Safely retrieves up to \`n\` interaction names from \`method_result\`,
+#' which may be a data frame (or matrix/DataFrame) with columns
+#' \`"interaction"\` and \`"prioritization_score"\`, or a character vector.
+#' Returns an empty character vector if inputs are NULL, empty, or invalid.
+#'
+#' @param method_result A data frame, matrix, \`DataFrame\`, or character
+#'   vector.  If data frame–like, must contain columns:
+#'   \`"interaction"\` (identifiers) and \`"prioritization_score"\`
+#'   (numeric scores).  If a character vector, its first \`n\` elements
+#'   will be returned.
+#' @param n Integer. The maximum number of interaction identifiers to return.
+#'
+#' @return A character vector of up to \`n\` interaction names sorted by
+#'   descending \`prioritization_score\`.  Returns \`character(0)\` if
+#'   \`method_result\` is NULL, empty, or improperly structured.
+#'
+#'
+#' @export
+getSet <- function(method_result, n) {
+  # Basic Input Checks
+  if (is.null(method_result)) {
+    # warning("Input to getSet is NULL. Returning empty set.")
+    return(character(0))
+  }
+  # Check if it's dataframe-like and has rows
+  if (!is.data.frame(method_result) && !is(method_result, "DataFrame") && !is.matrix(method_result)) {
+     # If it's some other structure, maybe it's already a vector of interactions?
+     if(is.character(method_result)) {
+         return(head(method_result, n))
+     }
+     warning("Input to getSet is not a recognized dataframe-like structure or character vector. Returning empty set.")
+     return(character(0))
+  }
+   if (nrow(method_result) == 0) {
+    # warning("Input to getSet has 0 rows. Returning empty set.")
+    return(character(0))
+  }
+
+  # Check for 'interaction' column - Adapt column name if necessary!
+  interaction_col <- "interaction" # <--- CHANGE THIS if your column name is different
+  if (!interaction_col %in% colnames(method_result)) {
+     warning(paste("Column '", interaction_col, "' not found in data for a method. Returning empty set.", sep=""))
+     return(character(0))
+  }
+
+  # Extract top N interactions
+  # Ensure the column is character type
+  score_col <- "prioritization_score"
+  sorted_indices <- order(method_result[[score_col]], decreasing = TRUE, na.last = TRUE)
+  sorted_method_result <- method_result[sorted_indices, , drop = FALSE] # Use drop=FALSE for safety
+  interactions <- as.character(sorted_method_result[[interaction_col]])
+  return(head(interactions, n))
+}
+
+
+#' Calculate specific intersection counts across multiple method sets
+#'
+#' Given a named list of character vectors (interaction sets) for five methods
+#' ("Decipher", "NicheNet", "LIANA+", "NATMI", "Connectome"), computes, for
+#' every non-empty subset of these methods, the number of elements that are
+#' present in all methods of the subset and absent from all methods not in the subset.
+#'
+#' @param list_input Named list of character vectors.  The names should be
+#'   method identifiers (any or all of "Decipher", "NicheNet", "LIANA+",
+#'   "NATMI", "Connectome"), and each element is a vector of interaction IDs.
+#'
+#' @return A data frame with two columns:
+#'   - `Intersection_Name`: a string of method names separated by `" & "`, 
+#'     representing the subset.  
+#'   - `Count`: integer, the number of interactions found exclusively in that subset.
+#'
+#' @examples
+#' \dontrun{
+#' sets <- list(
+#'   Decipher    = c("A", "B", "C"),
+#'   NicheNet    = c("B", "C", "D"),
+#'   `LIANA+`    = c("C", "E"),
+#'   NATMI       = c("A", "C"),
+#'   Connectome  = c("C", "F")
+#' )
+#' df_intersections <- calculate_all_intersections(sets)
+#' # Look for the count of elements only in "Decipher & NATMI"
+#' subset(df_intersections, Intersection_Name == "Decipher & NATMI")
+#' }
+#'
+#' @export
+calculate_all_intersections <- function(list_input) {
+  method_names <- names(list_input)
+  expected_methods <- c("Decipher", "NicheNet", "LIANA+", "NATMI", "Connectome")
+  n_methods <- length(expected_methods)
+
+  # Ensure all 5 methods are potentially present, use empty set if NULL or missing
+  sets <- list()
+  for(m in expected_methods) {
+    sets[[m]] <- if (!is.null(list_input[[m]]) && length(list_input[[m]]) > 0) list_input[[m]] else character(0)
+  }
+
+  # List to store results: Intersection Name -> Count
+  all_intersections_info <- list()
+
+  # Loop through all possible intersection sizes (k = 1 to 5)
+  for (k in 1:n_methods) {
+    # Generate all combinations (subsets) of method names of size k
+    combinations_k <- combn(expected_methods, k, simplify = FALSE)
+
+    # Process each combination (subset S)
+    for (subset_S in combinations_k) {
+      # Sort subset for consistent naming
+      subset_S_sorted <- sort(subset_S)
+      # Create the intersection name
+      intersection_name <- paste(subset_S_sorted, collapse = " & ")
+
+      # Identify methods NOT in the current subset (subset NotS)
+      subset_NotS <- setdiff(expected_methods, subset_S)
+
+      # --- Calculate the count for elements ONLY in subset_S ---
+
+      # 1. Find the intersection of all sets IN subset_S
+      # Need to handle case where subset_S has only 1 element
+      if (length(subset_S) == 1) {
+        intersect_S <- sets[[subset_S[[1]]]]
+      } else {
+        intersect_S <- Reduce(intersect, sets[subset_S])
+      }
+
+      # If the intersection is already empty, the specific count is 0
+      if (length(intersect_S) == 0) {
+        count <- 0
+      } else {
+        # 2. Find the union of all sets NOT in subset_S (if any)
+        union_NotS <- character(0) # Initialize as empty set
+        if (length(subset_NotS) > 0) {
+          union_NotS <- Reduce(union, sets[subset_NotS])
+        }
+
+        # 3. Find elements in intersect_S that are NOT in union_NotS
+        specific_intersect_S_elements <- setdiff(intersect_S, union_NotS)
+        count <- length(specific_intersect_S_elements)
+      }
+
+      # Store result
+      all_intersections_info[[intersection_name]] <- count
+    }
+  }
+
+  # Convert list to dataframe
+  results_df <- data.frame(
+    Intersection_Name = names(all_intersections_info),
+    Count = unlist(all_intersections_info)
+  )
+  rownames(results_df) <- NULL # Clean up row names
+  return(results_df)
+}

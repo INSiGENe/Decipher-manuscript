@@ -14,7 +14,7 @@ docker pull ebasto/decipher-manuscript-liana-plus:1.0.0@sha256:d300ec7872d9a0cf8
 #################################
 ####### Run Decipher analysis ############
 #################################
-sudo docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace decipherc2c-docker:1.0.5
+sudo docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-decipherc2c@sha256:7e43d263693b4c2a87a7a9459dcb1fd5ecc5a969ef84a7b3b3c2b71205efafb5
 
 #################################
 ####### CellOracle ############

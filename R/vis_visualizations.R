@@ -1306,3 +1306,361 @@ plotDecipherPrioritizedMap_v4 <- function(dataset_path, receiver_cell_type = NUL
     ggsave(output_plot_path, plot = final_plot, width = 16, height = 8, dpi = 300)
   }
 }
+
+
+#' Generate heatmap-ready data for a single cell type
+#'
+#' Constructs a long-format data frame of \`deltaPagoda\` values for a given
+#' cell type across multiple conditions.  It gathers all unique regulons,
+#' filters out any matching "sample", and retrieves the \`deltaPagoda\` via
+#' \`get_deltaPagoda()\`.  Missing data emits warnings and yields \`NA\` values.
+#'
+#' @param selected_ct Character. Name of the cell type (identity) to process.
+#' @param regulon_deltas_list A named list of regulon lists, one per condition.
+#'   Each element should itself be a named list of data frames (by cell type),
+#'   as returned by \`load_regulon_data()\`.
+#' @param conditions Named list or vector whose names correspond to
+#'   the conditions in \`regulon_deltas_list\`.  Used to iterate in order.
+#'
+#' @return A data frame with columns:
+#'   - \`TF\`: regulon names  
+#'   - \`Comparison\`: condition name  
+#'   - \`DeltaPagoda\`: numeric \`deltaPagoda\` values (or \`NA\` if missing)
+#'
+#'
+#' @export
+generate_heatmap_data_for_celltype <- function(selected_ct, regulon_deltas_list, conditions) {
+  heatmap_data <- data.frame()
+
+  # Gather all unique regulons for this cell type across all conditions
+  all_regulons <- character(0)
+  for (cond_name in names(conditions)) {
+    if (!is.null(regulon_deltas_list[[cond_name]]) && !is.null(regulon_deltas_list[[cond_name]][[selected_ct]])) {
+      current_regulons <- regulon_deltas_list[[cond_name]][[selected_ct]]$name
+      all_regulons <- union(all_regulons, current_regulons)
+    } else {
+        warning("No data found for cell type '", selected_ct, "' in condition '", cond_name, "'")
+    }
+  }
+  # Remove potential "sample*" regulons if they exist
+  all_regulons <- unique(all_regulons[!grepl("sample", all_regulons)])
+
+  if(length(all_regulons) == 0) {
+      warning("No valid regulons found for cell type: ", selected_ct)
+      return(data.frame()) # Return empty frame
+  }
+
+  # Populate the data frame with deltaPagoda values for all regulons and conditions
+  for (cond_name in names(conditions)) {
+    regulon_deltas <- regulon_deltas_list[[cond_name]]
+    for (regulon in all_regulons) {
+      mean_delta <- get_deltaPagoda(selected_ct, regulon_deltas, regulon)
+      heatmap_data <- rbind(heatmap_data, data.frame(
+        TF = regulon,
+        Comparison = cond_name,
+        DeltaPagoda = mean_delta,
+        stringsAsFactors = FALSE # Important for factor handling later
+      ))
+    }
+  }
+  return(heatmap_data)
+}
+
+#' Generate a heatmap plot of deltaPagoda values
+#'
+#' Creates a ggplot2 heatmap for a specified set of regulons (`tfs`) across
+#' multiple conditions. The fill scale is centered at zero and bounded by
+#' `±absolute_max`. Returns `NULL` if no regulons are provided.
+#'
+#' @param data A data frame containing at least the columns
+#'   \`"TF"\`, \`"Comparison"\`, and \`"DeltaPagoda"\`.
+#' @param tfs Character vector. The subset of regulon names to include in the plot.
+#' @param condition_names Character vector. The factor levels and order for the
+#'   \`Comparison\` axis.
+#' @param absolute_max Numeric. The maximum absolute value for the fill scale;
+#'   the gradient limits will be \`c(-absolute_max, absolute_max)\`.
+#' @param condition_label Character. A label (e.g. "moderate" or "severe") used
+#'   in the plot title to indicate by which condition the top regulons were sorted.
+#' @param top_n Integer. The number of top regulons (by absolute value) used, displayed in the title.
+#'
+#' @return A `ggplot` object representing the heatmap, or `NULL` if `tfs` is empty.
+#'
+#'
+#' @importFrom ggplot2 ggplot aes geom_tile scale_fill_gradient2 theme_minimal theme element_text ggtitle
+#' @export
+generate_heatmap_plot <- function(data, tfs, condition_names, absolute_max, condition_label, top_n) {
+  if (length(tfs) == 0) return(NULL)
+
+  plot_data <- data %>%
+    filter(TF %in% tfs) %>%
+    mutate(
+      TF = factor(TF, levels = tfs),
+      Comparison = factor(Comparison, levels = condition_names)
+    )
+
+  ggplot(plot_data, aes(x = Comparison, y = TF, fill = DeltaPagoda)) +
+    geom_tile(color = "white", linewidth = 0.5) +
+    scale_fill_gradient2(
+      low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0,
+      na.value = "grey80", name = "TF Activity\nDelta",
+      limits = c(-absolute_max, absolute_max)
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      axis.text.x = element_text(size = rel(1.1)),
+      axis.text.y = element_text(size = rel(0.9)),
+      axis.title = element_blank(),
+      panel.grid = element_blank(),
+      legend.position = "bottom",
+      plot.title = element_text(size = rel(1.2), face = "bold", hjust = 0.5)
+    ) +
+    ggtitle(paste("Top", top_n, "Regulons (Sorted by", condition_label, ")"))
+}
+
+
+#' Generate sorted heatmap plots for multiple cell types
+#'
+#' For each selected cell type, prepares heatmap data, identifies the top
+#' regulons for "moderate" and "severe" conditions, and creates a pair of
+#' heatmap plots (one per condition). Returns a nested list of ggplot objects.
+#'
+#' @param selected_receiver_cells Character vector. Names of the cell types
+#'   (identities) for which to generate plots.
+#' @param regulon_deltas_list Named list of regulon data per condition.
+#'   Each element should itself be a named list of data frames (by cell type),
+#'   as returned by `load_regulon_data()`.
+#' @param conditions Named vector or list whose names correspond to the
+#'   conditions (e.g., `c(moderate = NULL, severe = NULL)`); only the names
+#'   are used for ordering.
+#' @param top_n Integer. Number of top regulons (by absolute deltaPagoda)
+#'   to include in each heatmap.
+#' @param absolute_max Numeric. Maximum absolute deltaPagoda for the color
+#'   scale limits in the heatmap.
+#'
+#' @return A nested list of ggplot objects. The top level is indexed by
+#'   cell type; each sub‑list has elements `moderate_sorted` and
+#'   `severe_sorted` containing the corresponding heatmap (or `NULL` if
+#'   no data).
+#'
+#'
+#' @export
+generate_sorted_plots <- function(selected_receiver_cells, regulon_deltas_list, conditions, top_n, absolute_max) {
+  plots <- list()
+  condition_names <- names(conditions)
+
+  for (selected_ct in selected_receiver_cells) {
+    cat("Generating plots for cell type:", selected_ct, "\n")
+    heatmap_data_full <- generate_heatmap_data_for_celltype(selected_ct, regulon_deltas_list, conditions)
+
+    if (nrow(heatmap_data_full) == 0) {
+      warning("Skipping plots for ", selected_ct, " due to lack of data.")
+      next
+    }
+
+    plots[[selected_ct]] <- list()
+
+    for (cond in c("moderate", "severe")) {
+      top_tfs <- get_top_tfs(heatmap_data_full, cond, top_n)
+
+      plot <- generate_heatmap_plot(
+        data = heatmap_data_full,
+        tfs = top_tfs,
+        condition_names = condition_names,
+        absolute_max = absolute_max,
+        condition_label = cond,
+        top_n = top_n
+      )
+
+      if (is.null(plot)) {
+        warning("No regulons passed filtering for '", cond, "_sorted' plot in ", selected_ct)
+      }
+
+      plots[[selected_ct]][[paste0(cond, "_sorted")]] <- plot
+    }
+  }
+
+  return(plots)
+}
+
+#' Combine moderate and severe heatmaps for each cell type
+#'
+#' Takes a nested list of heatmap plots (as returned by `generate_sorted_plots()`)
+#' and for each specified cell type, stacks a title above the side-by-side
+#' “moderate” and “severe” heatmaps.  If either plot is missing, a placeholder
+#' “Data Not Available” plot is used.
+#'
+#' @param plots A nested list indexed by cell type, each containing elements
+#'   `"moderate_sorted"` and `"severe_sorted"` as ggplot objects or `NULL`.
+#' @param selected_receiver_cells Character vector of cell type names to process.
+#'
+#' @return A named list of combined ggplot objects, one per cell type.  Each
+#'   element is a patchwork object with the cell type title above the two
+#'   heatmaps.
+#'
+#' @examples
+#' \dontrun{
+#' # Suppose `plots` comes from generate_sorted_plots for B_cell and T_cell
+#' combined <- create_combined_plots_per_celltype(
+#'   plots, 
+#'   selected_receiver_cells = c("B_cell", "T_cell")
+#' )
+#' # Display the combined plot for B_cell
+#' combined$B_cell
+#' }
+#'
+#' @importFrom ggplot2 ggplot theme_void ggtitle theme element_text
+#' @importFrom patchwork wrap_plots
+#' @export
+create_combined_plots_per_celltype <- function(plots, selected_receiver_cells) {
+  combined_plots <- list()
+  for (selected_ct in selected_receiver_cells) {
+    # Check if both plots exist for this cell type
+    plot_moderate <- plots[[selected_ct]][["moderate_sorted"]]
+    plotsevere <- plots[[selected_ct]][["severe_sorted"]]
+
+    # Create placeholder plots if one or both are missing
+    placeholder_plot <- ggplot() + theme_void() + ggtitle("Data Not Available") + theme(plot.title = element_text(hjust = 0.5))
+    if (is.null(plot_moderate)) plot_moderate <- placeholder_plot
+    if (is.null(plotsevere)) plotsevere <- placeholder_plot
+
+    # Create title plot
+    title <- ggplot() + theme_void() + ggtitle(selected_ct) +
+      theme(plot.title = element_text(hjust = 0.5, size = 20, face = "bold"))
+
+    # Combine the two heatmaps side-by-side
+    heatmaps <- wrap_plots(plot_moderate, plotsevere, ncol = 2)
+
+    # Stack title above heatmaps
+    combined_plots[[selected_ct]] <- wrap_plots(title, heatmaps, ncol = 1, heights = c(0.1, 1)) # Adjust height ratio for title
+  }
+  return(combined_plots)
+}
+
+
+#' Save grouped combined heatmap plots to files
+#'
+#' Splits a list of combined patchwork plots into groups of a specified size
+#' and saves each group as a PNG file under a constructed output directory.
+#'
+#' @param combined_plots Named list of patchwork (ggplot) objects, one per cell type.
+#' @param clusters_per_group Integer. Number of cell‑type plots to include per output file.
+#' @param output_dir_base Character. Base directory path under which the output folder
+#'   will be created.
+#' @param output_folder_name Character. Name of the subfolder (under `output_dir_base`)
+#'   where image files will be saved.
+#'
+#' @return Invisibly returns `NULL`. Side effects: creates the output directory (if needed)
+#'   and writes PNG files named `Combined_Sorted_Heatmaps_Group_<n>.png`.
+#'
+#'
+#' @importFrom patchwork wrap_plots plot_layout
+#' @importFrom ggplot2 theme element_text unit
+#' @importFrom grDevices png
+#' @export
+save_grouped_plots <- function(combined_plots, clusters_per_group, output_dir_base, output_folder_name) {
+  # Construct the full output path
+  output_dir <- file.path(output_dir_base, output_folder_name) # Match structure from file 1
+  if (!dir.exists(output_dir)) {
+      dir.create(output_dir, recursive = TRUE)
+      cat("Created output directory:", output_dir, "\n")
+  }
+
+  cluster_names <- names(combined_plots)
+  if (length(cluster_names) == 0) {
+      warning("No plots available to save.")
+      return()
+  }
+
+  for (i in seq(1, length(cluster_names), by = clusters_per_group)) {
+    # Select clusters for the current group
+    selected_clusters_group <- cluster_names[i:min(i + clusters_per_group - 1, length(cluster_names))]
+
+    # Combine the plots for the selected group (e.g., arrange in 2 columns)
+    # Adjust ncol based on how many plots per page you want vertically vs horizontally
+    plots_to_save_list <- combined_plots[selected_clusters_group]
+
+    # Check if list is empty before plotting
+    if(length(plots_to_save_list) > 0){
+        to_plot <- wrap_plots(plots_to_save_list, ncol = 1) + # Stack cell types vertically by default
+            plot_layout(guides = "collect") & # Collect legends
+            theme(
+                legend.position = "bottom",
+                legend.text = element_text(size = 12),
+                legend.title = element_text(size = 14, face = "bold"),
+                legend.key.size = unit(1.2, "cm"), # Adjust key size
+                # Adjust key height/width if needed, size often covers it
+                # legend.key.height = unit(1.0, "cm"),
+                # legend.key.width = unit(1.0, "cm")
+            )
+
+        # Define filename
+        group_num <- (i - 1) %/% clusters_per_group + 1
+        file_name <- paste0("Combined_Sorted_Heatmaps_Group_", group_num, ".png")
+        file_path <- file.path(output_dir, file_name)
+
+        # Calculate dynamic height (adjust base height and multiplier as needed)
+        plot_height <- 7 * length(selected_clusters_group) # Base height * number of plots stacked
+        plot_width <- 12 # Fixed width (adjust if needed)
+
+        cat("Saving group", group_num, "to:", file_path, "\n")
+        # Save the plot
+        ggsave(
+          filename = file_path,
+          plot = to_plot,
+          width = plot_width,
+          height = plot_height,
+          dpi = 300,
+          limitsize = FALSE # Important for potentially large plots
+        )
+    } else {
+        cat("Skipping save for group", (i - 1) %/% clusters_per_group + 1, "as no plots were generated for the selected clusters.\n")
+    }
+  }
+}
+
+
+#' Create a custom color scale for flagged method points
+#'
+#' Generates a named vector of colors for a set of methods, assigning each method
+#' two colors: one “darker” version for flagged points and the original base color
+#' for unflagged points. The names follow the pattern `"MethodName.TRUE"` and
+#' `"MethodName.FALSE"`.
+#'
+#' @param methods Character vector of method names for which to create colors.
+#'   These should correspond to names in the global `method_colors` object.
+#'
+#' @return A named character vector of colors.  For each method `m`, the vector
+#'   contains two entries:
+#'   - `m.TRUE`: the darker color (for flagged = TRUE)  
+#'   - `m.FALSE`: the base color  (for flagged = FALSE)
+#'
+#'
+#' @importFrom grDevices adjustcolor
+#' @export
+create_flag_color_scale <- function(methods) {
+  # Get a base color for each method using a hue palette.
+  #base_cols <- scales::hue_pal()(length(methods))
+  base_cols <- method_colors
+  #names(base_cols) <- methods
+  names(base_cols) <- names(method_colors)
+  
+  # Helper to darken a given color.
+  darker <- function(col) {
+    adjustcolor(col, red.f = 0.6, green.f = 0.6, blue.f = 0.6)
+  }
+  
+  # For each method, return a vector with:
+  #   - A darker color (flagged)
+  #   - The base color (not flagged)
+  color_values <- unlist(lapply(methods, function(m) {
+    c(darker(base_cols[m]), base_cols[m])
+  }))
+  
+  # Name the colors to match the values produced by interaction(method, flagged).
+  # That is, names like "MethodName.TRUE" and "MethodName.FALSE".
+  names(color_values) <- unlist(lapply(methods, function(m) {
+    c(paste0(m, ".TRUE"), paste0(m, ".FALSE"))
+  }))
+  
+  return(color_values)
+}
