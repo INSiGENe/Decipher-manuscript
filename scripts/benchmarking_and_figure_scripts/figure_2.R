@@ -289,7 +289,7 @@ for (ds in names(datasets)) {
     dataset_path <- datasets[[ds]]
     pre_processing_filepath <- file.path(dataset_path, "pre_processing")
     meta_path <- "manuscript_analysis/data_for_meta_comparisons"
-    output_figures_filepath <- file.path(dataset_path, supp_figures_folder)
+    output_figures_filepath <-  supp_figures_folder
     reference_filepath <- "reference_data"
     decipher_filepath <- file.path(dataset_path, "data")
     seurat_object_oi <- readRDS(file.path(decipher_filepath,"pseudobulk_seurat.rds"))
@@ -374,40 +374,6 @@ metdataset_varhod_var <- dataset_var %>%
 results_df <- results_df %>%
   left_join(metdataset_varhod_var %>% select(dataset, line_color), by = "dataset")
 
-p <- ggplot(results_df, aes(x = method, y = value)) +
-  geom_line(aes(group = dataset, color = line_color), size = 1, alpha = 0.6) +
-  
-  geom_boxplot(outlier.shape = NA, width = 0.25, alpha = 0.4, color = "black", fill = "lightgray") +
-  
-  geom_beeswarm(
-    aes(color = interaction(method, flagged)),
-    size = 3.5, 
-    cex = 5,
-    priority = "density", 
-    groupOnX = TRUE
-  ) +
-  
-  scale_color_manual(
-    values = c("green" = "green", "red" = "red", "gray" = "gray"),
-    guide = "none"
-  ) +
-  
-  stat_summary(fun = median, geom = "segment", 
-               aes(xend = after_stat(x), yend = after_stat(y)), 
-               size = 2.5, color = "black") +
-  
-  geom_hline(yintercept = 0.5, linetype = "dashed", color = "red") +
-  
-  labs(y = "AUROC target prediction", x = NULL) +
-  theme_minimal(base_size = 14) +
-  theme(legend.position = "none", 
-        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-ggsave(file.path(figures_folder,"variance_w_boxplot_beeswarm_auc_plot.png"), plot = p, width = 4, height = 6, dpi = 300)
-
-#The figure above needs to be removed
-
-
-#V2
 # --- Prepare Data: Order Methods ---
 print("Ordering methods on X-axis...")
 available_methods_plot <- unique(results_df$method)
@@ -426,6 +392,9 @@ if(nrow(results_df) == 0) {
 # Convert 'method' column to an ordered factor
 results_df$method <- factor(results_df$method, levels = valid_order_plot)
 
+# --- Define colors and desired order ---
+color_k_value <- "#E69F00" # Gold/Orange
+color_spearman <- "#56B4E9" # Light Blue
 
 # --- Dynamically Create Line Color Mapping ---
 # Identify the unique values in the 'line_color' column to map them
@@ -514,6 +483,12 @@ p_updated <- ggplot(results_df, aes(x = method, y = value)) +
 output_filename_updated <- file.path(figures_folder,"variance_w_boxplot_beeswarm_auc_plot_updated.png")
 ggsave(output_filename_updated, plot = p_updated, width = 4, height = 8, dpi = 300) # Adjusted width slightly
 #THIS IS THE ONE!
+
+write.csv(
+  results_df,
+  file.path(figures_folder, "variance_w_boxplot_beeswarm_raw_data.csv"),
+  row.names = TRUE
+)
 
 ####################
 # FIGURE 2f

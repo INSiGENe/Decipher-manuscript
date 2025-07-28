@@ -46,12 +46,12 @@ dir.create(output_data_filepath,recursive=TRUE)
 seuratObj = readRDS(file.path(pre_processing_filepath,"seurat_object_oi.rds"))
 DefaultAssay(seuratObj) <- "RNA"
 Idents(seuratObj) <- paste(seuratObj$cluster,seuratObj$condition)
+#focus on a subset of cells
 cell.list <- WhichCells(seuratObj, downsample = 2000)
 seuratObj <- subset(seuratObj,cells = cell.list)
 
 #data pre-processing ----
 Idents(seuratObj) <- seuratObj$cluster
-
 
 # For newer Seurat versions, you may need to run the following
 seuratObj <- UpdateSeuratObject(seuratObj)
@@ -66,17 +66,21 @@ weighted_networks_lr = weighted_networks$lr_sig %>% inner_join(lr_network, by = 
 
 ligand_activities_all_clusters <- list()
 prior_table_all_clusters <- list()
+#for each receiver cell type
 for(this_receiver_ct in unique(seuratObj$cluster)){
   receiver = this_receiver_ct
 
+ # get genes with non-zero expression in at least 5% of cells on the selected receiver cell type
   expressed_genes_receiver = get_expressed_genes(receiver, seuratObj, pct = 0.05,assay_oi="RNA")
+# treat as background those genes that occur in the ligand-target matrix
   background_expressed_genes = expressed_genes_receiver %>% .[. %in% rownames(ligand_target_matrix)]
 
-  ## sender
+  ## sender, all cell type
   sender_celltypes = unique(seuratObj$cluster)
 
-
+  # get genes with non-zero expression in at least 5% of cells in each sender cell type
   list_expressed_genes_sender = sender_celltypes %>% unique() %>% lapply(get_expressed_genes, seuratObj, 0.05,assay_oi="RNA") # lapply to get the expressed genes of every sender cell type separately here
+  # unlist these sender-related genes
   expressed_genes_sender = list_expressed_genes_sender %>% unlist() %>% unique()
 
   # 2. Define a gene set of interest: these are the genes in the “receiver/target” cell population that are potentially affected by ligands expressed by interacting cells (e.g. genes differentially expressed upon cell-cell interaction)
@@ -88,8 +92,9 @@ for(this_receiver_ct in unique(seuratObj$cluster)){
   }
   seurat_obj_receiver = SetIdent(seurat_obj_receiver, value = seurat_obj_receiver[["condition", drop=TRUE]])
 
+# get differentially expressed genes in the receiver cell type (only those in the ligand-target matrix)
   DE_table_receiver = FindMarkers(object = seurat_obj_receiver, ident.1 = case_condition, ident.2 = control_condition, min.pct = 0.10,min.cells.group=3) %>% rownames_to_column("gene")
-
+# p value lt 0.05 and log2FC gt 0.25
   geneset_oi = DE_table_receiver %>% filter(p_val_adj <= 0.05 & abs(avg_log2FC) >= 0.25) %>% pull(gene)
   geneset_oi = geneset_oi %>% .[. %in% rownames(ligand_target_matrix)]
 
