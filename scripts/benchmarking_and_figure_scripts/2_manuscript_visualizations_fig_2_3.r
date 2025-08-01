@@ -35,7 +35,7 @@ library(ggbeeswarm)
 ##########################
 
 set.seed(1)
-figures_folder <- "figures_14_06_2025"
+figures_folder <- "figures_01_08_2025"
 dir.create(figures_folder,recursive = TRUE)
 
 # ==== clean up results from load_all_results.r ====
@@ -190,7 +190,7 @@ write.csv(
   row.names = TRUE
 )
 ##########################
-## FIGURE 2? remove
+## FIGURE 2c remove
 ##########################
 
 n_top <- 100
@@ -271,112 +271,6 @@ if (length(all_intersection_data) > 0) {
     warning("No intersection data was successfully calculated for any dataset. Cannot create plot.")
 }
 
-# --- Load or Ensure 'combined_intersection_df' is available ---
-# This dataframe should have columns: Intersection_Name, Count, Dataset, Degree
-# It MUST contain data for all 31 intersection types before median calculation.
-
-# Option 1: If it's already in your environment from the previous step (before filtering)
-if (!exists("combined_intersection_df")) {
-  # Option 2: Load it from the RDS file created earlier
-  rds_file_unfiltered <- "figures/overlap_all_intersections_data.rds" # Make sure this is the UNFILTERED one
-  if (file.exists(rds_file_unfiltered)) {
-    print(paste("Loading unfiltered data from:", rds_file_unfiltered))
-    combined_intersection_df <- readRDS(rds_file_unfiltered)
-    # Ensure Degree column exists if it wasn't saved before
-    if (!"Degree" %in% names(combined_intersection_df)) {
-       combined_intersection_df <- combined_intersection_df %>%
-        mutate(Degree = sapply(strsplit(as.character(Intersection_Name), " & "), length))
-    }
-  } else {
-    stop("Required dataframe 'combined_intersection_df' not found. ",
-         "Please ensure it's loaded or calculated (containing all 31 intersection types).")
-  }
-} else {
-    print("Using existing 'combined_intersection_df'. Ensure it was not filtered.")
-    # Ensure Degree column exists if needed
-    if (!"Degree" %in% names(combined_intersection_df)) {
-       combined_intersection_df <- combined_intersection_df %>%
-        mutate(Degree = sapply(strsplit(as.character(Intersection_Name), " & "), length))
-    }
-}
-
-# --- 1. Calculate Median Counts for ALL intersection types ---
-print("Calculating median counts for UpSetR input...")
-median_counts_all <- combined_intersection_df %>%
-  group_by(Intersection_Name) %>%
-  summarise(median_count = median(Count, na.rm = TRUE)) %>%
-  ungroup() %>%
-  filter(median_count >= 0) # Keep zeros, remove NAs
-
-# --- 2. Prepare data for UpSetR's fromExpression ---
-# UpSetR expects intersection names with single '&' separators
-# and the value associated with each name is the size (median count here).
-
-# Check we have 31 intersections - if not, UpSetR might behave unexpectedly
-# or the calculation function might need debugging
-if(nrow(median_counts_all) != 31) {
-   warning(paste("Expected 31 intersection types, but found", nrow(median_counts_all),
-                 "after calculating medians. Proceeding, but results might be incomplete.",
-                 "Ensure 'calculate_all_intersections' ran correctly for all datasets."))
-}
-
-# Create the named vector
-upset_input_vector <- median_counts_all$median_count
-# Convert names from "A & B" format to "A&B" format
-names(upset_input_vector) <- gsub(" & ", "&", median_counts_all$Intersection_Name)
-
-# --- 3. Generate the UpSet plot ---
-print("Generating UpSet plot based on median intersection sizes...")
-
-# Use png() device for saving UpSet plots
-png(file.path(figures_folder,"overlap_upset_median_plot_ordered.png"), width = 10, height = 6, units = "in", res = 300)
-
-#V2 plot
-upset(
-  fromExpression(upset_input_vector),  # Use the named vector of median counts
-
-  # --- Modifications ---
-  sets = rev(desired_method_order),         # 1. Set the ORDER of sets on the left
-  nsets = length(rev(desired_method_order)),# Ensure nsets matches the provided sets
-  queries = list(
-      list(query = intersects, params = list("Decipher"), color = method_colors["Decipher"], active = T),
-      list(query = intersects, params = list("NicheNet"), color = method_colors["NicheNet"], active = T),
-      list(query = intersects, params = list("LIANA+"), color = method_colors["LIANA+"], active = T),
-      list(query = intersects, params = list("Connectome"), color = method_colors["Connectome"], active = T),
-      list(query = intersects, params = list("NATMI"), color = method_colors["NATMI"], active = T),
-      list(query = intersects, params = list("Decipher", "LIANA+"), color = method_colors["Decipher"], active = T),
-      list(query = intersects, params = list("Connectome", "Decipher"), color = method_colors["Decipher"], active = T),
-      list(query = intersects, params = list("NicheNet", "Decipher"), color = method_colors["Decipher"], active = T),
-      list(query = intersects, params = list("NicheNet", "Decipher","LIANA+"), color = method_colors["Decipher"], active = T),
-      list(query = intersects, params = list("Decipher", "Connectome","NATMI"), color = method_colors["Decipher"], active = T)
-   ),            # 2. Apply the coloring rules
-
-  # --- Keep other parameters ---
-  order.by = "freq",       # Order intersection bars by frequency (median counts)
-  keep.order = TRUE,            
-  decreasing = TRUE,                   # Show highest bars first
-  mainbar.y.label = "Median Intersection Size", # Y-axis label for the main bar plot
-  #sets.x.label = "Total Interactions in Top 100", # X-axis label for the set size plot
-  point.size = 2.8,                    # Size of points in the matrix
-  line.size = 1,                       # Size of lines in the matrix
-  mb.ratio = c(0.6, 0.4),              # Ratio main bar height to matrix height
-  text.scale = c(intersection_size=1.5, # Adjust text sizes
-                 tick_labels=1.5,
-                 set_size=1.5,
-                 main_bar_text=1.5,
-                 sets_names=1.5
-                ),
-  set_size.show = FALSE
-  # min_size = 1, # Optional: uncomment if you only want combinations with median >= 1
-  # show.numbers = FALSE, # Optional: uncomment to hide numbers above bars
-)
-
-# Close the PNG device
-dev.off()
-
-##########################
-## end FIGURE 2? remove
-##########################
 
 ##########################
 # Remove figure from here, this is a different plot
@@ -713,6 +607,7 @@ ggsave(file.path(figures_folder,"combined_k_spearman_boxplot_final_ordered.png")
 ##########################
 ## FIGURE 2c
 ##########################
+#there's an issue with the code here because it doesn't add to 100
 library(dplyr)
 library(ggplot2)
 install.packages("viridis")
@@ -735,6 +630,7 @@ summary_df <- combined_intersection_df %>%
 
 summary_df$method <- factor(summary_df$method,levels=desired_method_order)
 
+degree_labels <- c("1" = "Unique", "2" = "two-way", "3" = "three-way", "4" = "four-way", "5" = "five-way")
 # Step 4: Plot
 p <- ggplot(summary_df, aes(x = method, y = total_Count, fill = as.factor(Degree))) +
   geom_boxplot(outlier.shape = NA, width = 0.6) +

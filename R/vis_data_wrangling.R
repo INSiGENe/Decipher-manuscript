@@ -1896,19 +1896,19 @@ getSet <- function(method_result, n) {
     return(character(0))
   }
 
-  # Check for 'interaction' column - Adapt column name if necessary!
-  interaction_col <- "interaction" # <--- CHANGE THIS if your column name is different
+  # Check for 'interaction' column 
+  interaction_col <- "interaction" 
   if (!interaction_col %in% colnames(method_result)) {
      warning(paste("Column '", interaction_col, "' not found in data for a method. Returning empty set.", sep=""))
      return(character(0))
   }
 
-  # Extract top N interactions
+  # Extract top N unique interactions
   # Ensure the column is character type
   score_col <- "prioritization_score"
   sorted_indices <- order(method_result[[score_col]], decreasing = TRUE, na.last = TRUE)
   sorted_method_result <- method_result[sorted_indices, , drop = FALSE] # Use drop=FALSE for safety
-  interactions <- as.character(sorted_method_result[[interaction_col]])
+  interactions <- unique(as.character(sorted_method_result[[interaction_col]]))
   return(head(interactions, n))
 }
 
