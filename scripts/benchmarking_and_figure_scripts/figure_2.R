@@ -691,7 +691,7 @@ for (ds in names(datasets)) {
     dataset_path <- datasets[[ds]]
     pre_processing_filepath <- file.path(dataset_path, "pre_processing")
     meta_path <- "manuscript_analysis/data_for_meta_comparisons"
-    output_figures_filepath <-  supp_figures_folder
+    output_figures_filepath <- file.path(dataset_path, "figures")
     reference_filepath <- "reference_data"
     decipher_filepath <- file.path(dataset_path, "data")
     seurat_object_oi <- readRDS(file.path(decipher_filepath,"pseudobulk_seurat.rds"))
@@ -776,8 +776,11 @@ metdataset_varhod_var <- dataset_var %>%
 results_df <- results_df %>%
   left_join(metdataset_varhod_var %>% select(dataset, line_color), by = "dataset")
 
+#The figure above needs to be removed
+
+
+#V2
 # --- Prepare Data: Order Methods ---
-print("Ordering methods on X-axis...")
 available_methods_plot <- unique(results_df$method)
 valid_order_plot <- intersect(desired_method_order, available_methods_plot)
 
@@ -794,9 +797,6 @@ if(nrow(results_df) == 0) {
 # Convert 'method' column to an ordered factor
 results_df$method <- factor(results_df$method, levels = valid_order_plot)
 
-# --- Define colors and desired order ---
-color_k_value <- "#E69F00" # Gold/Orange
-color_spearman <- "#56B4E9" # Light Blue
 
 # --- Dynamically Create Line Color Mapping ---
 # Identify the unique values in the 'line_color' column to map them
@@ -820,11 +820,9 @@ if (length(line_color_values_in_data) == 0) {
 print("Mapping for line colors:")
 print(line_color_map)
 
-
-# --- Generate the Plot with updated colors and order ---
-print("Generating plot...")
-
-
+####################
+# FIGURE 2e
+####################
 p_updated <- ggplot(results_df, aes(x = method, y = value)) +
 
   # 1. Lines - Mapped to 'line_color', using first color scale
@@ -987,7 +985,7 @@ top20_interactions <- interaction_consistency %>%
 top20_mapped <- top20_interactions %>%
   mutate(Cells = case_when(
     grepl("^B_", Cells)                     ~ "B",
-    grepl("^CD14_plus_Monocytes", Cells)    ~ "CD14+ Mono",
+    grepl("^CD14_plus_Monocytes", Cells)    ~ "CD14+ M",
     grepl("^CD4_T", Cells)                  ~ "CD4 T",
     grepl("^CD8", Cells)                    ~ "CD8 T",
     TRUE                                    ~ Cells  # fallback if unmatched
@@ -1011,9 +1009,18 @@ p <- ggplot(top20_mapped, aes(x = Cells, y = interaction, fill = count)) +
     legend.position = "bottom"     # move legend to bottom
   )
 
-ggsave(file.path(figures_folder,"proportions_runs_top_10_flipped.png"), p, width = 4.2, height = 8)
+ggsave(file.path(figures_folder,"figure_2f.png"), p, width = 4.2, height = 8)
+write.csv(
+  top20_mapped,
+  file = file.path(figures_folder, "figure_2f.csv"),
+  row.names = TRUE
+)
 
-# 1. Rename the Cells
+####################
+# FIGURE 2g
+####################
+#TODO: fix the caption letter here
+
 interaction_consistency <- interaction_consistency %>%
   mutate(Cells = recode(Cells,
                         "CD8_T_cells" = "CD8 T",
@@ -1021,57 +1028,4 @@ interaction_consistency <- interaction_consistency %>%
                         "CD14_plus_Monocytes" = "CD14+ Mono",
                         "B_cells" = "B"))
 
-# 2. Plot
-p <- ggplot(interaction_consistency, aes(x = interaction, y = Cells, fill = count)) +
-  geom_tile(color = "white") +
-  scale_fill_gradient(low = "white", high = "steelblue") +
-  labs(
-    title = NULL,
-    x = NULL,
-    y = NULL,   # remove y-axis label here
-    fill = "Count"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10),
-    axis.text.y = element_text(angle = 0, vjust = 0.5, hjust = 1, size = 10),
-    panel.grid = element_blank(),
-    legend.position = "bottom"
-  )
-
-# Save
-ggsave(file.path(figures_folder,"figure_2f.png"), p, width = 10, height = 10)
-
-
-
-
-#===================================================
-# Step 4: Track Decipher Scores Over Runs
-#===================================================
-# Filter for interactions that are consistently in the top 10 across runs
-consistent_interactions <- interaction_consistency %>%
-  #filter(proportion == 1) %>%
-  select(Cells, interaction)
-
-# Join with the original data to track the decipher score changes
-score_trends <- final_combined_tibble_1 %>%
-  semi_join(consistent_interactions, by = c("Cells", "interaction")) %>%
-  group_by(Cells, interaction, run_number) %>%
-  summarise(mean_decipher_score = mean(decipher_score), .groups = "drop")
-
-# Plot the trends
-ggplot(score_trends, aes(x = run_number, y = mean_decipher_score, color = interaction, group = interaction)) +
-  geom_line() +
-  facet_wrap(~Cells, scales = "free_y") +
-  theme_minimal() +
-  labs(title = "Decipher Score Trends for Consistent Top 10 Interactions",
-       x = "Run Number",
-       y = "Mean Decipher Score")
-
-
-
-####################
-# FIGURE 2g
-####################
-#TODO: fix the caption letter here
-plotDecipherPrioritizedMap("sample_analysis",top_n=5,dataset_name="lupus", abs_decipher_plot_limit = 20,width=21,height=9)
+plotDecipherPrioritizedMap("sample_analysis/validity/data/for_plotting",top_n=4,dataset_name="sample_1", abs_decipher_plot_limit = 20,width=21,height=9)
