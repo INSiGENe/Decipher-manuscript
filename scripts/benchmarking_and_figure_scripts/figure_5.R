@@ -76,6 +76,7 @@ get_pubmed_count <- function(gene) {
 
 # Read this https://www.nature.com/articles/srep16923
 set.seed(123)
+figures_folder <- "figures_01_08_2025"
 comparison_name <- "SevCOVID_Azimuthl2"
 data_path <- file.path("results",comparison_name,"data")
 capped_regulons_all_clusters <- readRDS(file.path(data_path,"capped_regulons_all_clusters.rds"))
@@ -172,7 +173,7 @@ for(selected_ct in c("CD14_Mono","CD16_Mono")){
     print(selected_ct)
     #scale_y_discrete(labels = function(x) ifelse(x %in% top_genes, x, ""))  # Conditional row labels
   filename <- paste0(comparison_name,"_",selected_ct,"_tgs_heatmap_pubmed.png")
-  ggsave(file.path("figures",filename),p,width = 12,height = 5.5,units="cm")
+  ggsave(file.path(figures_folder,filename),p,width = 12,height = 5.5,units="cm")
 }
 
 
@@ -487,8 +488,6 @@ generate_network_plot <- function(condition_label, cluster_name,
   plot_graph(g, output_file, cluster_name, condition_label)
 }
 
-set.seed(1)
-
 
 # 3. Load Data for Severe and Moderate Conditions
 # Severe data
@@ -497,7 +496,7 @@ decipher_scores_by_regulon_and_cluster_severe <- readRDS("results/SevCOVID_Azimu
 regulon_deltas_by_cluster_severe <- readRDS("results/SevCOVID_Azimuthl2/data/regulon_deltas_by_cluster.rds")
 feature_statistics_severe <- readRDS("results/SevCOVID_Azimuthl2/data/feature_statistics.rds")
 
-# Moderate data
+# Mild data
 decipher_scores_moderate <- readRDS("results/MilCOVID_Azimuthl2/data/decipher_scores_by_cluster.rds")
 decipher_scores_by_regulon_and_cluster_moderate <- readRDS("results/MilCOVID_Azimuthl2/data/decipher_scores_by_regulon_and_cluster.rds")
 regulon_deltas_by_cluster_moderate <- readRDS("results/MilCOVID_Azimuthl2/data/regulon_deltas_by_cluster.rds")
@@ -508,7 +507,7 @@ feature_statistics_moderate <- readRDS("results/MilCOVID_Azimuthl2/data/feature_
 # Define target receiver clusters and sender cell types
 target_clusters <- c("CD14_Mono", "CD16_Mono")
 sender_cts <- c("Eryth", "NK", "cDC2", "CD16_Mono", "CD14_Mono", "CD8_TEM","Platelet","pDC")
-output_dir <- "figures_16_05_2025"  # adjust if needed
+output_dir <- "figures_01_08_2025"  # adjust if needed
 
 #calculate global stats
 # GLOBAL SCALING VALUES
