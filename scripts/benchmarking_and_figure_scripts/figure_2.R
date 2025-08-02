@@ -953,16 +953,6 @@ interaction_consistency <- interaction_consistency %>%
 #===================================================
 # Step 3: Visualize the Consistency of Interactions
 #===================================================
-# Plot the proportion of runs where each interaction was in the top 10
-p <- ggplot(interaction_consistency, aes(x = interaction, y = proportion, fill = Cells)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  theme_minimal() +
-  labs(title = "Proportion of Runs Where Interactions are in the Top 10",
-       x = "Interaction",
-       y = "Proportion of Runs (Top 10)") +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-
 # Calculate total count per interaction across all cell types
 interaction_totals <- interaction_consistency %>%
   group_by(interaction) %>%
@@ -1019,13 +1009,5 @@ write.csv(
 ####################
 # FIGURE 2g
 ####################
-#TODO: fix the caption letter here
-
-interaction_consistency <- interaction_consistency %>%
-  mutate(Cells = recode(Cells,
-                        "CD8_T_cells" = "CD8 T",
-                        "CD4_T_cells" = "CD4 T",
-                        "CD14_plus_Monocytes" = "CD14+ Mono",
-                        "B_cells" = "B"))
-
+#logic to clean this plot sits inside the function, not optimal but ok
 plotDecipherPrioritizedMap("sample_analysis/validity/data/for_plotting",top_n=4,dataset_name="sample_1", abs_decipher_plot_limit = 20,width=21,height=9)
