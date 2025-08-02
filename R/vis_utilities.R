@@ -371,3 +371,31 @@ pseudo_log_trans <- function(base = 10) {
     domain = c(-Inf, Inf)
   )
 }
+
+
+#' Calculate Percentage Change
+#'
+#' Vectorised helper that returns the percentage change from a baseline
+#' (`old_val`) to an updated value (`new_val`).
+#'
+#' The function handles division-by-zero explicitly:
+#' * If `old_val` is `0` and `new_val` is positive, the result is `Inf`.
+#' * If both `old_val` and `new_val` are `0`, the result is `0`.
+#'
+#' @param new_val Numeric vector of new or current values.
+#' @param old_val Numeric vector of baseline values (same length as `new_val`).
+#'
+#' @return Numeric vector of percentage changes. Values can be finite,
+#'   `Inf`, or `0`, matching the length of the inputs.
+#'
+#' @examples
+#' calculate_pct_change(c(120, 80, 0), c(100, 100, 0))
+#' #> 20 -20 Inf
+#'
+#' @export
+calculate_pct_change <- function(new_val, old_val) {
+  change <- ifelse(old_val == 0,
+                   ifelse(new_val > 0, Inf, 0),
+                   ((new_val - old_val) / old_val) * 100)
+  return(change)
+}

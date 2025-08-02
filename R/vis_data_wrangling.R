@@ -2021,3 +2021,335 @@ calculate_all_intersections <- function(list_input) {
   rownames(results_df) <- NULL # Clean up row names
   return(results_df)
 }
+
+#' Load a Pre-processed Seurat Object
+#'
+#' Reads the \code{seurat_object_oi.rds} file produced during the
+#' preprocessing stage and returns it as a Seurat object.
+#'
+#' The file is expected at:
+#' \preformatted{<path>/pre_processing/seurat_object_oi.rds}
+#'
+#' @param path Character scalar giving the root directory of the dataset,
+#'   which must contain a \code{pre_processing} sub-folder.
+#'
+#' @return A Seurat object.
+#'
+#' @examples
+#' \dontrun{
+#' seurat <- load_seurat("data/my_dataset")
+#' }
+#'
+#' @export
+load_seurat <- function(path) {
+  rds_path <- file.path(path, "pre_processing", "seurat_object_oi.rds")
+  if (!file.exists(rds_path)) stop("Missing file:", rds_path)
+  readRDS(rds_path)
+}
+
+#' Differential-expression summary by cluster
+#'
+#' For every cluster in a Seurat object, compare two severity (or condition)
+#' groups, count the number of genes up- and down-regulated above a given
+#' \code{logFC} threshold, and return the results as a tidy tibble.
+#'
+#' The function:
+#' \enumerate{
+#'   \item Iterates over all clusters in \code{seurat_obj$cluster}.
+#'   \item Subsets each cluster and runs \code{\link[Seurat]{FindMarkers}} with
+#'         the Wilcoxon test between \code{case_group} and \code{control_group}.
+#'   \item Counts genes where \code{avg_log2FC} is positive (up-regulated) or
+#'         negative (down-regulated) and stores the counts in columns named by
+#'         \code{up_col} and \code{down_col}.
+#' }
+#'
+#' Clusters with < 2 cells, or with < 3 cells in either comparison group, are
+#' skipped. If no marker passes the filters, the counts are recorded as zero.
+#'
+#' @param seurat_obj   A Seurat object containing a \code{cluster} column in its
+#'   metadata and a \code{severity_group} (or similar) column used for the
+#'   case/control labels.
+#' @param case_group   Character scalar naming the case condition.
+#' @param control_group Character scalar naming the control condition.
+#' @param logfc_threshold Numeric scalar passed to \code{FindMarkers}
+#'   (\code{logfc.threshold} argument).
+#' @param up_col       Name of the output column that will hold the count of
+#'   up-regulated genes.
+#' @param down_col     Name of the output column that will hold the count of
+#'   down-regulated genes.
+#'
+#' @return A tibble with one row per analysed cluster and three columns:
+#'   \code{cluster}, \code{<up_col>}, and \code{<down_col>}.
+#'
+#' @importFrom Seurat FindMarkers Idents WhichCells
+#' @importFrom dplyr bind_rows
+#' @importFrom tibble tibble
+#'
+#' @examples
+#' \dontrun{
+#' res <- de_by_cluster(
+#'   seurat_obj      = my_seurat,
+#'   case_group      = "Severe",
+#'   control_group   = "Mild",
+#'   logfc_threshold = 0.25,
+#'   up_col          = "n_up",
+#'   down_col        = "n_down"
+#' )
+#' }
+#'
+#' @export
+de_by_cluster <- function(seurat_obj, case_group, control_group, logfc_threshold, up_col, down_col) {
+  seurat_obj$cluster <- as.character(seurat_obj$cluster)
+  clusters <- unique(seurat_obj$cluster)
+  results <- list()
+
+  for (cluster in clusters) {
+    cells <- WhichCells(seurat_obj, cells = rownames(seurat_obj@meta.data)[seurat_obj$cluster == cluster])
+    if (length(cells) < 2) next
+
+    subset_obj <- subset(seurat_obj, cells = cells)
+    Idents(subset_obj) <- subset_obj$severity_group
+    if (!all(c(case_group, control_group) %in% levels(Idents(subset_obj)))) next
+    if (sum(Idents(subset_obj) == case_group) < 3 || sum(Idents(subset_obj) == control_group) < 3) next
+
+    markers <- FindMarkers(
+      subset_obj,
+      ident.1 = case_group,
+      ident.2 = control_group,
+      test.use = "wilcox",
+      logfc.threshold = logfc_threshold,
+      min.pct = 0.1,
+      random.seed = 123
+    )
+
+    if (!nrow(markers)) {
+      results[[cluster]] <- tibble(cluster = cluster, !!up_col := 0, !!down_col := 0)
+    } else {
+      results[[cluster]] <- tibble(
+        cluster = cluster,
+        !!up_col := sum(markers$avg_log2FC > 0),
+        !!down_col := sum(markers$avg_log2FC < 0)
+      )
+    }
+  }
+
+  bind_rows(results)
+}
+
+#' Run cluster-level differential-expression comparisons for multiple datasets
+#'
+#' Iterates over a named list of dataset paths, loads each pre-processed Seurat
+#' object, cleans its cluster labels, runs
+#' \code{\link{de_by_cluster}()} for the specified case–control comparison, and
+#' returns both the per-dataset result tibbles and the loaded Seurat objects.
+#'
+#' @param dataset_paths Named character vector or list where each element is the
+#'   filesystem path to a dataset root containing
+#'   \code{pre_processing/seurat_object_oi.rds}.
+#' @param comparisons   Named list with the same names as \code{dataset_paths}.
+#'   Each element must be a list containing:
+#'   \describe{
+#'     \item{\code{case}}{Case group label (character).}
+#'     \item{\code{control}}{Control group label (character).}
+#'     \item{\code{up_col}}{Name for the “up-regulated” count column.}
+#'     \item{\code{down_col}}{Name for the “down-regulated” count column.}
+#'   }
+#' @param logfc_threshold Numeric log2-fold-change threshold passed to
+#'   \code{FindMarkers()} via \code{de_by_cluster()}.
+#'
+#' @return A list with two elements:
+#' \describe{
+#'   \item{\code{results}}{Named list of tibbles returned by
+#'     \code{de_by_cluster()}.}
+#'   \item{\code{seurat_objects}}{Named list of the loaded Seurat objects for
+#'     downstream use.}
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' paths <- c(datasetA = "data/dsA", datasetB = "data/dsB")
+#' comps <- list(
+#'   datasetA = list(case = "Severe", control = "Mild",
+#'                   up_col = "n_up", down_col = "n_down"),
+#'   datasetB = list(case = "Disease", control = "Healthy",
+#'                   up_col = "up",   down_col = "down")
+#' )
+#' res <- run_all_comparisons(paths, comps, logfc_threshold = 0.25)
+#' }
+#'
+#' @export
+run_all_comparisons <- function(dataset_paths, comparisons, logfc_threshold) {
+  result_list <- list()
+  seurat_objects <- list()
+
+  for (dataset_name in names(dataset_paths)) {
+    message("Processing ", dataset_name)
+    seurat_obj <- load_seurat(dataset_paths[[dataset_name]])
+    seurat_obj$cluster <- cleanSymbols(seurat_obj$cluster)
+    seurat_objects[[dataset_name]] <- seurat_obj
+
+    comp <- comparisons[[dataset_name]]
+    df <- de_by_cluster(seurat_obj, comp$case, comp$control, logfc_threshold, comp$up_col, comp$down_col)
+    result_list[[dataset_name]] <- df
+  }
+
+  list(results = result_list, seurat_objects = seurat_objects)
+}
+
+#' Calculate condition-normalised cell-type proportions
+#'
+#' For each Seurat object in a named list, this helper:
+#' \enumerate{
+#'   \item Counts cells per \code{cluster × severity_group}.
+#'   \item Divides by the total number of cells in each \code{severity_group}
+#'         (condition normalisation).
+#'   \item Scales within each \code{cluster} so that its proportions across
+#'         conditions sum to 100\%.
+#' }
+#' The result is a tidy tibble ready for visualisation.
+#'
+#' @param seurat_objects Named list of Seurat objects (e.g., returned by
+#'   \code{\link{run_all_comparisons}()}).
+#'
+#' @return A tibble with columns:
+#'   \itemize{
+#'     \item \code{cluster}
+#'     \item \code{severity_group}
+#'     \item \code{RawCount}
+#'     \item \code{TotalCells}
+#'     \item \code{NormalizedCount}
+#'     \item \code{Proportion} (percentage, 0–100)
+#'     \item \code{Dataset} (name of the Seurat object)
+#'   }
+#'
+#' @importFrom dplyr count left_join mutate group_by ungroup bind_rows
+#'
+#' @examples
+#' \dontrun{
+#' props <- calculate_condition_normalized_proportions(seurat_objs)
+#' }
+#'
+#' @export
+calculate_condition_normalized_proportions <- function(seurat_objects) {
+  proportions_list <- list()
+
+  for (dataset_name in names(seurat_objects)) {
+    obj <- seurat_objects[[dataset_name]]
+    meta <- obj@meta.data
+
+    # Step 1: Count per cell type × severity_group
+    counts <- meta %>%
+      count(cluster, severity_group, name = "RawCount")
+
+    # Step 2: Normalize by total cells per severity_group
+    total_by_condition <- meta %>%
+      count(severity_group, name = "TotalCells")
+
+    counts <- counts %>%
+      left_join(total_by_condition, by = "severity_group") %>%
+      mutate(NormalizedCount = RawCount / TotalCells)
+
+    # Step 3: Normalize within each cell type to sum to 100%
+    proportions <- counts %>%
+      group_by(cluster) %>%
+      mutate(Proportion = NormalizedCount / sum(NormalizedCount) * 100) %>%
+      ungroup() %>%
+      mutate(Dataset = dataset_name)
+
+    proportions_list[[dataset_name]] <- proportions
+  }
+
+  bind_rows(proportions_list)
+}
+
+#' Combine DEG counts and compute summary metrics by cluster
+#'
+#' Merges two tibbles of up-/down‐regulated gene counts (e.g., Severe vs Mild)
+#' on \code{cluster}, fills in missing clusters with zeros, and adds:
+#' \describe{
+#'   \item{\code{Delta}}{Difference in total DEGs: (Severe\_Up+Severe\_Down) − (Mild\_Up+Mild\_Down).}
+#'   \item{\code{Total}}{Sum of all DEGs across both conditions.}
+#'   \item{\code{Severe\_pct}}{Percentage of DEGs in Severe out of \code{Total}.}
+#'   \item{\code{Mild\_pct}}{Percentage of DEGs in Mild out of \code{Total}.}
+#' }
+#'
+#' @param df_severe Tibble with columns \code{cluster}, \code{Severe_Up}, and
+#'   \code{Severe_Down}.
+#' @param df_mild   Tibble with columns \code{cluster}, \code{Mild_Up}, and
+#'   \code{Mild_Down}.
+#'
+#' @return A tibble with one row per \code{cluster} and columns:
+#'   \itemize{
+#'     \item \code{Severe_Up}, \code{Severe_Down},
+#'           \code{Mild_Up}, \code{Mild_Down} (filled with zeros where missing)
+#'     \item \code{Delta}, \code{Total}
+#'     \item \code{Severe_pct}, \code{Mild_pct}
+#'   }
+#'
+#' @importFrom dplyr full_join replace_na arrange mutate
+#'
+#' @examples
+#' df_s <- tibble(cluster = c("A","B"), Severe_Up = c(10,5), Severe_Down = c(2,1))
+#' df_m <- tibble(cluster = c("A","C"), Mild_Up   = c(4,8),  Mild_Down   = c(1,2))
+#' combine_deg_counts(df_s, df_m)
+#'
+#' @export
+combine_deg_counts <- function(df_severe, df_mild) {
+  full_join(df_severe, df_mild, by = "cluster") %>%
+    replace_na(list(
+      Severe_Up = 0, Severe_Down = 0,
+      Mild_Up = 0, Mild_Down = 0
+    )) %>%
+    arrange(cluster) %>%
+    mutate(
+      Delta = Severe_Up + Severe_Down - Mild_Up - Mild_Down,
+      Total = Severe_Up + Severe_Down + Mild_Up + Mild_Down,
+      Severe_pct = 100 * (Severe_Up + Severe_Down) / Total,
+      Mild_pct = 100 * (Mild_Up + Mild_Down) / Total
+    )
+}
+
+#' Load and validate regulon deltaPagoda data
+#'
+#' Reads a named list of data frames from an RDS file, filters it to the
+#' specified \code{cell_types}, and checks that each element has the required
+#' structure (\code{name} and \code{deltaPagoda} columns). On error, returns
+#' an empty list with a warning.
+#'
+#' @param file_path   Character scalar: path to an RDS file containing a named
+#'   list of data frames.
+#' @param cell_types  Character vector of cell‐type names to keep.
+#'
+#' @return Named list of data frames (subset to \code{cell_types}), each
+#'   with at least \code{name} and \code{deltaPagoda} columns; or an empty list
+#'   if loading or validation fails.
+#'
+#' @examples
+#' \dontrun{
+#' regs <- load_regulon_data("results/regulon_deltas.rds",
+#'                           c("B_cells", "CD8_T_cells"))
+#' }
+#'
+#' @importFrom utils readRDS
+#' @export
+load_regulon_data <- function(file_path, cell_types) {
+  tryCatch({
+      data_list <- readRDS(file_path)
+      # Ensure it's filtered for selected cell types if the file contains more
+      data_list <- data_list[intersect(names(data_list), cell_types)]
+      # Add basic validation
+      if(!is.list(data_list)) stop("Loaded data is not a list.")
+      if(length(data_list) > 0) {
+          first_el <- data_list[[1]]
+          if(!is.data.frame(first_el) || !all(c("name", "deltaPagoda") %in% colnames(first_el))) {
+              stop("Dataframe structure is incorrect. Needs 'name' and 'deltaPagoda' columns.")
+          }
+      }
+      return(data_list)
+  }, error = function(e) {
+      warning(paste("Error loading or validating file:", file_path, "-", e$message))
+      # Return an empty list or handle appropriately
+      return(list())
+  })
+}
+
