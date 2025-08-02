@@ -7,34 +7,28 @@ library(patchwork)
 library(ggridges)  
 library(tidyr)
 library(Seurat)
-library(ggrepel)
 library(tibble)
-library(scales) 
 library(reshape2)   # For reshaping matrix to long format
 library(gridExtra)  # For arranging multiple heatmaps in a grid
 library(pROC)
 library(data.table)
-library(ggplot2)
-library(dplyr)
 library(scales)          # for pseudo_log_trans
 library(ggrepel)
-
+library(viridisLite)
+library(purrr)
 install.packages("ggnewscale") 
-install.packages("UpSetR")
 install.packages("ggbeeswarm")
-
+install.packages("viridis")
 library(ggnewscale)
-library(UpSetR)  
 library(ggbeeswarm) 
-
-
+library(viridis)
 
 ##########################
 ## FIGURE 2a
 ##########################
 
 set.seed(1)
-figures_folder <- "figures_14_06_2025"
+figures_folder <- "figures_01_08_2025"
 supp_figures_folder <- "figures_14_06_2025/supp"
 dir.create(figures_folder,recursive = TRUE)
 dir.create(supp_figures_folder,recursive = TRUE)
@@ -127,11 +121,11 @@ p <- ggplot(interaction_counts, aes(y = method, x = interaction_count, fill = me
     
   )
 
-ggsave(file.path(figures_folder,"boxplot_number_of_interactions_by_method.png"), plot = p, width = 5, height = 4, dpi = 300)
+ggsave(file.path(figures_folder,"figure_2a.png"), plot = p, width = 5, height = 4, dpi = 300)
 
 write.csv(
   interaction_counts,
-  file = file.path(figures_folder, "boxplot_number_of_interactions_by_method.csv"),
+  file = file.path(figures_folder, "figure_2a.csv"),
   row.names = TRUE
 )
 
@@ -182,19 +176,427 @@ plot_violin_scores_by_method <- ggplot(
 
 
 # Save the Plot
-output_filename_violin <- "fig_2b_violin_scores_by_method.png"
+output_filename_violin <- "figure_2b.png"
 ggsave(file.path(figures_folder,output_filename_violin), plot = plot_violin_scores_by_method, width = 3.5, height = 4, dpi = 300)
 
 write.csv(
   combined_scores_df,
-  file = file.path(figures_folder, "fig_2b_violin_scores_by_method.csv"),
+  file = file.path(figures_folder, "figure_2b.csv"),
   row.names = TRUE
 )
 
 
-# FIGURE 2C
+##########################
+## FIGURE 2c
+##########################
 
-# FIGURE 2D
+n_top <- 100
+method_names_expected <- c("Decipher", "NicheNet", "LIANA+", "NATMI", "Connectome")
+all_intersection_data <- list()
+
+print(paste("Processing", length(results_for_correlation), "datasets for full overlap analysis..."))
+dataset_names_to_process <- names(results_for_correlation)
+
+for (ds in dataset_names_to_process) {
+    print(paste("Calculating overlaps for:", ds))
+    dataset_results <- results_for_correlation[[ds]]
+
+    if (is.null(dataset_results) || !is.list(dataset_results) || length(dataset_results) == 0) {
+        warning(paste("Skipping dataset", ds, "- invalid entry."))
+        next
+    }
+
+    list_input_current_ds <- list()
+    available_methods_in_ds <- names(dataset_results)
+    for (method_name in method_names_expected) {
+        if (method_name %in% available_methods_in_ds) {
+             list_input_current_ds[[method_name]] <- tryCatch({
+                  getSet(dataset_results[[method_name]], n_top)
+             }, error = function(e) {
+                  warning(paste("Error in getSet for", method_name, ds, ":", e$message)); return(character(0))
+             })
+        } else {
+             list_input_current_ds[[method_name]] <- character(0)
+        }
+    }
+
+    # *** Use the new function here ***
+    dataset_summary <- tryCatch({
+         calculate_all_intersections(list_input_current_ds) # Call the new function
+    }, error = function(e) {
+         warning(paste("Error calculating all intersections for", ds, ":", e$message)); return(NULL)
+    })
+
+    if (!is.null(dataset_summary)) {
+        dataset_summary$Dataset <- ds
+        all_intersection_data[[ds]] <- dataset_summary
+    } else {
+         warning(paste("No intersection summary generated for dataset:", ds))
+    }
+}
+
+# --- Combine Results and Plot ---
+if (length(all_intersection_data) > 0) {
+    combined_intersection_df <- bind_rows(all_intersection_data)
+
+    # --- Define Logical Order for Plotting (by Degree, then Name) ---
+    # Calculate degree (number of methods in the intersection)
+    combined_intersection_df <- combined_intersection_df %>%
+      mutate(Degree = sapply(strsplit(Intersection_Name, " & "), length))
+
+    # Order the dataframe to get factor levels easily
+    ordered_df <- combined_intersection_df %>%
+      arrange(desc(Degree), Intersection_Name) # Order by Degree (high to low), then alphabetically
+
+    # Get the unique names in the desired order
+    intersection_order_all <- unique(ordered_df$Intersection_Name)
+
+    # Apply the factor levels
+    combined_intersection_df <- combined_intersection_df %>%
+        mutate(Intersection_Name = factor(Intersection_Name, levels = intersection_order_all)) %>%
+        filter(!is.na(Intersection_Name)) # Clean up just in case
+
+    if(nrow(combined_intersection_df) == 0) {
+        stop("No valid intersection data remained after ordering.")
+    }
+
+    # Save the combined data used for the plot
+    saveRDS(combined_intersection_df, file = file.path(figures_folder,"overlap_all_intersections_data.rds"))
+    print("Full overlap data saved to figures/overlap_all_intersections_data.rds")
+
+} else {
+    warning("No intersection data was successfully calculated for any dataset. Cannot create plot.")
+}
+
+
+
+
+# 1. Take your full table
+summary_df <- combined_intersection_df %>%
+  # 2. explode "A & B & C" into separate rows
+  separate_rows(Intersection_Name, sep = " & ") %>%
+  # 3. rename the exploded column to "method"
+  rename(method = Intersection_Name) %>%
+  # 4. sum up counts by dataset, method, and degree
+  group_by(Dataset, method, Degree) %>%
+  summarise(total_Count = sum(Count), .groups = "drop")
+
+summary_df$method <- factor(summary_df$method,levels=desired_method_order)
+
+degree_labels <- c("1" = "unique", "2" = "two-way", "3" = "three-way", "4" = "four-way", "5" = "five-way")
+# Step 4: Plot
+p <- ggplot(summary_df, aes(x = method, y = total_Count, fill = as.factor(Degree))) +
+  geom_boxplot(outlier.shape = NA, width = 0.6) +
+  geom_jitter(position = position_jitterdodge(jitter.width = 0.2), alpha = 0.6, size = 1.5) +
+  scale_fill_viridis_d(name = NULL, labels = degree_labels, option = "D") +
+  labs(y = "Overlap", x = NULL) +
+  theme_minimal(base_size = 17) +
+  scale_y_continuous(position = "right")+
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    legend.text = element_text(size = 17),
+    axis.text.x = element_text(size = 17, face = "bold"),
+    axis.text.y = element_text(size = 14, face = "bold")
+  )
+
+# Save plot
+ggsave(filename = file.path(figures_folder, "figure_2c.png"),
+       plot = p, width = 8, height = 4)
+
+write.csv(
+  summary_df,
+  file = file.path(figures_folder, "figure_2c.csv"),
+  row.names = TRUE
+)
+##########################
+## FIGURE 2d
+##########################
+
+# Initialize list to store Spearman matrices
+spearman_matrices <- list()
+# Initialize list to store k-matrices
+k_matrices <- list()
+# Loop through each dataset
+for (dataset in names(results_for_correlation)) {
+  # Compute correlation & search space
+  interaction_results_correlation_search_space <- getInteractionCorrelationAndSearchSpaceBetweenMethods(results_for_correlation[[dataset]])
+
+  # Extract Spearman correlation matrix
+  spearman_matrices[[dataset]] <- interaction_results_correlation_search_space$spearman
+
+  # Extract k-matrix
+  k_matrices[[dataset]] <- interaction_results_correlation_search_space$k_matrix
+}
+
+# Initialize an empty list for spearman matrix data
+spearman_long_list <- list()
+
+# Loop through datasets to extract method pairs
+for (dataset in names(spearman_matrices)) {
+  # Convert Spearman matrix to long format
+  spearman_long <- melt(spearman_matrices[[dataset]])
+  # Add dataset name for tracking
+  spearman_long$Dataset <- dataset
+  # Store in the list
+  spearman_long_list[[dataset]] <- spearman_long
+}
+
+# Combine all datasets into one long data frame
+combined_spearman_df <- do.call(rbind, spearman_long_list)
+
+# Convert factors to character before processing
+combined_spearman_df <- combined_spearman_df %>%
+  mutate(Var1 = as.character(Var1),
+         Var2 = as.character(Var2),
+         Method1 = sub("-.*", "", paste(Var1, Var2, sep = "-")),  # Extract first method
+         Method2 = sub(".*-", "", paste(Var1, Var2, sep = "-")),  # Extract second method
+         Method_Pair = paste(Var1, Var2, sep = "-"))
+
+#search space -----
+# Initialize an empty list for k-matrix data
+k_matrix_long_list <- list()
+
+# Loop through datasets to extract method pairs
+for (dataset in names(k_matrices)) {
+  
+  # Convert k-matrix to long format
+  k_long <- melt(k_matrices[[dataset]])
+  
+  # Add dataset name for tracking
+  k_long$Dataset <- dataset
+  
+  # Store in the list
+  k_matrix_long_list[[dataset]] <- k_long
+}
+
+# Combine all datasets into one long data frame
+combined_k_df <- do.call(rbind, k_matrix_long_list)
+
+# Convert factors to character before sorting
+combined_k_df <- combined_k_df %>%
+  mutate(Var1 = as.character(Var1),
+         Var2 = as.character(Var2),
+         Method_Pair = paste(Var1, Var2, sep = "-"))  # Keep both orders
+
+# Order alphabetically first by Var1, then by Var2 (but keep both orders)
+combined_k_df <- combined_k_df %>% arrange(Var1, Var2)
+
+# Split method pairs into two separate columns for hierarchical labeling
+combined_k_df <- combined_k_df %>%
+  mutate(Method1 = sub("-.*", "", Method_Pair),  # Extract first method
+         Method2 = sub(".*-", "", Method_Pair))  # Extract second method
+
+# Initialize lists for both matrices
+k_matrix_long_list <- list()
+spearman_long_list <- list()
+
+# Loop through datasets to extract method pairs for both k-matrix and Spearman
+for (dataset in names(k_matrices)) {
+  
+  # Process k-matrix
+  k_long <- melt(k_matrices[[dataset]], varnames = c("Var1", "Var2"), value.name = "k_value") %>%
+    mutate(Dataset = dataset)
+  
+  # Process Spearman matrix
+  spearman_long <- melt(spearman_matrices[[dataset]], varnames = c("Var1", "Var2"), value.name = "Spearman") %>%
+    mutate(Dataset = dataset)
+  
+  # Store in lists
+  k_matrix_long_list[[dataset]] <- k_long
+  spearman_long_list[[dataset]] <- spearman_long
+}
+
+# Combine all datasets into one long data frame for k-values and Spearman correlations
+combined_k_df <- do.call(rbind, k_matrix_long_list)
+combined_spearman_df <- do.call(rbind, spearman_long_list)
+
+# Convert factors to characters before processing
+combined_k_df <- combined_k_df %>%
+  mutate(Var1 = as.character(Var1),
+         Var2 = as.character(Var2),
+         Method1 = sub("-.*", "", paste(Var1, Var2, sep = "-")),
+         Method2 = sub(".*-", "", paste(Var1, Var2, sep = "-")),
+         Method_Pair = paste(Var1, Var2, sep = "-"))
+
+combined_spearman_df <- combined_spearman_df %>%
+  mutate(Var1 = as.character(Var1),
+         Var2 = as.character(Var2),
+         Method1 = sub("-.*", "", paste(Var1, Var2, sep = "-")),
+         Method2 = sub(".*-", "", paste(Var1, Var2, sep = "-")),
+         Method_Pair = paste(Var1, Var2, sep = "-"))
+
+# Merge the two data frames by Dataset and Method_Pair
+combined_df <- full_join(combined_k_df, combined_spearman_df, by = c("Dataset", "Method_Pair", "Var1", "Var2", "Method1", "Method2"))
+
+# --- Define colors and desired order ---
+color_k_value <- "#E69F00" # Gold/Orange
+color_spearman <- "#56B4E9" # Light Blue
+# Make sure this exists in your environment
+desired_method_order <- c("Decipher", "NicheNet", "LIANA+", "NATMI", "Connectome")
+
+# --- 1. Filter out self-comparisons AND Prepare Method Columns ---
+# Ensure Method1/Method2 exist, using Var1/Var2 if necessary
+if (!all(c("Method1", "Method2") %in% names(combined_df))) {
+   combined_df <- combined_df %>% mutate(Method1 = Var1, Method2 = Var2)
+   warning("Recreated Method1/Method2 columns from Var1/Var2.", call. = FALSE)
+}
+
+plot_data <- combined_df %>%
+  filter(Method1 != Method2) %>% # Keep only pairs where methods are different
+  # Ensure methods are within the desired order list
+  filter(Method1 %in% desired_method_order & Method2 %in% desired_method_order)
+
+if(nrow(plot_data) == 0) {
+  stop("Filtering removed all data. Check input 'combined_df' and filtering conditions.")
+}
+
+
+# --- 2. & 3. Order Facets (Method1) and X-axis (Method2) ---
+# Convert to factors WITH the desired levels
+plot_data$Method1 <- factor(plot_data$Method1, levels = desired_method_order)
+plot_data$Method2 <- factor(plot_data$Method2, levels = desired_method_order)
+
+# proper plot below #######
+
+## 1. define your orders
+method_order  <- c("Decipher","NicheNet","LIANA+","NATMI","Connectome")
+dataset_order <- c(
+  "5yr_pic","bcg","cord_pic","covid",
+  "erp","lupus","sepsis","tnbc",
+  "cz_influenza","cz_hpap_t1d_islets","cz_hnscc_hpv",
+  "cz_human_kidney_v1.5","cz_cf_bronchial_biopsy",
+  "SevCOVID_Azimuthl2","MilCOVID_Azimuthl2"
+)
+
+## 2. build the “full grid” of every (Method1,Method2) × (tile_row,tile_col)
+grid_df <- expand.grid(
+  Method1  = method_order,
+  Method2  = method_order,
+  tile_row = 1:4,
+  tile_col = 1:4,
+  stringsAsFactors = FALSE
+) %>%
+  mutate(
+    Method1 = factor(Method1, levels = method_order),
+    Method2 = factor(Method2, levels = method_order),
+    # figure out which dataset should live here (1–15 → real names; 16 → NA)
+    dataset_index = (tile_row - 1)*4 + tile_col,
+    Dataset       = ifelse(dataset_index <= length(dataset_order),
+                           dataset_order[dataset_index],
+                           NA_character_)
+  )
+
+## 3. left-join your real values on to that grid
+heat_df <- grid_df %>%
+  left_join(combined_df, by = c("Method1","Method2","Dataset")) %>%
+  mutate(
+    big_row = match(Method1, method_order) - 1,
+    big_col = match(Method2, method_order) - 1,
+    x       = big_col*4 + tile_col,
+    y       = (4 - tile_row) + big_row*4
+  )
+
+# 4. build a small data.frame of the 5×5 block‐centres
+border_df <- expand.grid(
+  Method1 = method_order,
+  Method2 = method_order,
+  stringsAsFactors = FALSE
+) %>% 
+  mutate(
+    big_row = match(Method1, method_order) - 1,
+    big_col = match(Method2, method_order) - 1,
+    # centre of each 4×4 block:
+    x = big_col*4 + 2.5,
+    y = big_row*4 + 1.5
+  )
+
+## 5. plot—with one fill scale for Spearman (upper triangle)
+##    and a second for k_value (lower triangle)
+p <- ggplot() +
+  # Diagonal override
+  geom_tile(
+    data = heat_df %>% filter(big_row == big_col),
+    aes(x = x, y = y),
+    fill = "lightgray",
+    inherit.aes = FALSE
+  ) +
+  # upper tri: Spearman
+  geom_tile(
+    data = heat_df %>% filter(big_row < big_col),
+    aes(x, y, fill = Spearman)
+  ) +
+  scale_fill_gradient2(
+    name    = "Spearman",
+    low     = "#b2182b", mid = "white", high = "#008837",
+    limits  = c(-1,1),
+    na.value= "grey80"
+  ) +
+
+  # start a fresh fill mapping
+  new_scale_fill() +
+
+  # lower tri: k_value
+  geom_tile(
+    data = heat_df %>% filter(big_row > big_col),
+    aes(x, y, fill = k_value)
+  ) +
+  scale_fill_viridis_c(
+    name    = "Search-space\n(k value)",
+    option  = "B", end = 0.95,
+    limits  = c(100, max(heat_df$k_value, na.rm = TRUE)),
+    na.value= "grey80"
+  ) +
+  # --- border layer ---
+  geom_tile(
+    data      = border_df,
+    aes(x, y),
+    width     = 4,        # span 4 tiles
+    height    = 4,
+    fill      = NA,       # transparent
+    color     = "white",  # white outline
+    size      = 0.8,      # line thickness
+    inherit.aes = FALSE
+  ) +
+  # tidy up axes so each 4×4 block is labelled by method
+  coord_fixed() +
+  scale_x_continuous(
+    expand = c(0,0),
+    breaks = (0:4)*4 + 2.5,
+    labels = method_order,
+    position = "bottom"
+  ) +
+  scale_y_reverse(
+    expand = c(0,0),
+    breaks = (0:4)*4 + 1.5,
+    labels = method_order
+  ) +
+
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.title   = element_blank(),
+    axis.text.x  = element_text(
+      size   = 17,
+      face   = "bold",
+      angle  = 45,
+      hjust  = 1              # right-justify along the diagonal
+    ),
+    axis.text.y  = element_text(face = "bold", size = 17,vjust=1),
+    panel.grid   = element_blank(),
+    legend.position = "bottom"
+  )
+
+ggsave(file.path(figures_folder,"figure_2d.png"),p)
+write.csv(
+  heat_df,
+  file = file.path(figures_folder, "figure_2d_heatmap.csv"),
+  row.names = TRUE
+)
+write.csv(
+  border_df,
+  file = file.path(figures_folder, "figure_2d_border.csv"),
+  row.names = TRUE
+)
 
 
 ##########################
@@ -423,10 +825,6 @@ print(line_color_map)
 print("Generating plot...")
 
 
-
-####################
-# FIGURE 2e
-####################
 p_updated <- ggplot(results_df, aes(x = method, y = value)) +
 
   # 1. Lines - Mapped to 'line_color', using first color scale
@@ -480,13 +878,12 @@ p_updated <- ggplot(results_df, aes(x = method, y = value)) +
         panel.grid = element_blank()) # Rotate labels
 
 # --- Save the Plot ---
-output_filename_updated <- file.path(figures_folder,"variance_w_boxplot_beeswarm_auc_plot_updated.png")
+output_filename_updated <- file.path(figures_folder,"figure_2e.png")
 ggsave(output_filename_updated, plot = p_updated, width = 4, height = 8, dpi = 300) # Adjusted width slightly
-#THIS IS THE ONE!
 
 write.csv(
   results_df,
-  file.path(figures_folder, "variance_w_boxplot_beeswarm_raw_data.csv"),
+  file = file.path(figures_folder, "figure_2e.csv"),
   row.names = TRUE
 )
 
@@ -496,9 +893,7 @@ write.csv(
 # Visualise the results of 100 runs of Decipher without setting a seed
 
 # Load libraries
-library(dplyr)
-library(purrr)
-library(ggplot2)
+
 
 # Initialize empty lists to store the results
 all_runs_dat_1 <- list()
@@ -645,7 +1040,7 @@ p <- ggplot(interaction_consistency, aes(x = interaction, y = Cells, fill = coun
   )
 
 # Save
-ggsave(file.path(figures_folder,"proportions_runs_top_10_flipped_cleaned.png"), p, width = 10, height = 10)
+ggsave(file.path(figures_folder,"figure_2f.png"), p, width = 10, height = 10)
 
 
 
@@ -679,4 +1074,4 @@ ggplot(score_trends, aes(x = run_number, y = mean_decipher_score, color = intera
 # FIGURE 2g
 ####################
 #TODO: fix the caption letter here
-plotDecipherPrioritizedMap("results/lupus",top_n=5,dataset_name="lupus", abs_decipher_plot_limit = 20,width=21,height=9)
+plotDecipherPrioritizedMap("sample_analysis",top_n=5,dataset_name="lupus", abs_decipher_plot_limit = 20,width=21,height=9)

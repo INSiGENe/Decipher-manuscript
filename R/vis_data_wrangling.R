@@ -509,10 +509,21 @@ prepareDataForCorrelationAnalysis <- function(df){
 #' }
 #'
 #' @export
+#' @import progress
 #' @importFrom dplyr inner_join mutate
 #' @importFrom stats cor rank
 #' @importFrom base which list matrix names print paste sapply
 getInteractionCorrelationAndSearchSpaceBetweenMethods <- function(method_results_list){
+
+  methods <- names(method_results_list)
+  n <- length(methods)
+  total_tasks <- n * n
+
+  # init progress bar
+  pb <- progress_bar$new(
+    format = "  :what [:bar] :current/:total (:percent) :elapsedfull",
+    total = total_tasks, clear = FALSE, width = 60
+  )
 
   spearman_matrix <- matrix(NA, nrow = length(method_results_list),
                             ncol = length(method_results_list),
@@ -526,7 +537,7 @@ getInteractionCorrelationAndSearchSpaceBetweenMethods <- function(method_results
   for (name1 in names(method_results_list)) {
     for (name2 in names(method_results_list)) {
       #if (name1 < name2) {  # This ensures each pair is only considered once
-      print(paste("Comparing", name1, "and", name2))
+      pb$tick(tokens = list(what = paste0(name1, " vs ", name2)))
 
       # Inner join the data frames
       merged_data <- inner_join(method_results_list[[name1]], method_results_list[[name2]],
@@ -548,7 +559,6 @@ getInteractionCorrelationAndSearchSpaceBetweenMethods <- function(method_results
       # Calculate Spearman correlation
       spearman_cor <- cor(merged_data$rank.x[ind], merged_data$rank.y[ind], method = "spearman")
 
-      print(paste("Spearman correlation for", name1, "and", name2, ":", spearman_cor))
       # Update the matrix
       spearman_matrix[name1, name2] <- spearman_cor
       k_matrix[name1,name2] <- smallest_i
