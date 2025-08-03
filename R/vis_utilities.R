@@ -399,3 +399,96 @@ calculate_pct_change <- function(new_val, old_val) {
                    ((new_val - old_val) / old_val) * 100)
   return(change)
 }
+
+
+#' Initialize Empty Data-Frame Containers
+#'
+#' Creates and returns a named list of two empty data.frames, \code{edges} and
+#' \code{combined_data}, for downstream wrangling or visualization.
+#'
+#' @return A \code{list} with components:
+#' \describe{
+#'   \item{\code{edges}}{An empty \code{data.frame} to store edge lists.}
+#'   \item{\code{combined_data}}{An empty \code{data.frame} to accumulate joined data.}
+#' }
+#' @export
+#'
+#' @examples
+#' df_list <- initialize_data_frames()
+#' str(df_list)
+initialize_data_frames <- function() {
+  list(
+    edges = data.frame(),
+    combined_data = data.frame()
+  )
+}
+
+#' Generate Divergent Color Vector for log₂FC Values
+#'
+#' Given a numeric vector of log₂ fold-change values, this returns a character
+#' vector of the same length with colors interpolated between
+#' \code{"cornflowerblue"} → \code{"white"} → \code{"coral1"}. Missing or
+#' sentinel values (\code{-999}) are mapped to \code{"white"}.
+#'
+#' @param log2fc_values Numeric vector of log₂ fold-change values (may contain NAs or -999).
+#' @param num_colors    Integer; number of discrete colors to generate (default 100).
+#'
+#' @return Character vector of colors, one per element of \code{log2fc_values}.
+#' @export
+generate_log2fc_colors <- function(log2fc_values, num_colors = 100) {
+  valid_log2fc <- log2fc_values[log2fc_values != -999 & !is.na(log2fc_values)]
+  max_abs_log2fc <- max(abs(valid_log2fc), na.rm = TRUE)
+  breaks <- seq(-max_abs_log2fc, max_abs_log2fc, length.out = num_colors + 1)
+  color_palette <- colorRampPalette(c("cornflowerblue", "white", "coral1"))(num_colors)
+
+  colors <- cut(log2fc_values, breaks = breaks, labels = color_palette, include.lowest = TRUE)
+  colors <- as.character(colors)
+  colors[log2fc_values == -999 | is.na(log2fc_values)] <- "white"
+
+  colors
+}
+
+
+#' Set Vertex Aesthetics for an igraph Object
+#'
+#' Assigns fill‐colors, sizes, and label text sizes to the vertices of a graph
+#' based on precomputed log₂FC color mappings and a set of “core” regulon nodes.
+#'
+#' @param g               An \code{igraph} graph object whose vertices are named.
+#' @param log2fc_colors   Named character vector of colors (names = vertex names)
+#'                        to apply based on log₂ fold-change values.
+#' @param regulons        Character vector of vertex names considered “core” regulons.
+#'
+#' @return A \code{list} with components:
+#' \describe{
+#'   \item{\code{colors}}{Character vector of vertex fill‐colors.}
+#'   \item{\code{sizes}}{Numeric vector of vertex sizes (e.g.\ radius).}
+#'   \item{\code{label_cex}}{Numeric vector of label text scaling factors.}
+#' }
+#' @export
+set_vertex_attributes <- function(g, log2fc_colors, regulons) {
+  vertex_colors <- rep("white", vcount(g))
+  vertex_colors[V(g)$name %in% names(log2fc_colors)] <- log2fc_colors[V(g)$name %in% names(log2fc_colors)]
+  vertex_colors[V(g)$name %in% regulons] <- "darkgoldenrod1"
+
+  vertex_size <- ifelse(V(g)$name %in% regulons, 10, 5)
+  vertex_label_cex <- ifelse(V(g)$name %in% regulons, 1.0, 0.6)
+
+  list(colors = vertex_colors, sizes = vertex_size, label_cex = vertex_label_cex)
+}
+
+#' Retrieve PubMed Article Count for a Gene
+#'
+#' Queries NCBI PubMed via \pkg{rentrez} and returns the total number of
+#' articles matching the given gene symbol or search term.
+#'
+#' @param gene Character scalar: gene symbol or PubMed search term.
+#' @return Integer: total count of PubMed records for that term.
+#' @importFrom rentrez entrez_search
+#' @export
+#'
+#' @examples
+get_n_pubmed_articles_per_gene <- function(gene) {
+    search_result <- entrez_search(db = "pubmed", term = gene)
+    return(search_result$count)
+  }

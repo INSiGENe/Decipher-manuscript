@@ -28,10 +28,10 @@ library(viridis)
 ##########################
 
 set.seed(1)
-figures_folder <- "figures_01_08_2025"
-supp_figures_folder <- "figures_14_06_2025/supp"
+figures_folder <- "figures_03_08_2025"
+#supp_figures_folder <- "figures_14_06_2025/supp"
 dir.create(figures_folder,recursive = TRUE)
-dir.create(supp_figures_folder,recursive = TRUE)
+#dir.create(supp_figures_folder,recursive = TRUE)
 
 # ==== clean up results from load_all_results.r ====
 all_scores_list <- imap(results_preprocessed, ~{
@@ -269,9 +269,6 @@ if (length(all_intersection_data) > 0) {
 }
 
 
-
-
-# 1. Take your full table
 summary_df <- combined_intersection_df %>%
   # 2. explode "A & B & C" into separate rows
   separate_rows(Intersection_Name, sep = " & ") %>%
@@ -312,12 +309,9 @@ write.csv(
 ##########################
 ## FIGURE 2d
 ##########################
-
-# Initialize list to store Spearman matrices
 spearman_matrices <- list()
-# Initialize list to store k-matrices
 k_matrices <- list()
-# Loop through each dataset
+
 for (dataset in names(results_for_correlation)) {
   # Compute correlation & search space
   interaction_results_correlation_search_space <- getInteractionCorrelationAndSearchSpaceBetweenMethods(results_for_correlation[[dataset]])
@@ -604,7 +598,6 @@ write.csv(
 ##########################
 #load cytosig data
 cytosig_significance   <- list() 
-#cells_per_cluster <- list()  # New list to store cell counts per cluster
 
 for (ds in names(datasets)) {
   dataset_path <- datasets[[ds]]
@@ -617,12 +610,6 @@ for (ds in names(datasets)) {
   z_score_files <- list.files(z_score_folder)
   p_value_files <- list.files(p_value_folder)
   
-  #seurat_object_oi <- readRDS(file.path(pre_processing_filepath,"seurat_object_oi.rds"))
-
-  # Record number of cells per cluster
-  #cluster_counts <- table(seurat_object_oi@meta.data$cluster)
-  #cells_per_cluster[[ds]] <- as.data.frame(cluster_counts)
-
   # Load mapping table
   mapping_table <- read.csv(file.path(reference_filepath,"cytosig_mapping_table_ligands_genes.csv"),header=TRUE)
 
@@ -776,10 +763,6 @@ metdataset_varhod_var <- dataset_var %>%
 results_df <- results_df %>%
   left_join(metdataset_varhod_var %>% select(dataset, line_color), by = "dataset")
 
-#The figure above needs to be removed
-
-
-#V2
 # --- Prepare Data: Order Methods ---
 available_methods_plot <- unique(results_df$method)
 valid_order_plot <- intersect(desired_method_order, available_methods_plot)
@@ -817,8 +800,7 @@ if (length(line_color_values_in_data) == 0) {
    # Exactly two values found, map them
    line_color_map <- setNames(c(color_k_value, color_spearman), line_color_values_in_data)
 }
-print("Mapping for line colors:")
-print(line_color_map)
+
 
 ####################
 # FIGURE 2e
@@ -828,14 +810,6 @@ p_updated <- ggplot(results_df, aes(x = method, y = value)) +
   # 1. Lines - Mapped to 'line_color', using first color scale
   #geom_line(aes(group = dataset, color = line_color), size = 1, alpha = 0.6) +
   geom_line(aes(group = dataset, color = "lightgray"), size = 1, alpha = 0.6) +
-  #scale_color_manual(
-  #  # name = "Line Group", # Optional legend name
-  #  values = line_color_map, # Use the map created above
-  #  guide = "none" # Hide legend for lines
-  #) +
-
-  # *** Introduce a new scale for color ***
-  #new_scale_color() +
 
   # 2. Boxplot - Neutral colors (Plot after lines, before points?)
   geom_boxplot(outlier.shape = NA, width = 0.25, alpha = 0.4, color = "black", fill = "lightgray") +
@@ -888,10 +862,6 @@ write.csv(
 ####################
 # FIGURE 2f
 ####################
-# Visualise the results of 100 runs of Decipher without setting a seed
-
-# Load libraries
-
 
 # Initialize empty lists to store the results
 all_runs_dat_1 <- list()
@@ -930,10 +900,6 @@ for (i in 1:N) {
 final_combined_tibble_1 <- bind_rows(all_runs_dat_1)
 final_combined_tibble_2 <- bind_rows(all_runs_dat_2)
 
-#===================================================
-# Step 2: Identify Top 10 Interactions Across Runs
-#===================================================
-
 # Identify top 10 interactions for each run and cell type
 top_10_interactions <- final_combined_tibble_1 %>%
   group_by(Cells, run_number) %>%
@@ -950,9 +916,6 @@ interaction_consistency <- top_10_interactions %>%
 interaction_consistency <- interaction_consistency %>%
   mutate(proportion = count / 100)
 
-#===================================================
-# Step 3: Visualize the Consistency of Interactions
-#===================================================
 # Calculate total count per interaction across all cell types
 interaction_totals <- interaction_consistency %>%
   group_by(interaction) %>%

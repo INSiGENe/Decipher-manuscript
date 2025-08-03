@@ -2353,3 +2353,39 @@ load_regulon_data <- function(file_path, cell_types) {
   })
 }
 
+#' Extract Regulon Edge & Node Data for a Single Cell Type
+#'
+#' Given a set of regulon genes and two sources of cluster‐level data, this
+#' function builds:
+#' 1. an `edges` data.frame of ligand→target pairs, and  
+#' 2. a `combined_data` data.frame of regulon statistics (`regulon`, `tg_gene`, `avg_log2FC`).
+#'
+#' @param regulons                       Character vector of regulon gene names to extract.
+#' @param capped_regulons_all_clusters   Nested list of data.frames `[cluster][[gene]]` containing
+#'                                       filtered target (`source == gene`) rows with at least
+#'                                       some capping applied.
+#' @param significant_regulon_markers_by_cluster
+#'                                       Nested list of data.frames `[cluster][[gene]]` containing
+#'                                       marker stats, including columns `regulon`, `tg_gene`, and
+#'                                       `avg_log2FC`.
+#' @param selected_ct                    String, the name of the cluster/cell type to pull from.
+#'
+#' @return A \code{list} with components:
+#' \describe{
+#'   \item{\code{edges}}{A data.frame of two columns, \code{from} (regulon) and \code{to} (target).}
+#'   \item{\code{combined_data}}{A data.frame of \code{regulon}, \code{tg_gene}, and \code{avg_log2FC}.}
+#' }
+#' @export
+extract_regulon_data <- function(regulons, capped_regulons_all_clusters, significant_regulon_markers_by_cluster,selected_ct) {
+  data <- initialize_data_frames()
+
+  for (gene in regulons) {
+    regulon_data <- significant_regulon_markers_by_cluster[[selected_ct]][[gene]]
+    em_data <- capped_regulons_all_clusters[[selected_ct]] %>% filter(source == gene)
+
+    data$edges <- rbind(data$edges, data.frame(from = gene, to = em_data$target))
+    data$combined_data <- rbind(data$combined_data, regulon_data[, c("regulon", "tg_gene", "avg_log2FC")])
+  }
+
+  data
+}

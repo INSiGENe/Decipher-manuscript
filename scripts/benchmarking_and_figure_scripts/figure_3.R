@@ -1,6 +1,5 @@
 #Load Manuscript package ----
 library(devtools)
-document()
 load_all()
 
 #Required libraries ----
@@ -16,9 +15,9 @@ library(Seurat)
 library(stringr)
 library(patchwork)
 #errors with these libraries
-library(networkD3)
-library(circlize)
-library(nichenetr)
+#library(networkD3)
+#library(circlize)
+#library(nichenetr)
 
 #Parameters ----
 ##SELECT parameters ----
@@ -28,8 +27,7 @@ dataset_path <- "results/covid"
 pre_processing_filepath <- file.path(dataset_path,"pre_processing")
 reference_filepath <- file.path("reference_data")
 output_data_filepath <- file.path(dataset_path,"data")
-output_figures_filepath <- "figures_01_08_2025"
-figures_folder <- "figures_01_08_2025"
+figures_folder <- "figures_03_08_2025"
 
 #read data ----
 #used to be called regulon_scores now called significant_regulons_by_cluster
@@ -74,8 +72,6 @@ diff_regulon_scores_p_values <- do_t_test_by_feature_by_grouping_factor(regulons
 regulon_deltas_c8$p_value <- diff_regulon_scores_p_values[regulon_deltas_c8$name]
 regulon_deltas_c8$log_10 <-  -1*log(regulon_deltas_c8$p_value,base=10)
 
-#threshold used to be 2.883
-#not sure what threshold to pick here, but let's say 5 for this code
 regulon_signature <- regulon_deltas_c8 %>%
   filter(log_10 > -log(0.01,base=10) & abs(deltaPagoda) > 2) %>%
   pull(name)
@@ -116,7 +112,6 @@ plotDecipherPrioritizedMap("results/covid",top_n=6,priority_receiver_cells = "CD
 
 #PANEL C ----
 ##data wrangling ----
-
 decipher_scores_by_cluster_bound <- bind_rows(decipher_scores_by_cluster)
 decipher_scores_by_cluster_bound_filtered <- decipher_scores_by_cluster_bound %>%
   mutate(decipher_score = sign(decipher_score)*log10(abs(decipher_score)+1)) %>%
@@ -212,7 +207,7 @@ combined <- bind_rows(pDC_filtered,NK_filtered,CD8_filtered,main_signature_synov
 new_matrix <- reshape2::acast(combined,gene~cell_type,value.var = "avg_log2FC")
 colnames(new_matrix) <- convert_text_patterns(colnames(new_matrix))
 
-new_matrix <- new_matrix[,c(8,7,1,2,3,4,5,6)]
+#new_matrix <- new_matrix[,c(8,7,1,2,3,4,5,6)]
 
 ##visualization ----
 # Define the color palette from light red to dark red

@@ -1459,7 +1459,7 @@ generate_sorted_plots <- function(selected_receiver_cells, regulon_deltas_list, 
 
     plots[[selected_ct]] <- list()
 
-    for (cond in c("moderate", "severe")) {
+    for (cond in c("mild", "severe")) {
       top_tfs <- get_top_tfs(heatmap_data_full, cond, top_n)
 
       plot <- generate_heatmap_plot(
@@ -1515,7 +1515,7 @@ create_combined_plots_per_celltype <- function(plots, selected_receiver_cells) {
   combined_plots <- list()
   for (selected_ct in selected_receiver_cells) {
     # Check if both plots exist for this cell type
-    plot_moderate <- plots[[selected_ct]][["moderate_sorted"]]
+    plot_moderate <- plots[[selected_ct]][["mild_sorted"]]
     plotsevere <- plots[[selected_ct]][["severe_sorted"]]
 
     # Create placeholder plots if one or both are missing
@@ -1663,4 +1663,27 @@ create_flag_color_scale <- function(methods) {
   }))
   
   return(color_values)
+}
+
+#' Plot a Regulon Network Graph
+#'
+#' Builds and renders an undirected igraph network of regulon→target edges,
+#' coloring and sizing vertices based on their log₂FC and whether they are
+#' core regulons.
+#'
+#' @param data    A \code{list} with components:
+#'                \describe{
+#'                  \item{\code{edges}}{data.frame with \code{from}, \code{to} columns.}
+#'                  \item{\code{combined_data}}{data.frame with \code{tg_gene} and \code{avg_log2FC}.}
+#'                }
+#' @param regulons Character vector of core regulon gene names to highlight.
+#'
+#' @return Invisibly returns the \code{igraph} object (after plotting).
+#' @export
+plot_tf_tg_network <- function(data, regulons) {
+  g <- graph_from_data_frame(data$edges, directed = FALSE)
+  log2fc_values <- setNames(data$combined_data$avg_log2FC, data$combined_data$tg_gene)
+  log2fc_colors <- generate_log2fc_colors(log2fc_values)
+
+  vertex_attrs <- set_vertex_attributes(g, log2fc_colors, regulons)
 }

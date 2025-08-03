@@ -11,10 +11,14 @@ library(scales)
 library(RColorBrewer)
 library(tibble)
 library(patchwork)
+install.packages("ggnewscale")
+library(ggnewscale)
+library(purrr)
+
 
 # ---- reproducible seed ----
 set.seed(123)
-figures_folder <- "figures_01_08_2025"
+figures_folder <- "figures_03_08_2025"
 
 # cell-type funnel ----
 
@@ -153,10 +157,6 @@ degs_Severe_moderate_plot <- ggplot(abundance_degs, aes(x = cluster, y = Count, 
     )+
   guides(fill = guide_legend(ncol = 1))
 
-#ggsave(file.path(figures_folder,"degs_Severe_moderate.png"),
-#       plot = degs_Severe_moderate_plot, width = 4, height = 6, dpi = 300)
-
-
 # Plot
 celltype_props_normalized_plot <- ggplot(celltype_props_normalized, aes(x = Proportion, y = cluster, fill = severity_group)) +
   geom_col(width = 0.7) +
@@ -175,22 +175,9 @@ celltype_props_normalized_plot <- ggplot(celltype_props_normalized, aes(x = Prop
     axis.text.y = element_blank(),
     panel.grid.major.y = element_blank(),
     legend.position = "bottom",
-    legend.box = "vertical"  # ⬅️ Ensures vertical stacking
+    legend.box = "vertical"  # 
   ) +
-  guides(fill = guide_legend(ncol = 1))  # ⬅️ One column = vertical
-
-# Save plot
-#ggsave(file.path(figures_folder, "celltype_props_normalized_plot.png"),
-#       plot = celltype_props_normalized_plot, width = 5, height = 6, dpi = 300)
-
-combined_plot <- celltype_props_normalized_plot + 
-                 degs_Severe_moderate_plot +
-                 plot_layout(ncol = 2, widths = c(0.4, 0.6)) & 
-                 theme(legend.position = "bottom")
-
-#ggsave(file.path(figures_folder,"combined_composition_and_degs.png"),
-#       plot = combined_plot, width = 10, height = 10, dpi = 300)
-
+  guides(fill = guide_legend(ncol = 1))  # 
 
 # Ensure ordering matches shared_cluster_order
 text_data <- celltype_props_normalized %>%
@@ -214,40 +201,10 @@ text_plot <- ggplot(text_data, aes(y = cluster, x = 1, label = Label)) +
     panel.grid = element_blank()
   )
 
-
-combined_plot <- text_plot +
-                 celltype_props_normalized_plot + 
-                 degs_Severe_moderate_plot 
-                 plot_layout(ncol = 3, widths = c(0.12,0.4, 0.48)) & 
-                 theme(legend.position = "bottom")
-
-combined_plot <- (
-  text_plot +
-  celltype_props_normalized_plot +
-  degs_Severe_moderate_plot +
-  plot_layout(ncol = 3, widths = c(0.12, 0.4, 0.48))
-) & 
-  theme(legend.position = "bottom")
-
-
-#ggsave(file.path(figures_folder,"combined_composition_and_degs_and_text.png"),
-#       plot = combined_plot, width = 10, height = 10, dpi = 300)
-
-
 #####################
 #PCA
 #####################
-
-install.packages("ggnewscale")
-library(ggnewscale)
-
-
 #parameters
-#base_comparison_path <- "Manuscript_jan_2025"
-#results_path <- file.path(base_comparison_path, "results")
-results_path <-  "results"
-#output_folder_name <- file.path("Manuscript_jan_2025",figures_folder)
-
 conditions <- c(
   mild =  "MilCOVID_Azimuthl2", # Folder name for moderate data
   severe   =  "SevCOVID_Azimuthl2"    # Folder name for severe data
@@ -256,11 +213,10 @@ conditions <- c(
 # Define the specific cell types (receiver cells) you want to analyze
 selected_receiver_cells <- c( "Eryth", "CD16_Mono", "HSPC",    "CD4_TCM",  "Plasmablast",    "B_intermediate", "B_naive","CD8_Naive","NK","CD8_TEM","pDC","cDC2","Platelet","CD14_Mono","CD4_CTL" )
 
-
 # Dynamically load data based on conditions defined above
 regulon_deltas_list <- lapply(names(conditions), function(cond_name) {
   folder_name <- conditions[[cond_name]]
-  file_path <- file.path(results_path, folder_name, "data/regulon_deltas_by_cluster.rds")
+  file_path <- file.path("results", folder_name, "data/regulon_deltas_by_cluster.rds")
   cat("Loading data for:", cond_name, "from:", file_path, "\n")
   load_regulon_data(file_path, selected_receiver_cells)
 })
@@ -269,7 +225,6 @@ regulon_deltas_list <- lapply(names(conditions), function(cond_name) {
 names(regulon_deltas_list) <- names(conditions)
 
 # ==== Plot PCA of regulons ====
-library(purrr)
 long_moderate <- get_long_deltas(regulon_deltas_list$mild, "Mild")
 long_severe   <- get_long_deltas(regulon_deltas_list$severe, "Severe")
 
@@ -381,7 +336,7 @@ pca_df <- pca_df %>%
 
 
 # Plot
-p <- ggplot(pca_df, aes(x = PC1, y = cluster)) +
+pca_embedding_plot <- ggplot(pca_df, aes(x = PC1, y = cluster)) +
   # Dashed line by distance
   geom_segment(data = segment_df,
                aes(x = x, xend = xend, y = y, yend = yend, color = dist),
@@ -420,33 +375,6 @@ p <- ggplot(pca_df, aes(x = PC1, y = cluster)) +
   ) +
   labs(x = "PC1", y = "cluster")
 
-# Save with better filename
-#ggsave(file.path(figures_folder,"pca_PC1_by_cluster.png"), p, width = 4, height = 6)
-
-
-library(patchwork)
-
-final_plot <- (
-     text_plot
-  +  celltype_props_normalized_plot
-  +  degs_Severe_moderate_plot
-  +  p
-) +
-  plot_layout(
-    ncol   = 4,
-    widths = c(0.12, 0.3, 0.3, 0.2)
-  ) &
-  theme(legend.position = "bottom")
-
-#ggsave(
-#  file.path(figures_folder, "combined_with_pca.png"),
-#  final_plot,
-#  width  = 10,
-#  height = 8,
-#  dpi    = 300
-#)
-
-
 # ok last one
 # 1. Prepare diff_df using cluster_condition_map
 diff_df <- deltas_mat_filtered %>%
@@ -472,7 +400,6 @@ diff_df <- deltas_mat_filtered %>%
     cluster = factor(cluster, levels = cleanSymbols(shared_cluster_order))
   )
 
-#ok trying again
 # Create all combinations of TF and cluster
 full_grid <- expand_grid(
   TF      = levels(diff_df$TF),
@@ -522,22 +449,13 @@ heatmap_plot <- ggplot(diff_df_complete, aes(x = TF, y = cluster, fill = Diff)) 
     legend.text  = element_text(size = 10)
   )
 
-#ggsave(
-#  file.path(figures_folder, "diff_loading_heatmap.png"),
-#  heatmap_plot,
-#  width  = 11,
-#  height = 6,
-#  dpi    = 300
-#)
-
 # 3. Combine with existing plots
-library(patchwork)
 
 final_plot <- (
      text_plot
   +  celltype_props_normalized_plot
   +  degs_Severe_moderate_plot
-  +  p
+  +  pca_embedding_plot
   +  heatmap_plot
 ) +
   plot_layout(
@@ -556,12 +474,31 @@ ggsave(
 )
 
 
+write.csv(text_data,
+          file.path(figures_folder, "figure_4a.csv"),
+          row.names = FALSE)
+
+write.csv(celltype_props_normalized,
+          file.path(figures_folder, "figure_4b.csv"),
+          row.names = FALSE)
+
+write.csv(abundance_degs,
+          file.path(figures_folder, "figure_4c.csv"),
+          row.names = FALSE)
+
+write.csv(pca_df,
+          file.path(figures_folder, "figure_4d.csv"),
+          row.names = FALSE)
+
+write.csv(diff_df_complete,
+          file.path(figures_folder, "figure_4e.csv"),
+          row.names = FALSE)
+
+
 # TF activity deltas
 #didn't change moderate to mild here
 
 # ==== TF activity deltas (Severe vs Mild) ====
-base_comparison_path <- ""
-results_path <- "results"
 
 # Define the specific cell types (receiver cells) you want to analyze
 selected_receiver_cells <- c( "Eryth", "CD16_Mono", "HSPC",    "CD4_TCM",  "Plasmablast",    "B_intermediate", "B_naive","CD8_Naive","NK","CD8_TEM","pDC","cDC2","Platelet","CD14_Mono","CD4_CTL" )
@@ -582,7 +519,7 @@ conditions <- c(
 # Dynamically load data based on conditions defined above
 regulon_deltas_list <- lapply(names(conditions), function(cond_name) {
   folder_name <- conditions[[cond_name]]
-  file_path <- file.path(results_path, folder_name, "data/regulon_deltas_by_cluster.rds")
+  file_path <- file.path("results", folder_name, "data/regulon_deltas_by_cluster.rds")
   cat("Loading data for:", cond_name, "from:", file_path, "\n")
   load_regulon_data(file_path, selected_receiver_cells)
 })
@@ -615,27 +552,18 @@ if(is.na(absolute_max) || absolute_max <= 0) {
 }
 
 # Execute plot generation
-generated_plots <- generate_sorted_plots(selected_receiver_cells, regulon_deltas_list, conditions, top_n_regulons, absolute_max)
+#generated_plots <- generate_sorted_plots(selected_receiver_cells, regulon_deltas_list, conditions, top_n_regulons, absolute_max)
 
 # Create combined plots with titles (one combined plot per cell type)
-celltype_combined_plots <- create_combined_plots_per_celltype(generated_plots, selected_receiver_cells)
+#celltype_combined_plots <- create_combined_plots_per_celltype(generated_plots, selected_receiver_cells)
 
 # Function to save combined plots in groups
-save_grouped_plots(
-    combined_plots = celltype_combined_plots,
-    clusters_per_group = clusters_per_group_in_output,
-    output_dir_base = ".", # Use the base path
-    output_folder_name = figures_folder
-)
-
-cat("Script finished. Plots saved in:", file.path("", , figures_folder), "\n")
-
-
-# single_TF_heatmap: one cell-type, two conditions, top N by |delta|
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(tibble)    # for enframe()
+#save_grouped_plots(
+#    combined_plots = celltype_combined_plots,
+#    clusters_per_group = clusters_per_group_in_output,
+#    output_dir_base = ".", # Use the base path
+#    output_folder_name = figures_folder
+#)
 
 single_TF_heatmap <- function(cell_type,
                               sort_by    = c("mild","severe"),
@@ -729,8 +657,10 @@ for (cell_type in c("CD16_Mono","CD14_Mono")){
       global_max = absolute_max
     )
 
-    file_name <- paste0("diff_tf_activity_wd",cell_type,"_", sort_by, "_", top_n, ".png")
+    file_name <- paste0("figure_4f_",cell_type,"_sorted_by_", sort_by, "_", top_n, ".png")
     ggsave(file.path(figures_folder,file_name), p, width = 8, height = 3)
+    file_name_csv <- paste0("figure_4f_",cell_type,"_sorted_by_", sort_by, "_", top_n, ".csv")
+    write.csv(p$data, file.path(figures_folder,file_name_csv), row.names = TRUE) 
 
   }
 }

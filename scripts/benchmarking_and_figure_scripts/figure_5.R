@@ -5,85 +5,20 @@ install.packages("rentrez")
 library(rentrez)
 library(data.table)
 library(ggplot2)
-
-#functions ----
-
-# Initialize an empty data frame for edges and combined log2FC data
-initialize_data_frames <- function() {
-  list(
-    edges = data.frame(),
-    combined_data = data.frame()
-  )
-}
-
-# Extract target genes and average log fold change (avg_log2FC) for each regulon
-extract_regulon_data <- function(regulons, capped_regulons_all_clusters, significant_regulon_markers_by_cluster,selected_ct) {
-  data <- initialize_data_frames()
-
-  for (gene in regulons) {
-    regulon_data <- significant_regulon_markers_by_cluster[[selected_ct]][[gene]]
-    em_data <- capped_regulons_all_clusters[[selected_ct]] %>% filter(source == gene)
-
-    data$edges <- rbind(data$edges, data.frame(from = gene, to = em_data$target))
-    data$combined_data <- rbind(data$combined_data, regulon_data[, c("regulon", "tg_gene", "avg_log2FC")])
-  }
-
-  data
-}
-
-# Create color mapping for log2FC values
-generate_log2fc_colors <- function(log2fc_values, num_colors = 100) {
-  valid_log2fc <- log2fc_values[log2fc_values != -999 & !is.na(log2fc_values)]
-  max_abs_log2fc <- max(abs(valid_log2fc), na.rm = TRUE)
-  breaks <- seq(-max_abs_log2fc, max_abs_log2fc, length.out = num_colors + 1)
-  color_palette <- colorRampPalette(c("cornflowerblue", "white", "coral1"))(num_colors)
-
-  colors <- cut(log2fc_values, breaks = breaks, labels = color_palette, include.lowest = TRUE)
-  colors <- as.character(colors)
-  colors[log2fc_values == -999 | is.na(log2fc_values)] <- "white"
-
-  colors
-}
-
-# Set vertex attributes (color, size, label size) for the graph
-set_vertex_attributes <- function(g, log2fc_colors, regulons) {
-  vertex_colors <- rep("white", vcount(g))
-  vertex_colors[V(g)$name %in% names(log2fc_colors)] <- log2fc_colors[V(g)$name %in% names(log2fc_colors)]
-  vertex_colors[V(g)$name %in% regulons] <- "darkgoldenrod1"
-
-  vertex_size <- ifelse(V(g)$name %in% regulons, 10, 5)
-  vertex_label_cex <- ifelse(V(g)$name %in% regulons, 1.0, 0.6)
-
-  list(colors = vertex_colors, sizes = vertex_size, label_cex = vertex_label_cex)
-}
-
-# Main function to create and plot the graph
-plot_regulon_graph <- function(data, regulons) {
-  g <- graph_from_data_frame(data$edges, directed = FALSE)
-  log2fc_values <- setNames(data$combined_data$avg_log2FC, data$combined_data$tg_gene)
-  log2fc_colors <- generate_log2fc_colors(log2fc_values)
-
-  vertex_attrs <- set_vertex_attributes(g, log2fc_colors, regulons)
-}
-
-get_pubmed_count <- function(gene) {
-    search_result <- entrez_search(db = "pubmed", term = gene)
-    return(search_result$count)
-  }
-
-
-#parameters ----
+library(scales)
+library(tidyr)
+library(devtools)
+load_all()
 
 # Read this https://www.nature.com/articles/srep16923
-set.seed(123)
-figures_folder <- "figures_01_08_2025"
+set.seed(1)
+figures_folder <- "figures_03_08_2025"
 comparison_name <- "SevCOVID_Azimuthl2"
 data_path <- file.path("results",comparison_name,"data")
 capped_regulons_all_clusters <- readRDS(file.path(data_path,"capped_regulons_all_clusters.rds"))
 regulon_deltas_by_cluster <- readRDS(file.path(data_path,"regulon_deltas_by_cluster.rds"))
 significant_regulon_markers_by_cluster <- readRDS(file.path(data_path,"significant_regulon_markers_by_cluster.rds"))
 n_pubmed <- 40
-#scale_y_discrete(position = "right") #do this for severe and comment out for moderate
 
 for(selected_ct in c("CD14_Mono","CD16_Mono")){
   # Run the refactored code
@@ -93,14 +28,13 @@ for(selected_ct in c("CD14_Mono","CD16_Mono")){
     dplyr::slice_head(n=10) %>%
     pull(name)
   data <- extract_regulon_data(regulons, capped_regulons_all_clusters, significant_regulon_markers_by_cluster, selected_ct)
-  plot_regulon_graph(data, regulons)
+  plot_tf_tg_network(data, regulons)
 
   # Create a binary matrix
   binary_matrix <- data$edges %>%
     mutate(value = 1) %>%  # Assign 1 for each edge
     tidyr::pivot_wider(names_from = to, values_from = value, values_fill = 0) %>%
     tibble::column_to_rownames("from")
-
 
   # Filter columns where more than one 'from' talks to a 'to'
   binary_matrix <- binary_matrix[, colSums(binary_matrix) > 1]
@@ -110,7 +44,8 @@ for(selected_ct in c("CD14_Mono","CD16_Mono")){
   genes <- colnames(binary_matrix)  # Replace with your genes of interest
 
   # # Apply the function to each gene and store the results in a data frame
-  PubMed_Count = sapply(genes, get_pubmed_count)
+  PubMed_Count = sapply(genes, get_n_pubmed_articles_per_gene)
+
   gene_counts <- data.frame(
     Gene = genes,
     PubMed_Count = PubMed_Count
@@ -176,17 +111,9 @@ for(selected_ct in c("CD14_Mono","CD16_Mono")){
   ggsave(file.path(figures_folder,filename),p,width = 12,height = 5.5,units="cm")
 }
 
-
+##############
 #network plots
-
-library(igraph)
-library(scales)
-library(dplyr)
-library(tidyr)
-
-
-# 1. Define Helper Functions
-
+##############
 # Function to reformat cell type names for plotting
 formatCellTypeNamesForPlotting <- function(cluster_names) {
   formatted <- gsub("_minus_", "-", cluster_names)
@@ -449,6 +376,18 @@ generate_network_plot <- function(condition_label, cluster_name,
                                   global_sender_ligand_max = global_sender_ligand_max,
                                   global_decipher_score_max = global_decipher_score_max,
                                   n_top_regulons = 10) {
+  pretty_label <- switch(condition_label,
+    "SevCOVID_Azimuthl2" = "Severe",
+    "MilCOVID_Azimuthl2" = "Mild",
+    condition_label
+  )
+
+  pretty_cluster <- switch(cluster_name,
+    CD14_Mono = "CD14+ Monocytes",
+    CD16_Mono = "CD16+ Monocytes",
+    cluster_name
+  )
+  
   # 1. Check inputs
   check_cluster_exists(cluster_name, decipher_scores, decipher_scores_by_regulon_and_cluster, regulon_deltas_by_cluster)
   
@@ -476,6 +415,19 @@ generate_network_plot <- function(condition_label, cluster_name,
   graph_components <- build_graph_components(edges_sender_ligand, ligand_receptor_edges, receptor_tf_edges, top_interactions, sender_ligand, top_regulons_df,global_deltaPagoda_max)
   all_edges <- graph_components$all_edges
   nodes <- graph_components$nodes
+
+  write.csv(
+    all_edges,
+    file.path(output_dir,
+              paste0(pretty_label, "_", pretty_cluster, "_edges.csv")),
+    row.names = TRUE
+  )
+  write.csv(
+    nodes,
+    file.path(output_dir,
+              paste0(pretty_label, "_", pretty_cluster, "_nodes.csv")),
+    row.names = TRUE
+  )
   
   # 8. Create graph
   g <- create_graph(all_edges, nodes)
@@ -484,8 +436,8 @@ generate_network_plot <- function(condition_label, cluster_name,
   g <- assign_edge_colors(g, all_edges,global_receptor_tf_col_max)
   
   # 10. Plot and save the network
-  output_file <- file.path(output_dir, paste0(condition_label, "_", cluster_name, "_network_map.png"))
-  plot_graph(g, output_file, cluster_name, condition_label)
+  output_file <- file.path(output_dir, paste0(pretty_label, "_", pretty_cluster, "_network_map.png"))
+  plot_graph(g, output_file, pretty_cluster, pretty_label)
 }
 
 
@@ -507,7 +459,7 @@ feature_statistics_moderate <- readRDS("results/MilCOVID_Azimuthl2/data/feature_
 # Define target receiver clusters and sender cell types
 target_clusters <- c("CD14_Mono", "CD16_Mono")
 sender_cts <- c("Eryth", "NK", "cDC2", "CD16_Mono", "CD14_Mono", "CD8_TEM","Platelet","pDC")
-output_dir <- "figures_01_08_2025"  # adjust if needed
+output_dir <- "figures_03_08_2025"  # adjust if needed
 
 #calculate global stats
 # GLOBAL SCALING VALUES
