@@ -207,24 +207,34 @@ combined <- bind_rows(pDC_filtered,NK_filtered,CD8_filtered,main_signature_synov
 new_matrix <- reshape2::acast(combined,gene~cell_type,value.var = "avg_log2FC")
 colnames(new_matrix) <- convert_text_patterns(colnames(new_matrix))
 
-#new_matrix <- new_matrix[,c(8,7,1,2,3,4,5,6)]
+new_matrix <- new_matrix[,c(7,6,1,2,3,4,5)]
 
 ##visualization ----
 # Define the color palette from light red to dark red
 red_palette <- colorRampPalette(c("lightcoral","red", "darkred"))(256)
 divergent_palette <- colorRampPalette(c("lightcoral", "darkred", "purple"))(22)
 
+# 2. compute breaks exactly matching your palette length + 1
+brks <- seq(
+  min(new_matrix, na.rm = TRUE),
+  max(new_matrix, na.rm = TRUE),
+  length.out = length(divergent_palette) + 1
+)
+
 png(file.path(figures_folder,"figure_3d.png"),height = 12,width=10,units="cm",res=400)
 heatmap.2(
   new_matrix,
   trace = "none",
   col = divergent_palette,
+  breaks       = brks,  
+  symkey       = FALSE,
   density.info = "none",
   scale = "none",
   cexRow = 0.7,
   cexCol = 0.7,
   margin = c(5,5),
   key.title = "log2FC",
+  key.xlab     = NA,
   dendrogram = "none",
   Rowv = FALSE,
   Colv= FALSE,
