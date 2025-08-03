@@ -99,7 +99,7 @@ p <- ggplot(regulon_deltas_c8, aes(x = deltaPagoda, y = log_10)) +
 p <- p + geom_text(data = subset(regulon_deltas_c8, log_10 > -log(0.01,base=10) & abs(deltaPagoda) > 2.883), aes(label = name),
                    vjust = "inward", hjust = "inward", check_overlap = TRUE,size=4)
 
-ggsave(file.path(figures_folder,"figure_3a.png"), plot = p, width = 3, height = 4, dpi = 300)
+ggsave(file.path(figures_folder,"figure_3a.png"), plot = p, width = 4, height = 7, dpi = 300)
 
 write.csv(
   regulon_deltas_c8,
@@ -108,7 +108,8 @@ write.csv(
 )
 
 #PANEL B  ----
-plotDecipherPrioritizedMap("results/covid",top_n=6,priority_receiver_cells = "CD14_plus_BDCA1_plus_PD_minus_L1_plus_cells",dataset_name="covid", abs_decipher_plot_limit = 20,width=21,height=9)
+plotDecipherPrioritizedMap("results/covid",top_n=6,priority_receiver_cells = "CD14_plus_BDCA1_plus_PD_minus_L1_plus_cells",dataset_name="figure_3b", width=21,height=11)
+#plot is results/covid/figures
 
 #PANEL C ----
 ##data wrangling ----
