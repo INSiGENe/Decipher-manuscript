@@ -11,14 +11,13 @@ library(scales)
 library(RColorBrewer)
 library(tibble)
 library(patchwork)
-install.packages("ggnewscale")
 library(ggnewscale)
 library(purrr)
 
 
 # ---- reproducible seed ----
 set.seed(123)
-figures_folder <- "figures_03_08_2025"
+figures_folder <- "figures_04_08_2025"
 
 # cell-type funnel ----
 

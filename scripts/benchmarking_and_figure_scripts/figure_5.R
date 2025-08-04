@@ -1,7 +1,6 @@
 
 library(igraph)
 library(dplyr)
-install.packages("rentrez")
 library(rentrez)
 library(data.table)
 library(ggplot2)
@@ -10,16 +9,17 @@ library(tidyr)
 library(devtools)
 load_all()
 
-# Read this https://www.nature.com/articles/srep16923
 set.seed(1)
-figures_folder <- "figures_03_08_2025"
+figures_folder <- "figures_04_08_2025"
 comparison_name <- "SevCOVID_Azimuthl2"
+#also run the pubmed code below for comparison_name <- "MilCOVID_Azimuthl2"
 data_path <- file.path("results",comparison_name,"data")
 capped_regulons_all_clusters <- readRDS(file.path(data_path,"capped_regulons_all_clusters.rds"))
 regulon_deltas_by_cluster <- readRDS(file.path(data_path,"regulon_deltas_by_cluster.rds"))
 significant_regulon_markers_by_cluster <- readRDS(file.path(data_path,"significant_regulon_markers_by_cluster.rds"))
 n_pubmed <- 40
 
+###### PUBMED code
 for(selected_ct in c("CD14_Mono","CD16_Mono")){
   # Run the refactored code
   regulons <- regulon_deltas_by_cluster[[selected_ct]] %>%
@@ -110,6 +110,7 @@ for(selected_ct in c("CD14_Mono","CD16_Mono")){
   filename <- paste0(comparison_name,"_",selected_ct,"_tgs_heatmap_pubmed.png")
   ggsave(file.path(figures_folder,filename),p,width = 12,height = 5.5,units="cm")
 }
+######### end PUBMED code
 
 ##############
 #network plots
@@ -459,7 +460,7 @@ feature_statistics_moderate <- readRDS("results/MilCOVID_Azimuthl2/data/feature_
 # Define target receiver clusters and sender cell types
 target_clusters <- c("CD14_Mono", "CD16_Mono")
 sender_cts <- c("Eryth", "NK", "cDC2", "CD16_Mono", "CD14_Mono", "CD8_TEM","Platelet","pDC")
-output_dir <- "figures_03_08_2025"  # adjust if needed
+output_dir <- "figures_04_08_2025"  # adjust if needed
 
 #calculate global stats
 # GLOBAL SCALING VALUES

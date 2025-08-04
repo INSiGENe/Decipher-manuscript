@@ -6,18 +6,13 @@ load_all()
 library(ggplot2)
 library(dplyr)
 library(gplots)
-
 library(reshape2)
 library(igraph)
 library(scales)
 library(Seurat)
-
 library(stringr)
 library(patchwork)
-#errors with these libraries
-#library(networkD3)
-#library(circlize)
-#library(nichenetr)
+
 
 #Parameters ----
 ##SELECT parameters ----
@@ -27,7 +22,7 @@ dataset_path <- "results/covid"
 pre_processing_filepath <- file.path(dataset_path,"pre_processing")
 reference_filepath <- file.path("reference_data")
 output_data_filepath <- file.path(dataset_path,"data")
-figures_folder <- "figures_03_08_2025"
+figures_folder <- "figures_04_08_2025"
 
 #read data ----
 #used to be called regulon_scores now called significant_regulons_by_cluster

@@ -119,11 +119,5 @@ library(ggplot2)
 library(dplyr)
 library(scales)          # for pseudo_log_trans
 library(ggrepel)
-
-install.packages("ggnewscale") 
-install.packages("UpSetR")
-install.packages("ggbeeswarm")
-
 library(ggnewscale)
-library(UpSetR)  
 library(ggbeeswarm) 

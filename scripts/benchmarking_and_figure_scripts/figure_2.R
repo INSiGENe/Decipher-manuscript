@@ -16,9 +16,6 @@ library(scales)          # for pseudo_log_trans
 library(ggrepel)
 library(viridisLite)
 library(purrr)
-install.packages("ggnewscale") 
-install.packages("ggbeeswarm")
-install.packages("viridis")
 library(ggnewscale)
 library(ggbeeswarm) 
 library(viridis)
@@ -28,7 +25,7 @@ library(viridis)
 ##########################
 
 set.seed(1)
-figures_folder <- "figures_03_08_2025"
+figures_folder <- "figures_04_08_2025"
 #supp_figures_folder <- "figures_14_06_2025/supp"
 dir.create(figures_folder,recursive = TRUE)
 #dir.create(supp_figures_folder,recursive = TRUE)
@@ -973,4 +970,5 @@ write.csv(
 # FIGURE 2g
 ####################
 #logic to clean this plot sits inside the function, not optimal but ok
+#result figure written in sample_analysis/validity/data/for_plotting/sample_1
 plotDecipherPrioritizedMap("sample_analysis/validity/data/for_plotting",top_n=4,dataset_name="sample_1", abs_decipher_plot_limit = 20,width=21,height=9)
