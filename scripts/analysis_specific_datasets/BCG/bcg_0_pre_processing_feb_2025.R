@@ -1,12 +1,44 @@
+############
+#package installation----
+############
+
+renv::restore()
+#say yes and 1 and yes
+
+############
+#libraries ----
+############
+
 # Load necessary library
 library(Seurat)
 library(dplyr)
 library(babelgene)
 library(devtools)
-load_all()
+library(SummarizedExperiment)
+library(zellkonverter)
+library(SingleCellExperiment)
+library(basilisk)
+library(HGNChelper)
+library(openxlsx)
+library(tibble)
+library(stringr)
 
-#set a seed
-set.seed(123)
+############
+#python env setup ----
+############
+
+# Choose the AnnData version (e.g., latest "0.10.9")
+zellkonverter_env <- zellkonverter:::zellkonverterAnnDataEnv("0.10.9")
+
+#Force Basilisk to set up the environment that zellkonverter needs
+# Manually trigger environment setup
+basilisk::basiliskStart(zellkonverter_env)
+#basilisk::basiliskStop(zellkonverter_env)
+
+
+#############
+#functions ----
+############
 
 # Function to read and create Seurat object from file prefixes
 create_seurat_object <- function(matrix_file, features_file, barcodes_file,data_dir) {
@@ -24,6 +56,76 @@ create_dir <- function(dir) {
   }
 }
 
+writeH5ADObjects <- function(seurat_object, pre_processing_path) {
+  # Create a new directory for h5ad files if it doesn't exist
+  h5ad_dir_path <- file.path(pre_processing_path, "h5ad_by_cluster")
+  if (!dir.exists(h5ad_dir_path)) {
+    dir.create(h5ad_dir_path)
+  }
+
+  # Process each cluster found in the Seurat object
+  for (this_cluster in unique(seurat_object$cluster)) {
+    # Subset the Seurat object for the current cluster
+    seurat_object_this_cluster <- seurat_object[,which(seurat_object$cluster == this_cluster),seed=NULL]
+
+    # Convert to SingleCellExperiment
+    sce.object <- Seurat::as.SingleCellExperiment(seurat_object_this_cluster)
+
+    # Remove the logcounts assay if it exists
+    if ("logcounts" %in% names(SummarizedExperiment::assays(sce.object))) {
+      SummarizedExperiment::assays(sce.object)[["logcounts"]] <- NULL
+    }
+
+    # Write the SCE object to an h5ad file
+    zellkonverter::writeH5AD(sce.object,
+                             file.path(h5ad_dir_path, paste(this_cluster, ".h5ad", sep = "")),
+                             X_name = "counts")
+  }
+}
+
+cleanSymbols <- function(string) {
+  # Remove or replace various symbols with safer alternatives
+  string <- stringr::str_remove_all(string, "/")
+  string <- stringr::str_replace_all(string, " ", "_")
+  string <- stringr::str_replace_all(string, "\\+", "_plus_")
+  string <- stringr::str_replace_all(string, "\\-", "_minus_")
+  string <- stringr::str_replace_all(string, "\\(", "")
+  string <- stringr::str_replace_all(string, "\\)", "")
+  string <- stringr::str_replace_all(string, "%", "_percent_")
+  string <- stringr::str_replace_all(string, "\\.", "_dot_")
+  string <- stringr::str_replace_all(string, ",", "_comma_")
+  string <- stringr::str_replace_all(string, ":", "_colon_")
+  string <- stringr::str_replace_all(string, ";", "_semicolon_")
+  string <- stringr::str_replace_all(string, "&", "_and_")
+  string <- stringr::str_replace_all(string, "\\?", "_question_")
+  string <- stringr::str_replace_all(string, "!", "_exclamation_")
+  string <- stringr::str_replace_all(string, "\"", "_quote_")
+  string <- stringr::str_replace_all(string, "'", "_apostrophe_")
+  string <- stringr::str_replace_all(string, "=", "_equals_")
+  string <- stringr::str_replace_all(string, "\\*", "_asterisk_")
+  string <- stringr::str_replace_all(string, "#", "_hash_")
+  string <- stringr::str_replace_all(string, "@", "_at_")
+  string <- stringr::str_replace_all(string, "\\$", "_dollar_")
+  string <- stringr::str_replace_all(string, "\\^", "_caret_")
+  string <- stringr::str_replace_all(string, "<", "_less_than_")
+  string <- stringr::str_replace_all(string, ">", "_greater_than_")
+  string <- stringr::str_replace_all(string, "\\[", "_lbracket_")
+  string <- stringr::str_replace_all(string, "\\]", "_rbracket_")
+  string <- stringr::str_replace_all(string, "\\{", "_lbrace_")
+  string <- stringr::str_replace_all(string, "\\}", "_rbrace_")
+  string <- stringr::str_replace_all(string, "\\|", "_pipe_")
+  string <- stringr::str_replace_all(string, "\\\\", "_backslash_")
+  string <- stringr::str_replace_all(string, "/", "_slash_")
+  string <- stringr::str_replace_all(string, "__", "_")  # Remove double underscores
+  return(string)
+}
+
+############
+#data and analysis ----
+############
+
+#set a seed
+set.seed(123)
 
 #directories
 dataset_path <- "data/BCG"
@@ -40,6 +142,7 @@ natmi_data_filepath <- file.path(natmi_filepath,"data")
 
 dir.create(natmi_data_filepath,recursive=TRUE)
 dir.create(liana_data_filepath,recursive=TRUE)
+dir.create(pre_processing_path,recursive=TRUE)
 
 
 # List of prefixes for the different conditions
@@ -82,12 +185,12 @@ for (tenx_data in prefixes) {
     # Remove rows where symbol or human_symbol is NA
     filter(!is.na(symbol) & !is.na(human_symbol)) %>%
     group_by(symbol) %>%
-    filter(support_n == max(support_n)) %>%
-    slice(1) %>%
+    filter(support_n == max(support_n,na.rm = TRUE)) %>%
+    slice_min(order_by = support_n, with_ties = FALSE) %>%
     ungroup() %>%
     group_by(human_symbol) %>%
-    filter(support_n == max(support_n)) %>%
-    slice(1) %>%
+    filter(support_n == max(support_n,na.rm = TRUE)) %>%
+    slice_min(order_by = support_n, with_ties = FALSE) %>%
     ungroup()
 
   matrix_w_orthologs <- matrix[orthologs_most_support$symbol,]
@@ -141,7 +244,6 @@ db_ <- "https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/ScTyp
 tissue <- "Immune system" # e.g. Immune system,Pancreas,Liver,Eye,Kidney,Brain,Lung,Adrenal,Heart,Intestine,Muscle,Placenta,Spleen,Stomach,Thymus
 
 # prepare gene sets
-library(HGNChelper)
 gs_list <- gene_sets_prepare(db_, tissue)
 
 # check Seurat object version (scRNA-seq matrix extracted differently in Seurat v4/v5)
@@ -173,7 +275,6 @@ saveRDS(sctype_scores,file.path(pre_processing_path,"immune_system_sctype_cluste
 tissue <- "Lung" # e.g. Immune system,Pancreas,Liver,Eye,Kidney,Brain,Lung,Adrenal,Heart,Intestine,Muscle,Placenta,Spleen,Stomach,Thymus
 
 # prepare gene sets
-library(HGNChelper)
 gs_list <- gene_sets_prepare(db_, tissue)
 
 # check Seurat object version (scRNA-seq matrix extracted differently in Seurat v4/v5)
@@ -234,6 +335,8 @@ merged_seurat <- DietSeurat(merged_seurat,counts=TRUE,data=TRUE,scale.data=FALSE
 saveRDS(merged_seurat,file.path(pre_processing_path,"seurat_object_oi.rds"))
 writeH5ADObjects(merged_seurat,pre_processing_path)
 rm(merged_seurat)
+
+
 
 # CYTOSIG pre-processing ----
 seurat_object_oi <- readRDS(file.path(pre_processing_path,"seurat_object_oi.rds"))
@@ -296,6 +399,8 @@ sce.object = as.SingleCellExperiment(seurat_object_oi)
 sce.object@assays@data[["logcounts"]] <- NULL
 writeH5AD(sce.object, file.path(liana_data_filepath,"seurat_object_oi.h5ad"),X_name = "counts")
 rm(sce.object)
+
+
 # NATMI pre-processing ----
 #load data
 seurat_object_oi = readRDS(file.path(pre_processing_path,"seurat_object_oi.rds"))
@@ -314,7 +419,7 @@ data_matrix <- expm1(data_matrix)
 write.table(100 * data_matrix, file.path(natmi_data_filepath,"case/em.txt"), quote = F, sep = "\t",row.names=TRUE,col.names=colnames(data_matrix))
 meta_data <- seurat_object_oi_subset@meta.data %>%
   rownames_to_column(var="barcode") %>%
-  rename(annotation=cluster)%>%
+  dplyr::rename(annotation=cluster)%>%
   select(barcode,annotation)
 write.table(meta_data,file.path(natmi_data_filepath,"case/metadata.txt"), quote = F,sep="\t",row.names=FALSE,col.names=TRUE)
 
@@ -326,7 +431,7 @@ data_matrix <- expm1(data_matrix)
 write.table(100 * data_matrix, file.path(natmi_data_filepath,"control/em.txt"), quote = F, sep = "\t",row.names=TRUE,col.names=colnames(data_matrix))
 meta_data <- seurat_object_oi_subset@meta.data %>%
   rownames_to_column(var="barcode") %>%
-  rename(annotation=cluster)%>%
+  dplyr::rename(annotation=cluster)%>%
   select(barcode,annotation)
 write.table(meta_data,file.path(natmi_data_filepath,"control/metadata.txt"), quote = F,sep="\t",row.names=FALSE,col.names=TRUE)
 
