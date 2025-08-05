@@ -151,7 +151,7 @@ heatmap.2(
   col = "bluered",
   breaks = 100,
   cexRow = 0.7,
-  cexCol=0.7,
+  cexCol=0.5,
   scale = "none",
   key.title = "LR-TF Decipher score",Rowv = FALSE,
   dendrogram = "none",

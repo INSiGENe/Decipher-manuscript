@@ -970,5 +970,5 @@ write.csv(
 # FIGURE 2g
 ####################
 #logic to clean this plot sits inside the function, not optimal but ok
-#result figure written in sample_analysis/validity/data/for_plotting/sample_1
+#result figure written in sample_analysis/validity/data/for_plotting/figures/sample_1_decipher_plot_prioritized.png
 plotDecipherPrioritizedMap("sample_analysis/validity/data/for_plotting",top_n=4,dataset_name="sample_1", abs_decipher_plot_limit = 20,width=21,height=9)
