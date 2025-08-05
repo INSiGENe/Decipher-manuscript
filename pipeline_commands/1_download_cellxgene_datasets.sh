@@ -1,6 +1,4 @@
 #navigate to analysis directory
-mkdir projects/analysis
-cd projects/analysis
 
 #################################
 ####### Download datasets ############

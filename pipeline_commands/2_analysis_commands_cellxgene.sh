@@ -13,9 +13,6 @@ docker pull ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181b
 #################################
 ####### Analysis ############
 #################################
-#navigate to analysis directory
-mkdir projects/analysis
-cd projects/analysis
 
 # annotate datasets without annotations
 # run azimuth on SevMildCOVID
@@ -56,7 +53,6 @@ Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r
 ####  Generic pre-processing (all) ####
 #### ----------------------------- ####
 #TODO: distinguish between CZ pipeline and custom pipelines
-
 docker run -it --rm --memory=180g --memory-swap=185g \
   -v "$(pwd):/app" -w /app \
   ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a \
@@ -65,28 +61,24 @@ docker run -it --rm --memory=180g --memory-swap=185g \
 Rscript scripts/analysis_cellxgene_datasets/2_preprocess_object_for_analysis.R dataset_key
 
 #### run scCODA analysis for SevMildCOVID ####
+
+docker run -it --rm --memory=180g --memory-swap=185g \
+  -v "$(pwd):/app" -w /app \
+  ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a \
+  bash
+
+Rscript scripts/analysis_cellxgene_datasets/SevMilCOVID_Azimuth_convert_R_object_to_python.R dataset_key
+
 docker run -it \
   -v "$(pwd):/workspace" \
   -w /workspace \
   wollmilchsau/scanpy_sccoda:latest
-python3
-#TODO: check this python3 command here
+python3 scripts/analysis_cellxgene_datasets/SevMilCOVID_Azimuth_run_scCoda.py
 
-#TODO: operate from a single-directory, rather than move folders
-#TODO: here what's being moved is the scoda output I guess? check
-sudo mkdir -p Manuscript_jan_2025/results/SevCOVID_Azimuthl2/sccoda
-sudo mkdir -p Manuscript_jan_2025/results/MilCOVID_Azimuthl2/sccoda
-sudo mv pre_processing_test/data/SevMilCOVID/results_sccoda_severe_vs_healthy.csv Manuscript_jan_2025/results/SevCOVID_Azimuthl2/sccoda
-sudo mv pre_processing_test/data/SevMilCOVID/results_sccoda_moderate_vs_healthy.csv Manuscript_jan_2025/results/MilCOVID_Azimuthl2/sccoda
-
-#### Move results to analysis folder ####
-#TODO: operate from a single-directory, rather than move folders
-#generic command
-sudo mv pre_processing_test/results/dataset_key Manuscript_jan_2025/results/
-
-#commands for all datasets
-sudo mv pre_processing_test/results/MilCOVID_Azimuthl2 Manuscript_jan_2025/results/
-
+sudo mkdir -p results/SevCOVID_Azimuthl2/sccoda
+sudo mkdir -p results/MilCOVID_Azimuthl2/sccoda
+sudo mv data/SevMilCOVID/results_sccoda_severe_vs_healthy.csv results/SevCOVID_Azimuthl2/sccoda
+sudo mv data/SevMilCOVID/results_sccoda_moderate_vs_healthy.csv results/MilCOVID_Azimuthl2/sccoda
 
 #### ----------------------- ####
 ####       Run Cytosig       ####
