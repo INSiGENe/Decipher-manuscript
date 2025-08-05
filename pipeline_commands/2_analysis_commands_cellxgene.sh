@@ -64,21 +64,6 @@ docker run -it --rm --memory=180g --memory-swap=185g \
   
 Rscript scripts/analysis_cellxgene_datasets/2_preprocess_object_for_analysis.R dataset_key
 
-#### run scCODA analysis for SevMildCOVID ####
-docker run -it \
-  -v "$(pwd):/workspace" \
-  -w /workspace \
-  wollmilchsau/scanpy_sccoda:latest
-python3
-#TODO: check this python3 command here
-
-#TODO: operate from a single-directory, rather than move folders
-#TODO: here what's being moved is the scoda output I guess? check
-sudo mkdir -p Manuscript_jan_2025/results/SevCOVID_Azimuthl2/sccoda
-sudo mkdir -p Manuscript_jan_2025/results/MilCOVID_Azimuthl2/sccoda
-sudo mv pre_processing_test/data/SevMilCOVID/results_sccoda_severe_vs_healthy.csv Manuscript_jan_2025/results/SevCOVID_Azimuthl2/sccoda
-sudo mv pre_processing_test/data/SevMilCOVID/results_sccoda_moderate_vs_healthy.csv Manuscript_jan_2025/results/MilCOVID_Azimuthl2/sccoda
-
 #### Move results to analysis folder ####
 #TODO: operate from a single-directory, rather than move folders
 #generic command
