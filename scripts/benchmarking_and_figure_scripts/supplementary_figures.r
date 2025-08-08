@@ -94,7 +94,7 @@ write.csv(
   row.names = TRUE
 )
 
-# ===== Supplementary Figure 1 ==== 
+# ===== supplementary Figure 1 ==== 
 library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -144,15 +144,6 @@ liana_padj <- liana_raw %>%
 liana_df <- liana_df %>% 
   left_join(liana_padj,
             by = c("sender", "receiver", "interaction"))
-
-
-
-# focus on one receiver cell at a time; for example “Monocyte”
-receiver_sel <- "Mono"
-
-#decipher_df <- decipher_df   %>% filter(receiver == receiver_sel)
-#nichenet_df <- nichenet_df   %>% filter(receiver == receiver_sel)
-#liana_df    <- liana_df      %>% filter(receiver == receiver_sel)
 
 # ---- 1. pick top +/- per receiver -------------------------------------------
 # top_n here is PER receiver; split_by_direction=TRUE gives top_n pos & top_n neg per receiver
@@ -302,7 +293,7 @@ plotMethodPrioritizedMap <- function(method_name,
     color.var = "receptor.diff.expr",
     size.var  = "size_recept",
     stroke.var= "stroke_recept",
-    plot.position = "right",
+    plot.position = "middle",
     col.min.val = lim_rec$min, col.max.val = lim_rec$max,
     plot.title = "Receptor",
     x_lab = "RCT", y_lab = ""
@@ -322,8 +313,9 @@ plotMethodPrioritizedMap <- function(method_name,
   composed
 }
 
-# choose how many per receiver (4 pos + 4 neg)
-top_n_per_receiver <- 4
+
+# focus on one receiver cell at a time; for example “Monocyte”
+receiver_sel <- "B"
 
 # DECIPHER 
 top_tbl <- tibble::tibble(interaction = top_interactions)
@@ -352,8 +344,8 @@ p_li <- plotMethodPrioritizedMap(
   out_prefix = file.path("figures_04_08_2025", "supp_fig1_liana")
 )
 
-png(file.path(figures_folder,"supp_figure_1.png"),width  = 1500,     
-    height = 2000,     
+png(file.path(figures_folder,"supp_figure_1.png"),width  = 2000,     
+    height = 1500,     
     res    = 300)
 # Arrange three method panels vertically if you want one composite figure:
 (p_nn / p_li) + plot_annotation(
