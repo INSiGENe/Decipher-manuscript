@@ -220,6 +220,44 @@ coerce_liana_schema <- function(liana_df) {
   if (all(is.na(x))) list(min = 0, max = 0) else list(min = min(x, na.rm=TRUE), max = max(x, na.rm=TRUE))
 }
 
+LocalPlotBubble <- function(df,color.var,size.var,stroke.var,plot.position,col.min.val,col.max.val,plot.title,x_lab,y_lab,x_var,legend.title = NULL){
+  legend.title <- legend.title %||% color.var      
+
+  this.plot <- ggplot(df,aes_string(y="interaction", x=x_var,fill = color.var)) +
+    geom_point(aes_string(size = size.var,stroke=stroke.var), shape = 21,colour = "black") +
+    labs(x = NULL, y = y_lab) +
+    theme_bw()+
+    scale_fill_gradient2(
+        low  = "blue", mid = "white", high = "red", midpoint = 0,
+        name   = legend.title,  
+        limits   = c(col.min.val, col.max.val),
+        n.breaks = 5,                             # ← FEWER TICKS
+        guide = guide_colorbar(
+            title.position = "top", title.hjust = .5,
+            barwidth  = unit(3.5, "cm"),          
+            barheight = unit(.4, "cm")
+        )
+        )+
+    ggtitle(label = plot.title)+ guides(size = "none")+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5,size=10),
+          axis.text.y = element_text(size=10),
+          axis.title.y = element_text(size = 12, face = "bold"),
+          legend.position = "bottom",
+          legend.key.size = unit(0.4, 'cm'),           # Smaller legend keys
+          legend.text = element_text(size = 10),        # Smaller legend text
+          plot.margin = ggplot2::margin(t = 10, r = 0, b = 0, l = 2, unit = "pt"),
+          plot.title = element_text(hjust = 0.5))
+
+  if(plot.position == "middle"){
+    this.plot <- this.plot + theme(axis.text.y=element_blank(),
+                                   axis.ticks.y=element_blank())
+  } else if (plot.position == "right"){
+    this.plot <- this.plot + scale_y_discrete(position = "right")+
+      theme(plot.margin = ggplot2::margin(t = 10, r = 0, b = 0, l = 10, unit = "pt"))
+  }
+  return(this.plot)
+}
+
 make_df_plot <- function(df_std, top_tbl, selected_receivers) {
   df_std %>%
     dplyr::semi_join(top_tbl, by = "interaction") %>%
@@ -271,8 +309,12 @@ plotMethodPrioritizedMap <- function(method_name,
   col_min_rec <- if (is.null(receptor_col_min))  (lim_rec$min-1) else receptor_col_min
   col_max_rec <- if (is.null(receptor_col_max))  (lim_rec$max+1) else receptor_col_max
 
+  lig_title <- if (method_name == "NicheNet") "lfc_ligand"  else "ligand_padj"
+  rec_title <- if (method_name == "NicheNet") "lfc_receptor" else "receptor_padj"
+
+
   # ---- three panels ----
-  p_lig <- plotBubble(
+  p_lig <- LocalPlotBubble(
     df = df_plot,
     x_var = "sender",
     color.var = "ligand.diff.expr",
@@ -282,10 +324,11 @@ plotMethodPrioritizedMap <- function(method_name,
     col.min.val = col_min_lig, 
     col.max.val = col_max_lig,
     plot.title = "Ligand",
-    x_lab = "SCT", y_lab = "Interaction"
+    x_lab = "SCT", y_lab = "Interaction",
+    legend.title = lig_title
   )
 
-  p_ctr <- plotBubble(
+  p_ctr <- LocalPlotBubble(
     df = df_plot,
     x_var = "sender",
     color.var = "method_score",
@@ -295,10 +338,11 @@ plotMethodPrioritizedMap <- function(method_name,
     col.min.val = col_min_ctr, 
     col.max.val = col_max_ctr,
     plot.title = paste0(method_name, " score"),
-    x_lab = "RCT", y_lab = ""
+    x_lab = "RCT", y_lab = "",
+    legend.title = "method_score"
   )
 
-  p_rec <- plotBubble(
+  p_rec <- LocalPlotBubble(
     df = df_plot,
     x_var = "receiver",
     color.var = "receptor.diff.expr",
@@ -308,7 +352,8 @@ plotMethodPrioritizedMap <- function(method_name,
     col.min.val = col_min_rec, 
     col.max.val = col_max_rec,
     plot.title = "Receptor",
-    x_lab = "RCT", y_lab = ""
+    x_lab = "RCT", y_lab = "",
+    legend.title = rec_title
   )
 
   # compose & save (optional)
@@ -325,9 +370,9 @@ plotMethodPrioritizedMap <- function(method_name,
   composed
 }
 
-
+#CD4_T, B, Mono, NK
 # focus on one receiver cell at a time; for example “Monocyte”
-receiver_sel <- "Mono"
+receiver_sel <- "CD4_T" 
 
 # DECIPHER 
 top_tbl <- tibble::tibble(interaction = top_interactions)
@@ -341,7 +386,7 @@ p_nn <- plotMethodPrioritizedMap(
   top_tbl = top_tbl,
   selected_receivers = receiver_sel,          
   abs_center_limit = NULL,            
-  out_prefix = file.path("figures_04_08_2025", "supp_fig1_nichenet"),
+  out_prefix = file.path("figures_04_08_2025", paste("supp_fig1_nichenet_",receiver_sel,sep="")),
   method_score_min = 0,
   method_score_max = 1.002,
 )
@@ -355,14 +400,15 @@ p_li <- plotMethodPrioritizedMap(
   top_tbl = top_tbl,
   selected_receivers = receiver_sel,
   abs_center_limit = NULL,
-  out_prefix = file.path("figures_04_08_2025", "supp_fig1_liana"),
+  out_prefix = file.path("figures_04_08_2025", paste("supp_fig1_liana_",receiver_sel,sep="")),
   ligand_col_min = 0,
   ligand_col_max = 1,
   receptor_col_min = 0, 
   receptor_col_max =1
 )
 
-png(file.path(figures_folder,"supp_figure_1.png"),width  = 2000,     
+png_filename <- paste("supp_figure_1_",receiver_sel,".png",sep="")
+png(file.path(figures_folder,png_filename),width  = 2000,     
     height = 2200,     
     res    = 300)
 # Arrange three method panels vertically if you want one composite figure:
