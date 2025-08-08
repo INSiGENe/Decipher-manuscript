@@ -111,6 +111,10 @@ L_set <- readRDS(file.path(dataset_path,"data/L_set.rds"))
 
 # 1) load & preprocess all three methods for one dataset
 dataset_path <- "results/cord_pic"
+plotDecipherPrioritizedMap(dataset_path,top_n=4,dataset_name="supp_figure_2_decipher", abs_decipher_plot_limit = 20,width=21,height=9)
+#top_interactions from decipher plot above
+top_interactions <- c("SPN-SIGLEC1","IL10-IL10RA","CCL4-CCR1","CD80-CD274","LAMB2-RPSA","IL7-IL7R","ICAM4-ITGB2","LRPAP1-SORL1")
+
 decipher_raw    <- readRDS(file.path(dataset_path, "data/decipher_scores_by_cluster.rds"))
 nichenet_raw    <- readRDS(file.path(dataset_path, "nichenet/data/prior_table_all_clusters.rds"))
 liana_raw       <- read.csv(file.path(dataset_path, "liana/data/liana_p_interaction_results.csv"),
@@ -142,24 +146,13 @@ liana_df <- liana_df %>%
             by = c("sender", "receiver", "interaction"))
 
 
-# pick top‐8 (4 pos, 4 neg) interactions per method
-select_top_n <- function(df, top_n=4, score_col){
-  score_col <- rlang::ensym(score_col)
-  df %>%
-    group_by(interaction) %>%
-    summarize(score = mean(!!score_col, na.rm=TRUE), .groups="drop") %>%
-    arrange(desc(score)) %>%
-    # take top_n highest AND top_n lowest
-    slice(c(1:top_n, (n()-top_n+1):n())) %>%
-    pull(interaction)
-}
 
 # focus on one receiver cell at a time; for example “Monocyte”
-receiver <- "Mono"
+receiver_sel <- "Mono"
 
-decipher_df <- decipher_df   %>% filter(receiver == receiver)
-nichenet_df <- nichenet_df   %>% filter(receiver == receiver)
-liana_df    <- liana_df      %>% filter(receiver == receiver)
+#decipher_df <- decipher_df   %>% filter(receiver == receiver_sel)
+#nichenet_df <- nichenet_df   %>% filter(receiver == receiver_sel)
+#liana_df    <- liana_df      %>% filter(receiver == receiver_sel)
 
 # ---- 1. pick top +/- per receiver -------------------------------------------
 # top_n here is PER receiver; split_by_direction=TRUE gives top_n pos & top_n neg per receiver
@@ -169,8 +162,8 @@ select_top_per_receiver <- function(df, top_n = 4, score_col, split_by_direction
     mutate(.score = !!score_col,
            .sign  = if_else(.score >= 0, "pos", "neg")) %>%
     group_by(receiver, sender, interaction, .sign) %>%
-    summarise(score = mean(.score, na.rm = TRUE), .groups = "drop") %>%
-    distinct(receiver, sender, interaction)  
+    summarise(score = mean(.score, na.rm = TRUE), .groups = "drop") #%>%
+    #distinct(receiver, sender, interaction)  
 
   if (split_by_direction) {
     top_pos <- tmp %>%
@@ -245,8 +238,8 @@ plotMethodPrioritizedMap <- function(method_name,
                                      out_prefix = NULL) {
 
   # keep only selected receivers/interactions
-  df_plot <- df_std %>%
-    inner_join(top_tbl, by = c("receiver","interaction"))
+  df_plot <- df_std %>% 
+           dplyr::semi_join(top_tbl, by = "interaction")   # ← no receiver key required
 
   if (!is.null(selected_receivers)) {
     df_plot <- df_plot %>% filter(receiver %in% selected_receivers)
@@ -281,7 +274,7 @@ plotMethodPrioritizedMap <- function(method_name,
   # ---- three panels ----
   p_lig <- plotBubble(
     df = df_plot,
-    x_var = "receiver",
+    x_var = "sender",
     color.var = "ligand.diff.expr",
     size.var  = "size_ligand",
     stroke.var= "stroke_ligand",
@@ -293,7 +286,7 @@ plotMethodPrioritizedMap <- function(method_name,
 
   p_ctr <- plotBubble(
     df = df_plot,
-    x_var = "receiver",
+    x_var = "sender",
     color.var = "method_score",
     size.var  = "size_center",
     stroke.var= "stroke_center",
@@ -332,73 +325,38 @@ plotMethodPrioritizedMap <- function(method_name,
 # choose how many per receiver (4 pos + 4 neg)
 top_n_per_receiver <- 4
 
-# DECIPHER (you already have a dedicated function, but for completeness:)
-decipher_top_tbl <- select_top_per_receiver(decipher_df, top_n = top_n_per_receiver, score_col = scaled_score, split_by_direction = TRUE)
+# DECIPHER 
+top_tbl <- tibble::tibble(interaction = top_interactions)
 
 # NICHE NET
 nichenet_std <- coerce_nichenet_schema(nichenet_df)
-nichenet_top_tbl <- select_top_per_receiver(
-  nichenet_std,
-  top_n = top_n_per_receiver,
-  score_col = method_score,            # uses scaled_activity/prioritization
-  split_by_direction = TRUE
-)
 
 p_nn <- plotMethodPrioritizedMap(
   method_name = "NicheNet",
   df_std = nichenet_std,
-  top_tbl = nichenet_top_tbl,
-  selected_receivers = NULL,           # or e.g. c("B","Mono","NK",...)
+  top_tbl = top_tbl,
+  selected_receivers = receiver_sel,           # or e.g. c("B","Mono","NK",...)
   abs_center_limit = NULL,             # or give a symmetric cap like 2
   out_prefix = file.path("figures_04_08_2025", "supp_fig1_nichenet")
 )
 
 # LIANA+
 liana_std <- coerce_liana_schema(liana_df)
-liana_top_tbl <- select_top_per_receiver(
-  liana_std,
-  top_n = top_n_per_receiver,
-  score_col = method_score,
-  split_by_direction = TRUE
-)
 
 p_li <- plotMethodPrioritizedMap(
   method_name = "LIANA+",
   df_std = liana_std,
-  top_tbl = liana_top_tbl,
-  selected_receivers = NULL,
+  top_tbl = top_tbl,
+  selected_receivers = receiver_sel,
   abs_center_limit = NULL,
   out_prefix = file.path("figures_04_08_2025", "supp_fig1_liana")
 )
 
-# If you also want a Decipher panel with the *same* logic:
-# First coerce Decipher to the same schema quickly:
-decipher_std <- decipher_df %>%
-  mutate(
-    method_score     = coalesce(scaled_score, prioritization_score),
-    method_score_abs = abs(method_score),
-    ligand.diff.expr = NA_real_,   # you have this in your full pipeline; put NA if not available
-    receptor.diff.expr = NA_real_,
-    ligand.frac = NA_real_,
-    receptor.frac = NA_real_
-  ) %>%
-  select(interaction, ligand, receptor, sender, receiver,
-         method_score, method_score_abs,
-         ligand.diff.expr, receptor.diff.expr, ligand.frac, receptor.frac)
-
-p_dc <- plotMethodPrioritizedMap(
-  method_name = "Decipher",
-  df_std = decipher_std,
-  top_tbl = decipher_top_tbl,
-  selected_receivers = NULL,
-  abs_center_limit = NULL,
-  out_prefix = file.path("figures_04_08_2025", "supp_fig1_decipher")
-)
-png(file.path(figures_folder,"supp_figure_1.png"),width  = 3000,     
-    height = 6000,     
+png(file.path(figures_folder,"supp_figure_1.png"),width  = 1500,     
+    height = 2000,     
     res    = 300)
 # Arrange three method panels vertically if you want one composite figure:
-(p_dc / p_nn / p_li) + plot_annotation(
+(p_nn / p_li) + plot_annotation(
   title = "Comparison of systems-level CCC maps for Cord PIC vs Unstimulated Cord CBMC",
   subtitle = "Top eight (four positive, four negative) LR interactions per receiver; left=ligand stats, middle=method score, right=receptor stats."
 )
