@@ -111,14 +111,16 @@ L_set <- readRDS(file.path(dataset_path,"data/L_set.rds"))
 
 # 1) load & preprocess all three methods for one dataset
 dataset_path <- "results/cord_pic"
-plotDecipherPrioritizedMap(dataset_path,top_n=4,dataset_name="supp_figure_2_decipher", abs_decipher_plot_limit = 20,width=21,height=9)
+plotDecipherPrioritizedMap(dataset_path,top_n=4,dataset_name="supp_figure_1_decipher", abs_decipher_plot_limit = 20,width=21,height=9)
 #top_interactions from decipher plot above
 top_interactions <- c("SPN-SIGLEC1","IL10-IL10RA","CCL4-CCR1","CD80-CD274","LAMB2-RPSA","IL7-IL7R","ICAM4-ITGB2","LRPAP1-SORL1")
+#top_interactions <- c("IFNG-IFNGR1","IFNG-IFNGR2","IL27-IL27RA","NECTIN2-CD96","TNFSF13-TNFRSF14")
 
 decipher_raw    <- readRDS(file.path(dataset_path, "data/decipher_scores_by_cluster.rds"))
 nichenet_raw    <- readRDS(file.path(dataset_path, "nichenet/data/prior_table_all_clusters.rds"))
 liana_raw       <- read.csv(file.path(dataset_path, "liana/data/liana_p_interaction_results.csv"),
                             row.names=1, check.names=FALSE)
+
 # your existing preprocessors
 decipher_df <- preProcessDecipher(decipher_raw)   # from your load_all() script
 nichenet_df <- preProcessNicheNet(nichenet_raw)
@@ -183,7 +185,7 @@ select_top_per_receiver <- function(df, top_n = 4, score_col, split_by_direction
 coerce_nichenet_schema <- function(nichenet_df) {
   nichenet_df %>%
     mutate(
-      method_score     = coalesce(scaled_activity, prioritization_score, scaled_score),
+      method_score     = prioritization_score,
       method_score_abs = abs(method_score),
       ligand.diff.expr   = lfc_ligand,
       receptor.diff.expr = lfc_receptor,
@@ -202,7 +204,7 @@ coerce_liana_schema <- function(liana_df) {
   # rely on method_score for center, and scaled_score to gate bubble size a bit.
   liana_df %>%
     mutate(
-      method_score     = coalesce(scaled_score, prioritization_score),
+      method_score     = prioritization_score,
       method_score_abs = abs(method_score),
       ligand.diff.expr   = ligand_padj,
       receptor.diff.expr = receptor_padj,
@@ -224,17 +226,17 @@ LocalPlotBubble <- function(df,color.var,size.var,stroke.var,plot.position,col.m
   legend.title <- legend.title %||% color.var      
 
   this.plot <- ggplot(df,aes_string(y="interaction", x=x_var,fill = color.var)) +
-    geom_point(aes_string(size = size.var,stroke=stroke.var), shape = 21,colour = "black") +
+    geom_point(aes_string(size = size.var,stroke=stroke.var), shape = 21) +
     labs(x = NULL, y = y_lab) +
     theme_bw()+
     scale_fill_gradient2(
         low  = "blue", mid = "white", high = "red", midpoint = 0,
         name   = legend.title,  
         limits   = c(col.min.val, col.max.val),
-        n.breaks = 5,                             # ← FEWER TICKS
+        n.breaks = 3,                             # ← FEWER TICKS
         guide = guide_colorbar(
             title.position = "top", title.hjust = .5,
-            barwidth  = unit(3.5, "cm"),          
+            barwidth  = unit(3, "cm"),          
             barheight = unit(.4, "cm")
         )
         )+
@@ -361,59 +363,91 @@ plotMethodPrioritizedMap <- function(method_name,
 
   if (!is.null(out_prefix)) {
     dir.create(dirname(out_prefix), showWarnings = FALSE, recursive = TRUE)
-    png(paste0(out_prefix, ".png"), width = width_cm, height = height_cm, units = "cm", res = 600)
-    print(composed)
-    dev.off()
+    #png(paste0(out_prefix, ".png"), width = width_cm, height = height_cm, units = "cm", res = 600)
+    #print(composed)
+    #dev.off()
     write.csv(df_plot, paste0(out_prefix, ".csv"), row.names = FALSE)
   }
 
   composed
 }
 
-#CD4_T, B, Mono, NK
-# focus on one receiver cell at a time; for example “Monocyte”
-receiver_sel <- "CD4_T" 
-
 # DECIPHER 
 top_tbl <- tibble::tibble(interaction = top_interactions)
 
-# NICHE NET
-nichenet_std <- coerce_nichenet_schema(nichenet_df)
+#CD4_T, B, Mono, NK
+# focus on one receiver cell at a time; for example “Monocyte”
+for(receiver_sel in c("CD4_T","B","Mono","NK")){
 
-p_nn <- plotMethodPrioritizedMap(
-  method_name = "NicheNet",
-  df_std = nichenet_std,
-  top_tbl = top_tbl,
-  selected_receivers = receiver_sel,          
-  abs_center_limit = NULL,            
-  out_prefix = file.path("figures_04_08_2025", paste("supp_fig1_nichenet_",receiver_sel,sep="")),
-  method_score_min = 0,
-  method_score_max = 1.002,
+    # NICHE NET
+    nichenet_std <- coerce_nichenet_schema(nichenet_df)
+
+    p_nn <- plotMethodPrioritizedMap(
+    method_name = "NicheNet",
+    df_std = nichenet_std,
+    top_tbl = top_tbl,
+    selected_receivers = receiver_sel,          
+    abs_center_limit = NULL,            
+    out_prefix = file.path("figures_04_08_2025", paste("supp_fig1_nichenet_",receiver_sel,sep="")),
+    method_score_min = 0,
+    method_score_max = 1.002,
+    )
+
+    # LIANA+
+    liana_std <- coerce_liana_schema(liana_df)
+
+    p_li <- plotMethodPrioritizedMap(
+    method_name = "LIANA+",
+    df_std = liana_std,
+    top_tbl = top_tbl,
+    selected_receivers = receiver_sel,
+    abs_center_limit = NULL,
+    out_prefix = file.path("figures_04_08_2025", paste("supp_fig1_liana_",receiver_sel,sep="")),
+    ligand_col_min = 0,
+    ligand_col_max = 1,
+    receptor_col_min = 0, 
+    receptor_col_max =1
+    )
+
+    png_filename <- paste("supp_figure_1_",receiver_sel,".png",sep="")
+    png(file.path(figures_folder,png_filename),width  = 2000,     
+        height = 2200,     
+        res    = 300)
+    # Arrange three method panels vertically if you want one composite figure:
+    print((p_nn / p_li))
+    dev.off()
+}
+
+#attempt at overlap
+per_sign_n <- 100                    # ← bump this until the overlap is rich enough
+get_top_pool <- function(df, score_col, k = per_sign_n) {
+  score_col <- rlang::ensym(score_col)
+  df %>%
+    mutate(.score = !!score_col,
+           .sign  = if_else(.score >= 0, "pos", "neg")) %>%
+    group_by(receiver, sender, interaction, .sign) %>%
+    summarise(score = mean(.score, na.rm = TRUE), .groups = "drop") %>%
+    group_by(receiver, .sign) %>%
+    slice_max(order_by = score * if_else(.sign == "pos",  1, -1),
+              n = k, with_ties = FALSE) %>%
+    ungroup() %>%
+    select(receiver, interaction, .sign) %>%
+    unique()
+}
+
+top_dec   <- get_top_pool(decipher_df,  prioritization_score,  per_sign_n)
+top_niche <- get_top_pool(nichenet_df,  prioritization_score, per_sign_n)
+top_liana <- get_top_pool(liana_df,     prioritization_score,    per_sign_n)
+
+overlap <- reduce(list(top_dec, top_niche, top_liana),
+                  \(x, y) inner_join(x, y,
+                     by = c("receiver", "interaction", ".sign")))
+
+# fallback: if overlap still < 8, just keep whatever is there
+final_n <- 8
+result <- bind_rows(
+  overlap %>% filter(.sign == "pos") %>%
+    slice_max(order_by = row_number(), n = final_n / 2),
+  overlap %>% filter(.sign == "neg") %>%
+    slice_max(order_by = row_number(), n = final_n / 2)
 )
-
-# LIANA+
-liana_std <- coerce_liana_schema(liana_df)
-
-p_li <- plotMethodPrioritizedMap(
-  method_name = "LIANA+",
-  df_std = liana_std,
-  top_tbl = top_tbl,
-  selected_receivers = receiver_sel,
-  abs_center_limit = NULL,
-  out_prefix = file.path("figures_04_08_2025", paste("supp_fig1_liana_",receiver_sel,sep="")),
-  ligand_col_min = 0,
-  ligand_col_max = 1,
-  receptor_col_min = 0, 
-  receptor_col_max =1
-)
-
-png_filename <- paste("supp_figure_1_",receiver_sel,".png",sep="")
-png(file.path(figures_folder,png_filename),width  = 2000,     
-    height = 2200,     
-    res    = 300)
-# Arrange three method panels vertically if you want one composite figure:
-(p_nn / p_li) + plot_annotation(
-  title = "Comparison of systems-level CCC maps for Cord PIC vs Unstimulated Cord CBMC",
-  subtitle = "Top eight (four positive, four negative) LR interactions per receiver; left=ligand stats, middle=method score, right=receptor stats."
-)
-dev.off()
