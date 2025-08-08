@@ -1,151 +1,15 @@
 # ── libraries ────────────────────────────────────────────────────────────────
 library(dplyr)
 library(stringr)
-library(gplots)          # heatmap.2
+library(gplots)         
 library(RColorBrewer)
-library(matrixStats)     # rowVars()
-
-set.seed(1)
-figures_folder <- "figures_04_08_2025"
-
-##### supplementary figure 2 ########
-
-# ── 1. read the full interaction-potential matrix ───────────────────────────
-output_data_filepath <- "results/cord_pic/data"
-pot_file <- file.path(output_data_filepath,
-                      "interaction_potential_by_clusters.rds")
-
-all_potentials <- readRDS(pot_file)
-
-# ── 2. slice to B-cell receiver only ────────────────────────────────────────
-receiver_cluster <- "B"    
-mat <- all_potentials[[receiver_cluster]]
-
-# ── 3. tidy up NA / zero-variance rows --------------------------------------
-# keep LR pairs that have at least two non-NA values (needed for correlation)
-keep <- rowSums(!is.na(mat)) >= 2 & rowVars(mat, na.rm = TRUE) > 0
-mat  <- mat[keep, , drop = FALSE]
-
-# ── 4. correlation matrix (pairwise, Spearman) ------------------------------
-cor_mat <- cor(t(mat),                             # rows → variables
-               use = "pairwise.complete.obs",
-               method = "spearman")
-
-# cor() may still return NA if two rows never overlap → set those to 0
-cor_mat[is.na(cor_mat)] <- 0
-
-# ── 5. receptor vector & colour side-bar ------------------------------------
-receptor_vec <- str_extract(rownames(cor_mat), "(?<=-).*$")
-## how often does each receptor show up?
-rec_freq <- sort(table(receptor_vec), decreasing = TRUE)
-
-top_k    <- 10                       # <- tweak here
-keepers  <- names(rec_freq)[seq_len(top_k)]
-
-set2_big <- colorRampPalette(brewer.pal(8, "Set2"))
-receptor_colours <- setNames(set2_big(length(keepers)), keepers)
-
-# map every row’s receptor to a colour (grey for non-keepers)
-row_side <- ifelse(receptor_vec %in% keepers,
-                   receptor_colours[receptor_vec],
-                   "grey80")
-col_side <- row_side  
-
-# ── 6. dendrogram (distance = 1-ρ) -------------------------------
-hc   <- hclust(as.dist(1 - cor_mat), method = "average")   
-dend <- as.dendrogram(hc)                                 
-ord  <- hc$order                                           
-
-png(file.path(figures_folder,"supp_figure_2.png"),
-    width  = 3000,     
-    height = 3000,     
-    res    = 300)      
-    
-    # ── 7. draw with heatmap.2() -------------------------------------------------
-heatmap.2(
-  cor_mat,
-  Rowv = dend, Colv = dend,
-  dendrogram = "both",
-  trace = "none",
-  col   = colorRampPalette(c("royalblue4","white","firebrick3"))(101),
-  RowSideColors = row_side,
-  ColSideColors = col_side,
-  key.title = "Spearman ρ",
-  key       = TRUE,
-  labRow = rownames(cor_mat),
-  labCol = colnames(cor_mat),
-  cexRow = 0.6,                
-  cexCol = 0.6,
-  density.info = "none",
-  margins = c(5,5),
-  main = "LR interaction-potential correlation – B-cells"
-)
-dev.off()
-
-
-
-## ---- 3. save to csv -----------------------------------------------------
-cor_mat_ordered <- cor_mat[ord, ord]
-
-write.csv(
-  cor_mat_ordered,
-  file = file.path(figures_folder,
-                   "supp_figure_2.csv"),
-  row.names = TRUE
-)
-
-# ===== supplementary Figure 1 ==== 
-library(dplyr)
+library(matrixStats)     
 library(tidyr)
 library(ggplot2)
 library(patchwork)
-library(dplyr)
-library(tidyr)
-library(stringr)
-library(patchwork)
 
-set.seed(1)
-L_set <- readRDS(file.path(dataset_path,"data/L_set.rds"))
-# assume your helper bubble function is already loaded:
-# source("R/plotBubble.R")  
 
-# 1) load & preprocess all three methods for one dataset
-dataset_path <- "results/cord_pic"
-plotDecipherPrioritizedMap(dataset_path,top_n=4,dataset_name="supp_figure_1_decipher", abs_decipher_plot_limit = 20,width=21,height=9)
-#top_interactions from decipher plot above
-top_interactions <- c("SPN-SIGLEC1","IL10-IL10RA","CCL4-CCR1","CD80-CD274","LAMB2-RPSA","IL7-IL7R","ICAM4-ITGB2","LRPAP1-SORL1")
-#top_interactions <- c("IFNG-IFNGR1","IFNG-IFNGR2","IL27-IL27RA","NECTIN2-CD96","TNFSF13-TNFRSF14")
-
-decipher_raw    <- readRDS(file.path(dataset_path, "data/decipher_scores_by_cluster.rds"))
-nichenet_raw    <- readRDS(file.path(dataset_path, "nichenet/data/prior_table_all_clusters.rds"))
-liana_raw       <- read.csv(file.path(dataset_path, "liana/data/liana_p_interaction_results.csv"),
-                            row.names=1, check.names=FALSE)
-
-# your existing preprocessors
-decipher_df <- preProcessDecipher(decipher_raw)   # from your load_all() script
-nichenet_df <- preProcessNicheNet(nichenet_raw)
-liana_df    <- preProcessLIANA(liana_raw)
-
-liana_df <- liana_df %>%               
-  left_join(
-    L_set %>% select(interaction, ligand, receptor),
-    by = "interaction"
-  ) %>%
-  relocate(ligand, receptor, .after = interaction)  
-
-liana_padj <- liana_raw %>% 
-  transmute(
-    sender   = source,            # same renaming you did in preProcessLIANA
-    receiver = target,
-    interaction = str_replace(interaction, "\\^", "-"),  # make delimiter match
-    ligand_padj,
-    receptor_padj
-  ) %>% 
-  distinct()      # avoid accidental duplicates
-
-liana_df <- liana_df %>% 
-  left_join(liana_padj,
-            by = c("sender", "receiver", "interaction"))
+#functions
 
 # ---- 1. pick top +/- per receiver -------------------------------------------
 # top_n here is PER receiver; split_by_direction=TRUE gives top_n pos & top_n neg per receiver
@@ -187,16 +51,20 @@ coerce_nichenet_schema <- function(nichenet_df) {
     mutate(
       method_score     = prioritization_score,
       method_score_abs = abs(method_score),
-      ligand.diff.expr   = lfc_ligand,
-      receptor.diff.expr = lfc_receptor,
+      ligand.diff.expr   = scaled_p_val_adapted_ligand,
+      receptor.diff.expr = scaled_p_val_adapted_receptor,
       # use % expressed as a proxy for bubble stroke/size thresholds
-      ligand.frac   = pct_expressed_sender/100,
-      receptor.frac = pct_expressed_receiver/100
+      ligand.frac   = scaled_avg_exprs_ligand,
+      receptor.frac = scaled_avg_exprs_receptor
     ) %>%
     select(interaction, ligand, receptor, sender, receiver,
            method_score, method_score_abs,
            ligand.diff.expr, receptor.diff.expr,
            ligand.frac, receptor.frac)
+}
+
+invert_scores <- function(score, eps = .Machine$double.eps) {
+  -log10(score + eps)
 }
 
 coerce_liana_schema <- function(liana_df) {
@@ -206,8 +74,8 @@ coerce_liana_schema <- function(liana_df) {
     mutate(
       method_score     = prioritization_score,
       method_score_abs = abs(method_score),
-      ligand.diff.expr   = ligand_padj,
-      receptor.diff.expr = receptor_padj,
+      ligand.diff.expr   = invert_scores(ligand_padj),
+      receptor.diff.expr = invert_scores(receptor_padj),
       ligand.frac   = NA_real_,
       receptor.frac = NA_real_
     ) %>%
@@ -311,8 +179,8 @@ plotMethodPrioritizedMap <- function(method_name,
   col_min_rec <- if (is.null(receptor_col_min))  (lim_rec$min-1) else receptor_col_min
   col_max_rec <- if (is.null(receptor_col_max))  (lim_rec$max+1) else receptor_col_max
 
-  lig_title <- if (method_name == "NicheNet") "lfc_ligand"  else "ligand_padj"
-  rec_title <- if (method_name == "NicheNet") "lfc_receptor" else "receptor_padj"
+  lig_title <- if (method_name == "NicheNet") "scaled pval adapted (lig)" else "-log10(lig pval adj)"
+  rec_title <- if (method_name == "NicheNet") "scaled pval adapted (rec)" else "-log10(rec pval adj)"
 
 
   # ---- three panels ----
@@ -371,6 +239,61 @@ plotMethodPrioritizedMap <- function(method_name,
 
   composed
 }
+##################################
+#analysis & parameters
+##################################
+set.seed(1) 
+figures_folder <- "figures_04_08_2025"
+output_data_filepath <- "results/cord_pic/data"
+dataset_path <- "results/cord_pic"
+
+
+
+
+##################################
+# ===== supplementary Figure 1 ==== 
+##################################
+
+
+L_set <- readRDS(file.path(dataset_path,"data/L_set.rds"))
+
+# 1) load & preprocess all three methods for one dataset
+
+plotDecipherPrioritizedMap(dataset_path,top_n=4,dataset_name="supp_figure_1_decipher", abs_decipher_plot_limit = 20,width=21,height=9)
+#top_interactions from decipher plot above
+top_interactions <- c("SPN-SIGLEC1","IL10-IL10RA","CCL4-CCR1","CD80-CD274","LAMB2-RPSA","IL7-IL7R","ICAM4-ITGB2","LRPAP1-SORL1")
+#top_interactions <- c("IFNG-IFNGR1","IFNG-IFNGR2","IL27-IL27RA","NECTIN2-CD96","TNFSF13-TNFRSF14")
+
+decipher_raw    <- readRDS(file.path(dataset_path, "data/decipher_scores_by_cluster.rds"))
+nichenet_raw    <- readRDS(file.path(dataset_path, "nichenet/data/prior_table_all_clusters.rds"))
+liana_raw       <- read.csv(file.path(dataset_path, "liana/data/liana_p_interaction_results.csv"),
+                            row.names=1, check.names=FALSE)
+
+# your existing preprocessors
+decipher_df <- preProcessDecipher(decipher_raw)   # from your load_all() script
+nichenet_df <- preProcessNicheNet(nichenet_raw)
+liana_df    <- preProcessLIANA(liana_raw)
+
+liana_df <- liana_df %>%               
+  left_join(
+    L_set %>% select(interaction, ligand, receptor),
+    by = "interaction"
+  ) %>%
+  relocate(ligand, receptor, .after = interaction)  
+
+liana_padj <- liana_raw %>% 
+  transmute(
+    sender   = source,            # same renaming you did in preProcessLIANA
+    receiver = target,
+    interaction = str_replace(interaction, "\\^", "-"),  # make delimiter match
+    ligand_padj,
+    receptor_padj
+  ) %>% 
+  distinct()      # avoid accidental duplicates
+
+liana_df <- liana_df %>% 
+  left_join(liana_padj,
+            by = c("sender", "receiver", "interaction"))
 
 # DECIPHER 
 top_tbl <- tibble::tibble(interaction = top_interactions)
@@ -383,30 +306,36 @@ for(receiver_sel in c("CD4_T","B","Mono","NK")){
     nichenet_std <- coerce_nichenet_schema(nichenet_df)
 
     p_nn <- plotMethodPrioritizedMap(
-    method_name = "NicheNet",
-    df_std = nichenet_std,
-    top_tbl = top_tbl,
-    selected_receivers = receiver_sel,          
-    abs_center_limit = NULL,            
-    out_prefix = file.path("figures_04_08_2025", paste("supp_fig1_nichenet_",receiver_sel,sep="")),
-    method_score_min = 0,
-    method_score_max = 1.002,
+        method_name = "NicheNet",
+        df_std = nichenet_std,
+        top_tbl = top_tbl,
+        selected_receivers = receiver_sel,          
+        abs_center_limit = NULL,            
+        out_prefix = file.path("figures_04_08_2025", paste("supp_fig1_nichenet_",receiver_sel,sep="")),
+        method_score_min = 0,
+        method_score_max = 1.002,
+        ligand_col_min = 0,
+        ligand_col_max = 3,
+        receptor_col_min = 0,
+        receptor_col_max = 3
     )
 
     # LIANA+
     liana_std <- coerce_liana_schema(liana_df)
 
     p_li <- plotMethodPrioritizedMap(
-    method_name = "LIANA+",
-    df_std = liana_std,
-    top_tbl = top_tbl,
-    selected_receivers = receiver_sel,
-    abs_center_limit = NULL,
-    out_prefix = file.path("figures_04_08_2025", paste("supp_fig1_liana_",receiver_sel,sep="")),
-    ligand_col_min = 0,
-    ligand_col_max = 1,
-    receptor_col_min = 0, 
-    receptor_col_max =1
+        method_name = "LIANA+",
+        df_std = liana_std,
+        top_tbl = top_tbl,
+        selected_receivers = receiver_sel,
+        abs_center_limit = NULL,
+        out_prefix = file.path("figures_04_08_2025", paste("supp_fig1_liana_",receiver_sel,sep="")),
+        method_score_min = -5,
+        method_score_max = 5,
+        ligand_col_min = 0,
+        ligand_col_max = 3,
+        receptor_col_min = 0,
+        receptor_col_max = 10
     )
 
     png_filename <- paste("supp_figure_1_",receiver_sel,".png",sep="")
@@ -417,6 +346,92 @@ for(receiver_sel in c("CD4_T","B","Mono","NK")){
     print((p_nn / p_li))
     dev.off()
 }
+
+#####################################
+##### supplementary figure 2 ########
+#####################################
+
+# ── 1. read the full interaction-potential matrix ───────────────────────────
+pot_file <- file.path(output_data_filepath,
+                      "interaction_potential_by_clusters.rds")
+
+all_potentials <- readRDS(pot_file)
+
+# ── 2. slice to B-cell receiver only ────────────────────────────────────────
+receiver_cluster <- "B"    
+mat <- all_potentials[[receiver_cluster]]
+
+# ── 3. tidy up NA / zero-variance rows --------------------------------------
+# keep LR pairs that have at least two non-NA values (needed for correlation)
+keep <- rowSums(!is.na(mat)) >= 2 & rowVars(mat, na.rm = TRUE) > 0
+mat  <- mat[keep, , drop = FALSE]
+
+# ── 4. correlation matrix (pairwise, Spearman) ------------------------------
+cor_mat <- cor(t(mat),                             # rows → variables
+               use = "pairwise.complete.obs",
+               method = "spearman")
+
+# cor() may still return NA if two rows never overlap → set those to 0
+cor_mat[is.na(cor_mat)] <- 0
+
+# ── 5. receptor vector & colour side-bar ------------------------------------
+receptor_vec <- str_extract(rownames(cor_mat), "(?<=-).*$")
+## how often does each receptor show up?
+rec_freq <- sort(table(receptor_vec), decreasing = TRUE)
+
+top_k    <- 10                       # <- tweak here
+keepers  <- names(rec_freq)[seq_len(top_k)]
+
+set2_big <- colorRampPalette(brewer.pal(8, "Set2"))
+receptor_colours <- setNames(set2_big(length(keepers)), keepers)
+
+# map every row’s receptor to a colour (grey for non-keepers)
+row_side <- ifelse(receptor_vec %in% keepers,
+                   receptor_colours[receptor_vec],
+                   "grey80")
+col_side <- row_side  
+
+# ── 6. dendrogram (distance = 1-ρ) -------------------------------
+hc   <- hclust(as.dist(1 - cor_mat), method = "average")   
+dend <- as.dendrogram(hc)                                 
+ord  <- hc$order                                           
+
+png(file.path(figures_folder,"supp_figure_2.png"),
+    width  = 3000,     
+    height = 3000,     
+    res    = 300)      
+    
+    # ── 7. draw with heatmap.2() -------------------------------------------------
+heatmap.2(
+  cor_mat,
+  Rowv = dend, Colv = dend,
+  dendrogram = "both",
+  trace = "none",
+  col   = colorRampPalette(c("royalblue4","white","firebrick3"))(101),
+  RowSideColors = row_side,
+  ColSideColors = col_side,
+  key.title = "Spearman ρ",
+  key       = TRUE,
+  labRow = rownames(cor_mat),
+  labCol = colnames(cor_mat),
+  cexRow = 0.6,                
+  cexCol = 0.6,
+  density.info = "none",
+  margins = c(5,5),
+  main = "LR interaction-potential correlation – B-cells"
+)
+dev.off()
+
+## ---- 3. save to csv -----------------------------------------------------
+cor_mat_ordered <- cor_mat[ord, ord]
+
+write.csv(
+  cor_mat_ordered,
+  file = file.path(figures_folder,
+                   "supp_figure_2.csv"),
+  row.names = TRUE
+)
+
 
 #attempt at overlap
 per_sign_n <- 100                    # ← bump this until the overlap is rich enough
