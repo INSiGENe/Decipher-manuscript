@@ -7,44 +7,10 @@ library(matrixStats)
 library(tidyr)
 library(ggplot2)
 library(patchwork)
-
+library(devtools)
+load_all()
 
 #functions
-
-# ---- 1. pick top +/- per receiver -------------------------------------------
-# top_n here is PER receiver; split_by_direction=TRUE gives top_n pos & top_n neg per receiver
-select_top_per_receiver <- function(df, top_n = 4, score_col, split_by_direction = TRUE) {
-  score_col <- rlang::ensym(score_col)
-  tmp <- df %>%
-    mutate(.score = !!score_col,
-           .sign  = if_else(.score >= 0, "pos", "neg")) %>%
-    group_by(receiver, sender, interaction, .sign) %>%
-    summarise(score = mean(.score, na.rm = TRUE), .groups = "drop") #%>%
-    #distinct(receiver, sender, interaction)  
-
-  if (split_by_direction) {
-    top_pos <- tmp %>%
-      filter(.sign == "pos") %>%
-      group_by(receiver,sender) %>%
-      slice_max(order_by = score, n = top_n, with_ties = FALSE) %>%
-      ungroup()
-
-    top_neg <- tmp %>%
-      filter(.sign == "neg") %>%
-      group_by(receiver,sender) %>%
-      slice_min(order_by = score, n = top_n, with_ties = FALSE) %>%
-      ungroup()
-
-    bind_rows(top_pos, top_neg) %>%
-      distinct(receiver, interaction)
-  } else {
-    tmp %>%
-      group_by(receiver,sender) %>%
-      slice_max(order_by = abs(score), n = top_n, with_ties = FALSE) %>%
-      ungroup() %>%
-      distinct(receiver, interaction)
-  }
-}
 
 coerce_nichenet_schema <- function(nichenet_df) {
   nichenet_df %>%
@@ -143,10 +109,10 @@ make_df_plot <- function(df_std, top_tbl, selected_receivers) {
 }
 
 plotMethodPrioritizedMap <- function(method_name,
-                                     df_std,          # output of coerce_*_schema()
-                                     top_tbl,         # receiver/interaction table from select_top_per_receiver()
-                                     selected_receivers = NULL,  # optional subset of receivers
-                                     abs_center_limit = NULL,    # optional symmetric cap for center color
+                                     df_std,          
+                                     top_tbl,         
+                                     selected_receivers = NULL,  
+                                     abs_center_limit = NULL,    
                                      width_cm = 21, height_cm = 11,
                                      out_prefix = NULL,
                                      ligand_col_min = NULL,ligand_col_max = NULL,method_score_min = NULL,method_score_max = NULL,receptor_col_min = NULL,receptor_col_max = NULL) {
@@ -247,13 +213,9 @@ figures_folder <- "figures_04_08_2025"
 output_data_filepath <- "results/cord_pic/data"
 dataset_path <- "results/cord_pic"
 
-
-
-
 ##################################
 # ===== supplementary Figure 1 ==== 
 ##################################
-
 
 L_set <- readRDS(file.path(dataset_path,"data/L_set.rds"))
 
@@ -261,7 +223,7 @@ L_set <- readRDS(file.path(dataset_path,"data/L_set.rds"))
 
 plotDecipherPrioritizedMap(dataset_path,top_n=4,dataset_name="supp_figure_1_decipher", abs_decipher_plot_limit = 20,width=21,height=9)
 #top_interactions from decipher plot above
-top_interactions <- c("SPN-SIGLEC1","IL10-IL10RA","CCL4-CCR1","CD80-CD274","LAMB2-RPSA","IL7-IL7R","ICAM4-ITGB2","LRPAP1-SORL1")
+top_interactions <- c("SPN-SIGLEC1","MIF-CXCR4","LAMB2-RPSA","IL7-IL7R","IL27-IL27RA","IL10-IL10RA","CCL4-CCR1","BTLa-CD79A")
 #top_interactions <- c("IFNG-IFNGR1","IFNG-IFNGR2","IL27-IL27RA","NECTIN2-CD96","TNFSF13-TNFRSF14")
 
 decipher_raw    <- readRDS(file.path(dataset_path, "data/decipher_scores_by_cluster.rds"))
@@ -311,7 +273,7 @@ for(receiver_sel in c("CD4_T","B","Mono","NK")){
         top_tbl = top_tbl,
         selected_receivers = receiver_sel,          
         abs_center_limit = NULL,            
-        out_prefix = file.path("figures_04_08_2025", paste("supp_fig1_nichenet_",receiver_sel,sep="")),
+        out_prefix = file.path("figures_04_08_2025", paste("supp_figure_1_nichenet_",receiver_sel,sep="")),
         method_score_min = 0,
         method_score_max = 1.002,
         ligand_col_min = 0,
@@ -329,18 +291,18 @@ for(receiver_sel in c("CD4_T","B","Mono","NK")){
         top_tbl = top_tbl,
         selected_receivers = receiver_sel,
         abs_center_limit = NULL,
-        out_prefix = file.path("figures_04_08_2025", paste("supp_fig1_liana_",receiver_sel,sep="")),
+        out_prefix = file.path("figures_04_08_2025", paste("supp_figure_1_liana_",receiver_sel,sep="")),
         method_score_min = -5,
         method_score_max = 5,
         ligand_col_min = 0,
         ligand_col_max = 3,
         receptor_col_min = 0,
-        receptor_col_max = 10
+        receptor_col_max = 12
     )
 
     png_filename <- paste("supp_figure_1_",receiver_sel,".png",sep="")
-    png(file.path(figures_folder,png_filename),width  = 2000,     
-        height = 2200,     
+    png(file.path(figures_folder,png_filename),width  = 2500,     
+        height = 1500,     
         res    = 300)
     # Arrange three method panels vertically if you want one composite figure:
     print((p_nn / p_li))
