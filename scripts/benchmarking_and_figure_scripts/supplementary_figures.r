@@ -220,32 +220,31 @@ coerce_liana_schema <- function(liana_df) {
   if (all(is.na(x))) list(min = 0, max = 0) else list(min = min(x, na.rm=TRUE), max = max(x, na.rm=TRUE))
 }
 
+make_df_plot <- function(df_std, top_tbl, selected_receivers) {
+  df_std %>%
+    dplyr::semi_join(top_tbl, by = "interaction") %>%
+    { if (!is.null(selected_receivers)) dplyr::filter(., receiver %in% selected_receivers) else . } %>%
+    dplyr::mutate(
+      size_center  = if_else(method_score_abs > quantile(method_score_abs, 0.1, na.rm = TRUE), 1, NA_real_),
+      stroke_center= 0.5,
+      stroke_ligand= if_else(!is.na(ligand.frac)   & ligand.frac   > 0.05, 0.5, NA_real_),
+      size_ligand  = if_else(is.na(ligand.frac),    1, ligand.frac),
+      stroke_recept= if_else(!is.na(receptor.frac) & receptor.frac > 0.05, 0.5, NA_real_),
+      size_recept  = if_else(is.na(receptor.frac),  1, receptor.frac)
+    )
+}
+
 plotMethodPrioritizedMap <- function(method_name,
                                      df_std,          # output of coerce_*_schema()
                                      top_tbl,         # receiver/interaction table from select_top_per_receiver()
                                      selected_receivers = NULL,  # optional subset of receivers
                                      abs_center_limit = NULL,    # optional symmetric cap for center color
                                      width_cm = 21, height_cm = 11,
-                                     out_prefix = NULL) {
+                                     out_prefix = NULL,
+                                     ligand_col_min = NULL,ligand_col_max = NULL,method_score_min = NULL,method_score_max = NULL,receptor_col_min = NULL,receptor_col_max = NULL) {
 
   # keep only selected receivers/interactions
-  df_plot <- df_std %>% 
-           dplyr::semi_join(top_tbl, by = "interaction")   # ← no receiver key required
-
-  if (!is.null(selected_receivers)) {
-    df_plot <- df_plot %>% filter(receiver %in% selected_receivers)
-  }
-
-  # bubbles: size from method_score_abs (center), and from ligand/receptor.frac on sides if present
-  df_plot <- df_plot %>%
-    mutate(
-      size_center   = if_else(method_score_abs > quantile(method_score_abs, 0.1, na.rm=TRUE), 1, NA_real_),
-      stroke_center = 0.5,
-      stroke_ligand = if_else(!is.na(ligand.frac) & ligand.frac > 0.05, 0.5, NA_real_),
-      size_ligand   = if_else(is.na(ligand.frac), 1, ligand.frac),#if_else(!is.na(ligand.frac) & ligand.frac > 0.05, ligand.frac, NA_real_),
-      stroke_recept = if_else(!is.na(receptor.frac) & receptor.frac > 0.05, 0.5, NA_real_),
-      size_recept   = if_else(is.na(receptor.frac), 1, receptor.frac)#if_else(!is.na(receptor.frac) & receptor.frac > 0.05, receptor.frac, NA_real_)
-    )
+  df_plot <- make_df_plot(df_std, top_tbl, selected_receivers)
 
   # color ranges
   lim_lig  <- .range_or_zero(df_plot$ligand.diff.expr)
@@ -262,6 +261,16 @@ plotMethodPrioritizedMap <- function(method_name,
     lim_ctr <- list(min = -abs_center_limit, max = abs_center_limit)
   }
 
+  # choose defaults only when user hasn’t supplied a manual limit
+  col_min_lig <- if (is.null(ligand_col_min))    (lim_lig$min-1) else ligand_col_min
+  col_max_lig <- if (is.null(ligand_col_max))    (lim_lig$max+1) else ligand_col_max
+
+  col_min_ctr <- if (is.null(method_score_min))  (lim_ctr$min-1) else method_score_min
+  col_max_ctr <- if (is.null(method_score_max))  (lim_ctr$max+1) else method_score_max
+
+  col_min_rec <- if (is.null(receptor_col_min))  (lim_rec$min-1) else receptor_col_min
+  col_max_rec <- if (is.null(receptor_col_max))  (lim_rec$max+1) else receptor_col_max
+
   # ---- three panels ----
   p_lig <- plotBubble(
     df = df_plot,
@@ -270,7 +279,8 @@ plotMethodPrioritizedMap <- function(method_name,
     size.var  = "size_ligand",
     stroke.var= "stroke_ligand",
     plot.position = "left",
-    col.min.val = lim_lig$min, col.max.val = lim_lig$max,
+    col.min.val = col_min_lig, 
+    col.max.val = col_max_lig,
     plot.title = "Ligand",
     x_lab = "SCT", y_lab = "Interaction"
   )
@@ -282,7 +292,8 @@ plotMethodPrioritizedMap <- function(method_name,
     size.var  = "size_center",
     stroke.var= "stroke_center",
     plot.position = "middle",
-    col.min.val = lim_ctr$min, col.max.val = lim_ctr$max,
+    col.min.val = col_min_ctr, 
+    col.max.val = col_max_ctr,
     plot.title = paste0(method_name, " score"),
     x_lab = "RCT", y_lab = ""
   )
@@ -294,7 +305,8 @@ plotMethodPrioritizedMap <- function(method_name,
     size.var  = "size_recept",
     stroke.var= "stroke_recept",
     plot.position = "middle",
-    col.min.val = lim_rec$min, col.max.val = lim_rec$max,
+    col.min.val = col_min_rec, 
+    col.max.val = col_max_rec,
     plot.title = "Receptor",
     x_lab = "RCT", y_lab = ""
   )
@@ -315,7 +327,7 @@ plotMethodPrioritizedMap <- function(method_name,
 
 
 # focus on one receiver cell at a time; for example “Monocyte”
-receiver_sel <- "B"
+receiver_sel <- "Mono"
 
 # DECIPHER 
 top_tbl <- tibble::tibble(interaction = top_interactions)
@@ -327,9 +339,11 @@ p_nn <- plotMethodPrioritizedMap(
   method_name = "NicheNet",
   df_std = nichenet_std,
   top_tbl = top_tbl,
-  selected_receivers = receiver_sel,           # or e.g. c("B","Mono","NK",...)
-  abs_center_limit = NULL,             # or give a symmetric cap like 2
-  out_prefix = file.path("figures_04_08_2025", "supp_fig1_nichenet")
+  selected_receivers = receiver_sel,          
+  abs_center_limit = NULL,            
+  out_prefix = file.path("figures_04_08_2025", "supp_fig1_nichenet"),
+  method_score_min = 0,
+  method_score_max = 1.002,
 )
 
 # LIANA+
@@ -341,11 +355,15 @@ p_li <- plotMethodPrioritizedMap(
   top_tbl = top_tbl,
   selected_receivers = receiver_sel,
   abs_center_limit = NULL,
-  out_prefix = file.path("figures_04_08_2025", "supp_fig1_liana")
+  out_prefix = file.path("figures_04_08_2025", "supp_fig1_liana"),
+  ligand_col_min = 0,
+  ligand_col_max = 1,
+  receptor_col_min = 0, 
+  receptor_col_max =1
 )
 
 png(file.path(figures_folder,"supp_figure_1.png"),width  = 2000,     
-    height = 1500,     
+    height = 2200,     
     res    = 300)
 # Arrange three method panels vertically if you want one composite figure:
 (p_nn / p_li) + plot_annotation(
