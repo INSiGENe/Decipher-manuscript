@@ -94,11 +94,17 @@ write.csv(
   row.names = TRUE
 )
 
-################## Supplementary Figure 1
+# ===== Supplementary Figure 1 ==== 
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(patchwork)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(patchwork)
+
+set.seed(1)
 L_set <- readRDS(file.path(dataset_path,"data/L_set.rds"))
 # assume your helper bubble function is already loaded:
 # source("R/plotBubble.R")  
@@ -109,18 +115,32 @@ decipher_raw    <- readRDS(file.path(dataset_path, "data/decipher_scores_by_clus
 nichenet_raw    <- readRDS(file.path(dataset_path, "nichenet/data/prior_table_all_clusters.rds"))
 liana_raw       <- read.csv(file.path(dataset_path, "liana/data/liana_p_interaction_results.csv"),
                             row.names=1, check.names=FALSE)
-
 # your existing preprocessors
 decipher_df <- preProcessDecipher(decipher_raw)   # from your load_all() script
 nichenet_df <- preProcessNicheNet(nichenet_raw)
 liana_df    <- preProcessLIANA(liana_raw)
 
-liana_df <- liana_df %>%                # ← your original LIANA table
+liana_df <- liana_df %>%               
   left_join(
     L_set %>% select(interaction, ligand, receptor),
     by = "interaction"
   ) %>%
-  relocate(ligand, receptor, .after = interaction)  # nicer column order
+  relocate(ligand, receptor, .after = interaction)  
+
+liana_padj <- liana_raw %>% 
+  transmute(
+    sender   = source,            # same renaming you did in preProcessLIANA
+    receiver = target,
+    interaction = str_replace(interaction, "\\^", "-"),  # make delimiter match
+    ligand_padj,
+    receptor_padj
+  ) %>% 
+  distinct()      # avoid accidental duplicates
+
+liana_df <- liana_df %>% 
+  left_join(liana_padj,
+            by = c("sender", "receiver", "interaction"))
+
 
 # pick top‐8 (4 pos, 4 neg) interactions per method
 select_top_n <- function(df, top_n=4, score_col){
@@ -134,19 +154,12 @@ select_top_n <- function(df, top_n=4, score_col){
     pull(interaction)
 }
 
-decipher_top <- select_top_n(decipher_df, 4, scaled_score)
-nichenet_top <- select_top_n(nichenet_df, 4, prioritization_score)
-liana_top    <- select_top_n(liana_df,    4, prioritization_score)
-
 # focus on one receiver cell at a time; for example “Monocyte”
 receiver <- "Mono"
 
-
-##### second version
-library(dplyr)
-library(tidyr)
-library(stringr)
-library(patchwork)
+decipher_df <- decipher_df   %>% filter(receiver == receiver)
+nichenet_df <- nichenet_df   %>% filter(receiver == receiver)
+liana_df    <- liana_df      %>% filter(receiver == receiver)
 
 # ---- 1. pick top +/- per receiver -------------------------------------------
 # top_n here is PER receiver; split_by_direction=TRUE gives top_n pos & top_n neg per receiver
@@ -155,19 +168,20 @@ select_top_per_receiver <- function(df, top_n = 4, score_col, split_by_direction
   tmp <- df %>%
     mutate(.score = !!score_col,
            .sign  = if_else(.score >= 0, "pos", "neg")) %>%
-    group_by(receiver, interaction, .sign) %>%
-    summarise(score = mean(.score, na.rm = TRUE), .groups = "drop")
+    group_by(receiver, sender, interaction, .sign) %>%
+    summarise(score = mean(.score, na.rm = TRUE), .groups = "drop") %>%
+    distinct(receiver, sender, interaction)  
 
   if (split_by_direction) {
     top_pos <- tmp %>%
       filter(.sign == "pos") %>%
-      group_by(receiver) %>%
+      group_by(receiver,sender) %>%
       slice_max(order_by = score, n = top_n, with_ties = FALSE) %>%
       ungroup()
 
     top_neg <- tmp %>%
       filter(.sign == "neg") %>%
-      group_by(receiver) %>%
+      group_by(receiver,sender) %>%
       slice_min(order_by = score, n = top_n, with_ties = FALSE) %>%
       ungroup()
 
@@ -175,21 +189,12 @@ select_top_per_receiver <- function(df, top_n = 4, score_col, split_by_direction
       distinct(receiver, interaction)
   } else {
     tmp %>%
-      group_by(receiver) %>%
+      group_by(receiver,sender) %>%
       slice_max(order_by = abs(score), n = top_n, with_ties = FALSE) %>%
       ungroup() %>%
       distinct(receiver, interaction)
   }
 }
-
-# ---- 2. coerce each method to a "Decipher-like" plotting schema -------------
-# Expected output columns:
-# interaction, ligand, receptor, sender, receiver,
-# method_score (center color), method_score_abs (for bubble size),
-# ligand.diff.expr, receptor.diff.expr,
-# ligand.frac, receptor.frac
-#
-# NicheNet has rich LFC/pct info; LIANA+ often has just scores.
 
 coerce_nichenet_schema <- function(nichenet_df) {
   nichenet_df %>%
@@ -215,8 +220,8 @@ coerce_liana_schema <- function(liana_df) {
     mutate(
       method_score     = coalesce(scaled_score, prioritization_score),
       method_score_abs = abs(method_score),
-      ligand.diff.expr   = NA_real_,
-      receptor.diff.expr = NA_real_,
+      ligand.diff.expr   = ligand_padj,
+      receptor.diff.expr = receptor_padj,
       ligand.frac   = NA_real_,
       receptor.frac = NA_real_
     ) %>%
@@ -253,9 +258,9 @@ plotMethodPrioritizedMap <- function(method_name,
       size_center   = if_else(method_score_abs > quantile(method_score_abs, 0.1, na.rm=TRUE), 1, NA_real_),
       stroke_center = 0.5,
       stroke_ligand = if_else(!is.na(ligand.frac) & ligand.frac > 0.05, 0.5, NA_real_),
-      size_ligand   = if_else(!is.na(ligand.frac) & ligand.frac > 0.05, ligand.frac, NA_real_),
+      size_ligand   = if_else(is.na(ligand.frac), 1, ligand.frac),#if_else(!is.na(ligand.frac) & ligand.frac > 0.05, ligand.frac, NA_real_),
       stroke_recept = if_else(!is.na(receptor.frac) & receptor.frac > 0.05, 0.5, NA_real_),
-      size_recept   = if_else(!is.na(receptor.frac) & receptor.frac > 0.05, receptor.frac, NA_real_)
+      size_recept   = if_else(is.na(receptor.frac), 1, receptor.frac)#if_else(!is.na(receptor.frac) & receptor.frac > 0.05, receptor.frac, NA_real_)
     )
 
   # color ranges
@@ -323,12 +328,6 @@ plotMethodPrioritizedMap <- function(method_name,
 
   composed
 }
-
-# already loaded:
-# dataset_path <- "results/cord_pic"
-# decipher_df <- preProcessDecipher(decipher_raw)   # you already have this
-# nichenet_df <- preProcessNicheNet(nichenet_raw)
-# liana_df    <- preProcessLIANA(liana_raw)
 
 # choose how many per receiver (4 pos + 4 neg)
 top_n_per_receiver <- 4
