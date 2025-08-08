@@ -8,7 +8,7 @@ set.seed(123)
 
 
 ############
-#analysis ----
+#parameters ----
 ############
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -66,10 +66,15 @@ weighted_networks_lr = weighted_networks$lr_sig %>% inner_join(lr_network, by = 
 
 ligand_activities_all_clusters <- list()
 prior_table_all_clusters <- list()
+ct_cond_tab <- table(seuratObj$cluster, seuratObj$condition)
 #for each receiver cell type
 for(this_receiver_ct in unique(seuratObj$cluster)){
   receiver = this_receiver_ct
-
+  if (min(ct_cond_tab[this_receiver_ct, ]) < 3) {
+      message(sprintf("Skipping %s – fewer than 3 cells in at least one condition", 
+                      this_receiver_ct))
+      next
+  }
  # get genes with non-zero expression in at least 5% of cells on the selected receiver cell type
   expressed_genes_receiver = get_expressed_genes(receiver, seuratObj, pct = 0.05,assay_oi="RNA")
 # treat as background those genes that occur in the ligand-target matrix

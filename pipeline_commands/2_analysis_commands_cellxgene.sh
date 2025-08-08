@@ -13,6 +13,7 @@ docker pull ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181b
 #################################
 ####### Analysis ############
 #################################
+#IMPORTANT: Find dataset keys in the file config.json, i.e. cz_human_kidney_v1.5, cz_influenza, etc. 
 
 # annotate datasets without annotations
 # run azimuth on SevMildCOVID
