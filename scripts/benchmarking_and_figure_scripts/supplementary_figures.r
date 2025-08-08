@@ -5,15 +5,17 @@ library(gplots)          # heatmap.2
 library(RColorBrewer)
 library(matrixStats)     # rowVars()
 
+set.seed(1)
+figures_folder <- "figures_04_08_2025"
+
+##### supplementary figure 2 ########
+
 # ── 1. read the full interaction-potential matrix ───────────────────────────
 output_data_filepath <- "results/cord_pic/data"
 pot_file <- file.path(output_data_filepath,
                       "interaction_potential_by_clusters.rds")
 
 all_potentials <- readRDS(pot_file)
-# `all_potentials` should be a matrix or data.frame
-#   rows   = LR pairs   (e.g. "VIM-CD44")
-#   cols   = receiver clusters (e.g. "B_cells", "pDC", …)
 
 # ── 2. slice to B-cell receiver only ────────────────────────────────────────
 receiver_cluster <- "B"    
@@ -34,22 +36,32 @@ cor_mat[is.na(cor_mat)] <- 0
 
 # ── 5. receptor vector & colour side-bar ------------------------------------
 receptor_vec <- str_extract(rownames(cor_mat), "(?<=-).*$")
-receptor_pal <- brewer.pal(8, "Set2")
-receptor_colours <- setNames(
-  receptor_pal[seq_along(unique(receptor_vec))],
-  unique(receptor_vec)
-)
+## how often does each receptor show up?
+rec_freq <- sort(table(receptor_vec), decreasing = TRUE)
 
-row_side <- receptor_colours[receptor_vec]
-col_side <- row_side  # same order, symmetric matrix
+top_k    <- 10                       # <- tweak here
+keepers  <- names(rec_freq)[seq_len(top_k)]
 
-# ── 6. dendrogram (optional – distance = 1-ρ) -------------------------------
-dend <- as.dendrogram(
-  hclust(as.dist(1 - cor_mat), method = "average")
-)
+set2_big <- colorRampPalette(brewer.pal(8, "Set2"))
+receptor_colours <- setNames(set2_big(length(keepers)), keepers)
 
-png(file.path("figures_04_08_2025","supp_figure_2.png"))
-# ── 7. draw with heatmap.2() -------------------------------------------------
+# map every row’s receptor to a colour (grey for non-keepers)
+row_side <- ifelse(receptor_vec %in% keepers,
+                   receptor_colours[receptor_vec],
+                   "grey80")
+col_side <- row_side  
+
+# ── 6. dendrogram (distance = 1-ρ) -------------------------------
+hc   <- hclust(as.dist(1 - cor_mat), method = "average")   
+dend <- as.dendrogram(hc)                                 
+ord  <- hc$order                                           
+
+png(file.path(figures_folder,"supp_figure_2.png"),
+    width  = 3000,     
+    height = 3000,     
+    res    = 300)      
+    
+    # ── 7. draw with heatmap.2() -------------------------------------------------
 heatmap.2(
   cor_mat,
   Rowv = dend, Colv = dend,
@@ -60,16 +72,25 @@ heatmap.2(
   ColSideColors = col_side,
   key.title = "Spearman ρ",
   key       = TRUE,
+  labRow = rownames(cor_mat),
+  labCol = colnames(cor_mat),
+  cexRow = 0.6,                
+  cexCol = 0.6,
   density.info = "none",
-  labRow = FALSE, labCol = FALSE,
-  cexRow = 0.4,   cexCol = 0.4,
   margins = c(5,5),
   main = "LR interaction-potential correlation – B-cells"
 )
 dev.off()
 
-# wrap in png()/pdf() if you want a file:
-# png("fig_LR_corr_Bcells_cordpic.png", 1800, 1800, res = 300)
-# heatmap.2(…)
-# dev.off()
+
+
+## ---- 3. save to csv -----------------------------------------------------
+cor_mat_ordered <- cor_mat[ord, ord]
+
+write.csv(
+  cor_mat_ordered,
+  file = file.path(figures_folder,
+                   "supp_figure_2.csv"),
+  row.names = TRUE
+)
 
