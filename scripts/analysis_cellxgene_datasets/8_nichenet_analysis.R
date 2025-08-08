@@ -8,7 +8,7 @@ set.seed(123)
 
 
 ############
-#parameters ----
+#analysis ----
 ############
 
 args <- commandArgs(trailingOnly = TRUE)

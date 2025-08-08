@@ -158,4 +158,4 @@ lr_res.head()
 
 lr_res.to_csv(os.path.join(output_data_path,"liana_p_interaction_results.csv"))
 
-print("✅ LIANA+ interaction analysis complete. Results saved to liana_p_interaction_results.csv.")
+print("LIANA+ interaction analysis complete. Results saved to liana_p_interaction_results.csv.")
