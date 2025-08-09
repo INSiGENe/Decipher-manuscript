@@ -13,7 +13,10 @@ docker pull ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181b
 #################################
 ####### Analysis ############
 #################################
-#IMPORTANT: Find dataset keys in the file config.json, i.e. cz_human_kidney_v1.5, cz_influenza, etc. 
+
+##################################
+#IMPORTANT: Find dataset keys in the file config.json, at the root of each structure, e.g. cz_human_kidney_v1.5, cz_influenza, etc. 
+##################################
 
 # annotate datasets without annotations
 # run azimuth on SevMildCOVID
@@ -121,9 +124,6 @@ docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-d
 
 #generic analysis command
 Rscript scripts/analysis_cellxgene_datasets/6_decipher_pipeline_v1_modularized.R dataset_key
-
-#commands for all datasets
-Rscript scripts/analysis_cellxgene_datasets/6_decipher_pipeline_v1_modularized.R SevCOVID_Azimuthl2_k0
 
 
 #### ----------------------- ####
