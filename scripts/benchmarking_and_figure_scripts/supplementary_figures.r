@@ -395,36 +395,3 @@ write.csv(
 )
 
 
-#attempt at overlap
-per_sign_n <- 100                    # ← bump this until the overlap is rich enough
-get_top_pool <- function(df, score_col, k = per_sign_n) {
-  score_col <- rlang::ensym(score_col)
-  df %>%
-    mutate(.score = !!score_col,
-           .sign  = if_else(.score >= 0, "pos", "neg")) %>%
-    group_by(receiver, sender, interaction, .sign) %>%
-    summarise(score = mean(.score, na.rm = TRUE), .groups = "drop") %>%
-    group_by(receiver, .sign) %>%
-    slice_max(order_by = score * if_else(.sign == "pos",  1, -1),
-              n = k, with_ties = FALSE) %>%
-    ungroup() %>%
-    select(receiver, interaction, .sign) %>%
-    unique()
-}
-
-top_dec   <- get_top_pool(decipher_df,  prioritization_score,  per_sign_n)
-top_niche <- get_top_pool(nichenet_df,  prioritization_score, per_sign_n)
-top_liana <- get_top_pool(liana_df,     prioritization_score,    per_sign_n)
-
-overlap <- reduce(list(top_dec, top_niche, top_liana),
-                  \(x, y) inner_join(x, y,
-                     by = c("receiver", "interaction", ".sign")))
-
-# fallback: if overlap still < 8, just keep whatever is there
-final_n <- 8
-result <- bind_rows(
-  overlap %>% filter(.sign == "pos") %>%
-    slice_max(order_by = row_number(), n = final_n / 2),
-  overlap %>% filter(.sign == "neg") %>%
-    slice_max(order_by = row_number(), n = final_n / 2)
-)
