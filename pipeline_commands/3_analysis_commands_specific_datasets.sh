@@ -52,14 +52,14 @@ taskset -c 10-18 python3 scripts/analysis_specific_datasets/lupus/lupus_1_cell_o
 ####### Decipher ############
 #################################
 sudo docker run -it -m 40g --memory-swap 44g -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-decipherc2c@sha256:7e43d263693b4c2a87a7a9459dcb1fd5ecc5a969ef84a7b3b3c2b71205efafb5
-source("scripts/analysis_specific_datasets/BCG/bcg_2_decipher_pipeline_v1_modularized_feb_2025.R") 
-source("scripts/analysis_specific_datasets/erp/erp_2_decipher_pipeline_v1_modularized_feb_2025.R") 
-source("scripts/analysis_specific_datasets/tnbc/tnbc_2_decipher_pipeline_v1_modularized_feb_2025.R") 
-source("scripts/analysis_specific_datasets/sepsis/sepsis_2_decipher_pipeline_v1_modularized_feb_2025.R") 
-source("scripts/analysis_specific_datasets/cord_pic/cord_pic_2_decipher_pipeline_v1_modularized_jan_2025.R") 
-source("scripts/analysis_specific_datasets/5yr_pic/5yr_pic_decipher_pipeline_v1_modularized_jan_2025.R") 
-source("scripts/analysis_specific_datasets/lupus/lupus_2_decipher_pipeline_v1_modularized_feb_2025.R") 
-source("scripts/analysis_specific_datasets/covid/covid_2_decipher_pipeline_v1_modularized_feb_2025.R") 
+source("scripts/analysis_specific_datasets/BCG/bcg_2_decipher_pipeline_v1_modularized.R") 
+source("scripts/analysis_specific_datasets/erp/erp_2_decipher_pipeline_v1_modularized.R") 
+source("scripts/analysis_specific_datasets/tnbc/tnbc_2_decipher_pipeline_v1_modularized.R") 
+source("scripts/analysis_specific_datasets/sepsis/sepsis_2_decipher_pipeline_v1_modularized.R") 
+source("scripts/analysis_specific_datasets/cord_pic/cord_pic_2_decipher_pipeline_v1_modularized.R") 
+source("scripts/analysis_specific_datasets/5yr_pic/5yr_pic_decipher_pipeline_v1_modularized.R") 
+source("scripts/analysis_specific_datasets/lupus/lupus_2_decipher_pipeline_v1_modularized.R") 
+source("scripts/analysis_specific_datasets/covid/covid_2_decipher_pipeline_v1_modularized.R") 
 
 #################################
 ####### Connectome ############

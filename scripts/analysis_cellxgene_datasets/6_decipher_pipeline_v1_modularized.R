@@ -70,7 +70,6 @@ seurat_oi <- mapConditionsInSeurat(seurat_oi,condition_name,case_condition,contr
 
 #load reference data ----
 L.set <- loadLSet(reference_filepath,species)
-enrichr_database <- loadEnrichrDatabase(reference_filepath,species)
 cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
 
 ##############
@@ -209,13 +208,6 @@ de_markers_by_cluster <- FindMarkersAllClusters(
   flag.normalize.non.log,
   random.seed= selected_random_seed
 )
-
-#this function takes a while so would be best to add a progress bar for the user
-# enrichr_results_by_cluster <- enrichResultsAllClusters(
-#   de_markers_by_cluster,
-#   significant_regulons_by_cluster,
-#   regulon_grns_by_cluster,
-#   enrichr_database)
 
 #DECIPHER analysis-----
 decipher_scores_by_regulon_and_cluster <- lapply(

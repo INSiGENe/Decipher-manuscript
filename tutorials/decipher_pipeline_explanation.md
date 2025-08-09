@@ -89,7 +89,6 @@ The script loads essential reference databases.
 ```R
 #load reference data ----
 L.set <- loadLSet(reference_filepath,species)
-enrichr_database <- loadEnrichrDatabase(reference_filepath,species)
 cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
 ```
 

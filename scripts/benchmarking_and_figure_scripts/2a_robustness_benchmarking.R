@@ -55,7 +55,6 @@ seurat_oi <- readRDS(file.path(pre_processing_path,"seurat_object_oi.rds"))
 
 #load reference data ----
 L.set <- loadLSet(reference_filepath,species)
-enrichr_database <- loadEnrichrDatabase(reference_filepath,species)
 cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
 
 #data pre-processing ----

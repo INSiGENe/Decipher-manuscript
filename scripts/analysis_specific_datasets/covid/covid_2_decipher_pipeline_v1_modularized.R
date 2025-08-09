@@ -1,6 +1,4 @@
-#main Decipher analysis pipeline
-#V1
-#load decipher package -----
+
 library(devtools)
 load_all()
 
@@ -14,11 +12,11 @@ min_cells_per_cluster_condition <- 100
 species <-  "human"
 #for sample dataset, dataset_path is "sample_analysis", condition_name is "condition", case_condition is "stim" and control_condition is "ctrl"
 #if using another dataset, ensure the following four variables are updated and data pre-processing lines below (marked WARNING) are uncommented
-dataset_path <- "results/5yr_pic"
+dataset_path <- "results/covid"
 condition_name <- "condition"
-case_condition <- "PIC" #expanding
-control_condition <- "CTRL" #non-expanding
-k_parameter = 1
+case_condition <- 22
+control_condition <- 0
+k_parameter = 2
 
 #Parameters: directories ----
 dir.create(dataset_path)
@@ -50,7 +48,6 @@ seurat_oi <- mapConditionsInSeurat(seurat_oi,condition_name,case_condition,contr
 
 #load reference data ----
 L.set <- loadLSet(reference_filepath,species)
-enrichr_database <- loadEnrichrDatabase(reference_filepath,species)
 cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
 
 ##############
@@ -61,18 +58,53 @@ plotQC_CpC(CpC_data,outputPath=output_figures_filepath)
 
 #PARAM: select the minimum number of cells per cluster + condition
 clusters_passing_CpC_filter <- getClustersPassingCpCFilter(CpC_data,minCpc = 100)
+#here he retain the C8 cluster as it is of interest to us
+clusters_passing_CpC_filter<- c(clusters_passing_CpC_filter,"CD14_plus_BDCA1_plus_PD_minus_L1_plus_cells")
+
 seurat_oi <- seurat_oi[, which(seurat_oi$cluster %in% clusters_passing_CpC_filter), seed=NULL]
 plotQC_UpC(seuratObject = seurat_oi,outputPath = output_figures_filepath,id = "_sc")
 
 min_meta_cells_parameter = 100
+
+
+##############
+##Pairings ----
+##############
+
+paramPairings <- data.frame(
+  case = clusters_passing_CpC_filter,
+  control = clusters_passing_CpC_filter
+)
+paramPairings <- paramPairings %>%
+  mutate(control = if_else(case == "CD14_plus_BDCA1_plus_PD_minus_L1_plus_cells","CD14_plus_monocytes",control))
+
+min_counts <- seurat_oi@meta.data %>%
+  group_by(cluster) %>%
+  count(condition) %>%
+  ungroup()
+
+
+groups <- createGroupsFromPairings(paramPairings)
+paramPairings_min_n <- calculateMinimumN(groups,min_counts,paramPairings)
+
 ##############
 ##Meta cells ----
 ##############
-decipher_seurat <- metaCellModule(
-  seurat_object = seurat_oi,
-  min_meta_cells = min_meta_cells_parameter,
-  k = k_parameter
-)
+
+seurat_oi@meta.data$barcode <- rownames(seurat_oi@meta.data)
+MetaCellMatrices <- generateMetaCellMatricesWPairings(
+  seuratObj = seurat_oi,
+  paramMaxScCells = 1200*(k_parameter+1),
+  paramK = k_parameter,
+  paramPairings = paramPairings_min_n)
+
+seurat_pseudo_bulk <- generatePseudoBulkSeurat(
+  pseudobulkList = MetaCellMatrices)
+
+decipher_seurat <- Seurat::NormalizeData(seurat_pseudo_bulk,normalization.method="RC",scale.factor = 100000)
+rm(MetaCellMatrices)
+rm(seurat_pseudo_bulk)
+DefaultAssay(decipher_seurat) <- "RNA"
 
 plotQC_UpC(seuratObject = decipher_seurat,outputPath = output_figures_filepath,id = "_meta")
 
@@ -122,30 +154,34 @@ capped_regulons_all_clusters <- capRegulonsAllClusters(
 
 #used to be called regulon_scores_this_cluster within the loop
 #does not pass identical test but I did a spot check and it looked identical, likely number formatting (despite both being doubles)
-regulon_scores_by_cluster <- getRegulonScoresAllClusters(
+regulon_scores_by_cluster <- getRegulonScoresAllClustersWParamPairings(
   capped_regulons_all_clusters,
-  decipher_seurat)
+  decipher_seurat,
+  paramPairings = paramPairings)
 
-regulon_deltas_by_cluster <- getRegulonDeltasAllClusters(
+regulon_deltas_by_cluster <- getRegulonDeltasAllClustersWParamPairings(
   regulon_scores_by_cluster,
-  decipher_seurat)
+  decipher_seurat,
+  paramPairings)
 
 significant_regulons_by_cluster <- getSignificantRegulonsAllClusters(
   regulon_deltas_by_cluster)
 
-significant_regulon_markers_by_cluster <- getDifferentiallyExpressedTargetsForRegulonsAllClusters(
+significant_regulon_markers_by_cluster <- getDifferentiallyExpressedTargetsForRegulonsAllClustersWParamPairings(
   decipher_seurat,
   significant_regulons_by_cluster,
   regulon_grns_by_cluster,
   flag.normalize.non.log,
-  random.seed=selected_random_seed)
+  paramPairings,
+  random.seed = selected_random_seed)
 
 #used to be called interaction_potentials_matrix_this_cluster
 #careful with this one, though it looks fine, just double check a few times
-interaction_potential_by_clusters <- getInteractionPotentialsMatrixAllClusters(
+interaction_potential_by_clusters <- getInteractionPotentialsMatrixAllClustersWParamPairings(
   decipher_seurat,
   L_set_relevant_features_all_clusters,
-  flag.normalize.non.log)
+  flag.normalize.non.log,
+  paramPairings)
 
 interaction_deltas_by_cluster <- calculateInteractionDeltasAllClusters(
   interaction_potential_by_clusters,
@@ -158,41 +194,39 @@ filtered_interaction_potentials_matrix_all_clusters <- filterIntPotByDeltas(
 #careful with this one, not identical but I believe this is due to number encoding
 #used to be called interaction_potentials_matrix_clusters
 interaction_potentials_matrix_clusters_all_clusters <-
-  getInteractionPotentialMatrixForRepresentativeInteractionsAllClusters(
+  getInteractionPotentialMatrixForRepresentativeInteractionsAllClustersWParamPairings(
     decipher_seurat,
     L_set_relevant_features_all_clusters,
     filtered_interaction_potentials_matrix_all_clusters,
     cytosig_ligands,
-    flag.normalize.non.log)
+    flag.normalize.non.log,
+    paramPairings)
 
 #so the seed has to be set before randomForest for reproducibility, is this ok SEB?
-decipher_scores_by_regulon_and_cluster <- getRandomForestWeightsAllClusters(
+decipher_scores_by_regulon_and_cluster <- getRandomForestWeightsAllClustersWParamPairings(
   decipher_seurat,
   significant_regulons_by_cluster,
   regulon_scores_by_cluster,
   interaction_potentials_matrix_clusters_all_clusters,
   L_set_relevant_features_all_clusters,
-  flag.normalize.non.log)
+  flag.normalize.non.log,
+  paramPairings)
 
-lr_markers_by_cluster <- FindLRMarkersAllClusters(
+#missing these with paramPairings
+lr_markers_by_cluster <- FindLRMarkersAllClustersWParamPairings(
   decipher_seurat,
   decipher_scores_by_regulon_and_cluster,
   flag.normalize.non.log,
+  paramPairings,
   random.seed = selected_random_seed
 )
 
-de_markers_by_cluster <- FindMarkersAllClusters(
+de_markers_by_cluster <- FindMarkersAllClustersWParamPairings(
   decipher_seurat,
   flag.normalize.non.log,
-  random.seed= selected_random_seed
+  paramPairings,
+  random.seed = selected_random_seed
 )
-
-#this function takes a while so would be best to add a progress bar for the user
-# enrichr_results_by_cluster <- enrichResultsAllClusters(
-#   de_markers_by_cluster,
-#   significant_regulons_by_cluster,
-#   regulon_grns_by_cluster,
-#   enrichr_database)
 
 #DECIPHER analysis-----
 decipher_scores_by_regulon_and_cluster <- lapply(
@@ -230,7 +264,11 @@ saveRDS(capped_regulons_all_clusters, file.path(output_data_filepath, "capped_re
 saveRDS(L_set_relevant_features_all_clusters, file.path(output_data_filepath, "L_set_relevant_features_all_clusters.rds"))
 
 #plot results ----
-plotDecipherPrioritizedMap(dataset_path,top_n=6,dataset_name="5yr_pic")
-
-#saveRDS(enrichr_results_by_cluster,file.path(output_data_filepath,"enrichr_results_by_cluster.rds"))
+plotDecipherPrioritizedMap(dataset_path,top_n=6,dataset_name="covid")
+plotDecipherPrioritizedMap_v2(
+  dataset_path = dataset_path,
+  receiver_cell_type = "CD14_plus_BDCA1_plus_PD_minus_L1_plus_cells",
+  output_filename = "decipher_plot_prioritized_c8_log",
+  log_transform = TRUE,
+  slice_n = 11)
 

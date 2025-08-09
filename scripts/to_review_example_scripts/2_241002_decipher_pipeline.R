@@ -55,7 +55,6 @@ seurat_oi <- readRDS(file.path(pre_processing_path,"seurat_object_oi.rds"))
 
 #load reference data ----
 L.set <- loadLSet(reference_filepath,species)
-enrichr_database <- loadEnrichrDatabase(reference_filepath,species)
 cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
 
 #data pre-processing ----
@@ -199,13 +198,6 @@ de_markers_by_cluster <- FindMarkersAllClusters(
   random.seed= selected_random_seed
 )
 
-#this function takes a while so would be best to add a progress bar for the user
-# enrichr_results_by_cluster <- enrichResultsAllClusters(
-#   de_markers_by_cluster,
-#   significant_regulons_by_cluster,
-#   regulon_grns_by_cluster,
-#   enrichr_database)
-
 #DECIPHER analysis-----
 decipher_scores_by_regulon_and_cluster <- lapply(
   decipher_scores_by_regulon_and_cluster,
@@ -240,6 +232,3 @@ saveRDS(interaction_potentials_matrix_clusters_all_clusters,file.path(output_dat
 saveRDS(expressed_receptors_all_clusters, file.path(output_data_filepath, "expressed_receptors_all_clusters.rds"))
 saveRDS(capped_regulons_all_clusters, file.path(output_data_filepath, "capped_regulons_all_clusters.rds"))
 saveRDS(L_set_relevant_features_all_clusters, file.path(output_data_filepath, "L_set_relevant_features_all_clusters.rds"))
-
-#saveRDS(enrichr_results_by_cluster,file.path(output_data_filepath,"enrichr_results_by_cluster.rds"))
-

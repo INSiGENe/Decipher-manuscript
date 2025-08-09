@@ -14,7 +14,7 @@ min_cells_per_cluster_condition <- 100
 species <-  "human"
 #for sample dataset, dataset_path is "sample_analysis", condition_name is "condition", case_condition is "stim" and control_condition is "ctrl"
 #if using another dataset, ensure the following four variables are updated and data pre-processing lines below (marked WARNING) are uncommented
-dataset_path <- "results/cord_pic"
+dataset_path <- "results/5yr_pic"
 condition_name <- "condition"
 case_condition <- "PIC" #expanding
 control_condition <- "CTRL" #non-expanding
@@ -50,7 +50,6 @@ seurat_oi <- mapConditionsInSeurat(seurat_oi,condition_name,case_condition,contr
 
 #load reference data ----
 L.set <- loadLSet(reference_filepath,species)
-enrichr_database <- loadEnrichrDatabase(reference_filepath,species)
 cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
 
 ##############
@@ -187,13 +186,6 @@ de_markers_by_cluster <- FindMarkersAllClusters(
   random.seed= selected_random_seed
 )
 
-#this function takes a while so would be best to add a progress bar for the user
-# enrichr_results_by_cluster <- enrichResultsAllClusters(
-#   de_markers_by_cluster,
-#   significant_regulons_by_cluster,
-#   regulon_grns_by_cluster,
-#   enrichr_database)
-
 #DECIPHER analysis-----
 decipher_scores_by_regulon_and_cluster <- lapply(
   decipher_scores_by_regulon_and_cluster,
@@ -230,7 +222,4 @@ saveRDS(capped_regulons_all_clusters, file.path(output_data_filepath, "capped_re
 saveRDS(L_set_relevant_features_all_clusters, file.path(output_data_filepath, "L_set_relevant_features_all_clusters.rds"))
 
 #plot results ----
-plotDecipherPrioritizedMap(dataset_path)
-
-#saveRDS(enrichr_results_by_cluster,file.path(output_data_filepath,"enrichr_results_by_cluster.rds"))
-
+plotDecipherPrioritizedMap(dataset_path,top_n=6,dataset_name="5yr_pic")

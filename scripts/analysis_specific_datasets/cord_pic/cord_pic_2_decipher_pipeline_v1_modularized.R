@@ -5,7 +5,9 @@ library(devtools)
 load_all()
 
 #global options ----
-set.seed(123)
+#Set this seed to NULL if you don't need reproducible results
+selected_random_seed = 123
+set.seed(selected_random_seed)
 
 #Parameters: dataset ----
 min_cells_per_cluster_condition <- 100
@@ -48,7 +50,6 @@ seurat_oi <- mapConditionsInSeurat(seurat_oi,condition_name,case_condition,contr
 
 #load reference data ----
 L.set <- loadLSet(reference_filepath,species)
-enrichr_database <- loadEnrichrDatabase(reference_filepath,species)
 cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
 
 ##############
@@ -59,7 +60,7 @@ plotQC_CpC(CpC_data,outputPath=output_figures_filepath)
 
 #PARAM: select the minimum number of cells per cluster + condition
 clusters_passing_CpC_filter <- getClustersPassingCpCFilter(CpC_data,minCpc = 100)
-seurat_oi <- subset(seurat_oi,subset = cluster %in% clusters_passing_CpC_filter)
+seurat_oi <- seurat_oi[, which(seurat_oi$cluster %in% clusters_passing_CpC_filter), seed=NULL]
 plotQC_UpC(seuratObject = seurat_oi,outputPath = output_figures_filepath,id = "_sc")
 
 min_meta_cells_parameter = 100
@@ -89,7 +90,7 @@ saveRDS(decipher_seurat,file.path(output_data_filepath,"pseudobulk_seurat.rds"))
 ##############
 #data pre-processing: main analysis ----
 ##############
-decipher_seurat_lr <- subset(decipher_seurat,features = unique(c(L.set$ligand,L.set$receptor)))
+decipher_seurat_lr <- decipher_seurat[unique(c(L.set$ligand,L.set$receptor)),, seed=NULL]
 
 feature_statistics <- getFeatureStatistics(
   features=unique(c(L.set$ligand,L.set$receptor)),
@@ -135,12 +136,13 @@ significant_regulon_markers_by_cluster <- getDifferentiallyExpressedTargetsForRe
   decipher_seurat,
   significant_regulons_by_cluster,
   regulon_grns_by_cluster,
-  flag.normalize.non.log)
+  flag.normalize.non.log,
+  random.seed=selected_random_seed)
 
 #used to be called interaction_potentials_matrix_this_cluster
 #careful with this one, though it looks fine, just double check a few times
 interaction_potential_by_clusters <- getInteractionPotentialsMatrixAllClusters(
-  decipher_seurat,decipher_seurat_this_cluster,
+  decipher_seurat,
   L_set_relevant_features_all_clusters,
   flag.normalize.non.log)
 
@@ -174,20 +176,15 @@ decipher_scores_by_regulon_and_cluster <- getRandomForestWeightsAllClusters(
 lr_markers_by_cluster <- FindLRMarkersAllClusters(
   decipher_seurat,
   decipher_scores_by_regulon_and_cluster,
-  flag.normalize.non.log
+  flag.normalize.non.log,
+  random.seed = selected_random_seed
 )
 
 de_markers_by_cluster <- FindMarkersAllClusters(
   decipher_seurat,
-  flag.normalize.non.log
+  flag.normalize.non.log,
+  random.seed= selected_random_seed
 )
-
-#this function takes a while so would be best to add a progress bar for the user
-# enrichr_results_by_cluster <- enrichResultsAllClusters(
-#   de_markers_by_cluster,
-#   significant_regulons_by_cluster,
-#   regulon_grns_by_cluster,
-#   enrichr_database)
 
 #DECIPHER analysis-----
 decipher_scores_by_regulon_and_cluster <- lapply(
@@ -226,6 +223,3 @@ saveRDS(L_set_relevant_features_all_clusters, file.path(output_data_filepath, "L
 
 #plot results ----
 plotDecipherPrioritizedMap(dataset_path)
-
-#saveRDS(enrichr_results_by_cluster,file.path(output_data_filepath,"enrichr_results_by_cluster.rds"))
-

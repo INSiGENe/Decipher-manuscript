@@ -54,7 +54,6 @@ seurat_oi <- readRDS(file.path(pre_processing_path,"seurat_object_oi.rds"))
 #load reference data ----
 #L.set             <- getForrestLRDatabase(reference_filepath,species)
 L.set <- loadLSet(reference_filepath,species)
-enrichr_database  <- loadEnrichrDatabase(reference_filepath,species)
 cytosig_ligands   <- loadCytosigLigands(reference_filepath,species)
 
 #data pre-processing ----
@@ -199,13 +198,6 @@ de_markers_by_cluster <- FindMarkersAllClusters(
   decipher_seurat,
   flag.normalize.non.log
 )
-
-#this function takes a while so would be best to add a progress bar for the user
-# enrichr_results_by_cluster <- enrichResultsAllClusters(
-#   de_markers_by_cluster,
-#   significant_regulons_by_cluster,
-#   regulon_grns_by_cluster,
-#   enrichr_database)
 
 #DECIPHER analysis-----
 decipher_scores_by_regulon_and_cluster <- lapply(
