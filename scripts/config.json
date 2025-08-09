@@ -509,68 +509,13 @@
       }
     },
 
-
-    "lupus": {
-    "dataset_description":{
-      "repository": "GEO",
-      "download_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE155673",
-      "description": "Systems biological assessment of immunity to mild versus severe COVID-19 infection in humans",
-      "url": "https://www.science.org/doi/10.1126/science.abc6261"
-    },
-    "global":{
-      "dataset_name": "lupus",
-      "min_genes_per_cell": 200
-    },
-    "pre_processing_for_analysis": {
-      "cluster_meta_field": "predicted.celltype.l2",
-      "condition_meta_field": "severity_group",
-      "individual_meta_field": "orig.ident",
-      "case_condition": "Severe",
-      "control_condition": "Healthy"
-    },
-    "cytosig": {
-      "output_path": "results/SevCOVID_Azimuthl2_k0"
-    },
-    "cell_oracle": {
-      "data_folder": "results/SevCOVID_Azimuthl2_k0",
-      "species": "human"
-    },
-    "Decipher_analysis": {
-      "min_cells_per_cluster_condition": 100,
-      "species": "human",
-      "dataset_path": "results/SevCOVID_Azimuthl2_k0",
-      "condition_name": "severity_group",
-      "case_condition": "Severe",
-      "control_condition": "Healthy",
-      "k_parameter": 0,
-      "min_meta_cells_parameter": 100
-    },
-    "Connectome_analysis": {
-      "this_species":"human",
-      "case_condition":"Severe", 
-      "control_condition":"Healthy", 
-      "dataset_path":"results/SevCOVID_Azimuthl2_k0"
-    },
-    "NicheNet_analysis": {
-      "case_condition": "Severe",
-      "control_condition": "Healthy",
-      "dataset_path": "results/SevCOVID_Azimuthl2_k0",
-      "this_species": "human"
-    },
-    "liana_plus_analysis":{
-        "dataset_path": "results/_k0",
-        "sample_key": "orig.ident",
-        "groupby": "predicted.celltype.l2",
-        "condition_key": "condition"
-      }
-  },
-
   "5yr_pic": {
     "dataset_description":{
-      "repository": "cellxgene",
-      "download_url": "unkown",
+      "repository": "GEO",
+      "download_url": "not defined",
       "description": "5yr old pbmcs stimulated with pbmc",
-      "abbreviation": "5yr_pic"
+      "abbreviation": "5yr_pic",
+      "notes": "this is a temporal placeholder"
     },
     "pre_processing":{
       "input_path": "data/5yr_pic",

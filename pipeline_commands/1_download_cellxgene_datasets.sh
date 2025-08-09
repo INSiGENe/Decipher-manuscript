@@ -4,71 +4,21 @@
 ####### Download datasets ############
 #################################
 
-#Run these commands at the root of the analysis folder, datasets will be downloaded to a data folder.
+#Run these commands at the root of the analysis folder, datasets will be downloaded to their own data folder.
 
-#what about other ones?
-mkdir -p "data/bcr1"
-mkdir -p "data/tnbc"
-#this data sits behind a log-in so needs to be downloaded manually
-
-#PIC stimulation
-mkdir -p "data/pic_5yr"
-mkdir -p "data/pic_cord"
-
-# BCG baccination
-mkdir -p "data/bcg"
-
-#pfizer vaccination
-mkdir -p "data/pfizer"
-
-#sepsis
-mkdir -p "data/sepsis" && \
-wget --show-progress -O "data/sepsis/matrix.csv.gz" \
-  "https://singlecell.broadinstitute.org/single_cell/data/public/SCP548/an-immune-cell-signature-of-bacterial-sepsis-patient-pbmcs?filename=scp_gex_matrix_raw.csv.gz" && \
-wget --show-progress -O "data/sepsis/meta_data.txt" \
-  "https://singlecell.broadinstitute.org/single_cell/data/public/SCP548/an-immune-cell-signature-of-bacterial-sepsis-patient-pbmcs?filename=scp_meta_updated.txt"
-
-
+######################################
 # CellXGene
-#lupus
-mkdir -p data/lupus && \
-wget -O data/lupus/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/6e65a13e-2a45-4340-9442-bd2c41a01f17.h5ad"
-
-#placenta infection
-mkdir -p data/cz_placenta_infection && \
-wget -O data/cz_placenta_infection/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/50bbe1a2-5f27-47f5-a809-046459a4ae5e.h5ad"
+######################################
 
 #human kidney
-mkdir -p data/human_kidney_v1.5 && \
-wget -O data/human_kidney_v1.5/dataset.h5ad \
+mkdir -p data/cz_human_kidney_v1.5 && \
+wget -O data/cz_human_kidney_v1.5/dataset.h5ad \
 "https://datasets.cellxgene.cziscience.com/f5b6d620-76df-45c5-9524-e5631be0e44a.h5ad"
-
-#periheart
-mkdir -p data/cz_periheart && \
-wget -O data/cz_periheart/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/66c82e1b-e3ce-48dc-b1db-52546dbd4e44.h5ad"
-
-#unsure
-mkdir -p data/cz_carebank && \
-wget -O data/cz_carebank/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/e67f1a92-0371-4657-b15e-a4934f9ab733.h5ad"
-
-#rcc
-mkdir -p data/cz_rcc && \
-wget -O data/cz_rcc/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/bf28d870-0750-443d-bb54-ec664b8f40c3.h5ad"
 
 #cz-influenza
 mkdir -p data/cz_influenza && \
 wget -O data/cz_influenza/dataset.h5ad \
 "https://datasets.cellxgene.cziscience.com/5f4efede-b295-4be4-aded-eb8b9a946382.h5ad"
-
-#afib-macrophages
-mkdir -p data/cz_afib_macrophages && \
-wget -O data/cz_afib_macrophages/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/bca7945f-69e7-4bab-92d3-90e6af99c7ac.h5ad"
 
 #hpap islets
 mkdir -p data/cz_hpap_t1d_islets && \
@@ -84,11 +34,6 @@ wget -O data/cz_dev_gut_crohns/dataset.h5ad \
 mkdir -p data/cz_hnscc_hpv && \
 wget -O data/cz_hnscc_hpv/dataset.h5ad \
 "https://datasets.cellxgene.cziscience.com/85981f97-aaa8-4c45-b920-7522727ea58c.h5ad"
-
-#ra
-mkdir -p data/cz_ra_pbmc && \
-wget -O data/cz_ra_pbmc/dataset.h5ad \
-"https://datasets.cellxgene.cziscience.com/ac9c13da-7134-4d09-8086-d0933cbdba41.h5ad"
 
 #bronchial
 mkdir -p data/cz_cf_bronchial_biopsy && \
@@ -159,4 +104,44 @@ for d in cov*/; do
   gunzip "${d}"*.gz
 done
 
-#TODO: what about the other datasets used in the manuscript?
+#################################
+####### Legacy datasets (still used but more custom pre-processing) #########
+#################################
+
+#what about other ones?
+mkdir -p "data/erp"
+mkdir -p "data/tnbc"
+#this data sits behind a login so needs to be downloaded manually
+#add 1863-counts_cells_cohort1.rds and 1872-BIOKEY_metaData_cohort1_web.csv.xls to the folder above
+
+#PIC stimulation
+mkdir -p "data/pic_5yr"
+mkdir -p "data/pic_cord"
+#for both these datasets, add the Zenodo-stored seurat_object_integrated_annotated.rds file (which corresponds to data from Read et al.) to the folders above
+
+# BCG baccination
+mkdir -p "data/bcg"
+#place the GEO-downloaded GSE244126_RAW (unzipped folder) in the folder above
+
+#covid (pfizer vaccination) 
+mkdir -p "data/covid"
+#add GSE171964_geo_pheno_v2.csv.gz unzipped and with name GSE171964_geo_pheno_v2.csv to the folder above
+mkdir -p "data/covid/GSE171964_unzipped"
+#add the GEO-downloaded GSE171964_barcodes_v2.tsv.gz, GSE171964_countsmatrix_v2.mtx.gz and GSE171964_feats_v2.tsv.gz (unzipped and renamed to matrix.mtx, barcodes.tsv, features.tsv, respectively to the folder above)
+
+mkdir -p "data/lupus"
+# place the cellxgene .h5ad file in the folder above and rename to lupus_sc_data.h5ad
+
+#sepsis
+mkdir -p "data/sepsis" && \
+wget --show-progress -O "data/sepsis/matrix.csv.gz" \
+  "https://singlecell.broadinstitute.org/single_cell/data/public/SCP548/an-immune-cell-signature-of-bacterial-sepsis-patient-pbmcs?filename=scp_gex_matrix_raw.csv.gz" && \
+wget --show-progress -O "data/sepsis/meta_data.txt" \
+  "https://singlecell.broadinstitute.org/single_cell/data/public/SCP548/an-immune-cell-signature-of-bacterial-sepsis-patient-pbmcs?filename=scp_meta_updated.txt"
+
+
+
+##Not done, but for future reference, can add lupus here
+#mkdir -p data/lupus && \
+#wget -O data/lupus/dataset.h5ad \
+#"https://datasets.cellxgene.cziscience.com/6e65a13e-2a45-4340-9442-bd2c41a01f17.h5ad"

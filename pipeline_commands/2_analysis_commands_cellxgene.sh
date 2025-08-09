@@ -10,46 +10,28 @@ docker pull ebasto/decipher-manuscript-nichenetr@sha256:146e50752019a18d4125729c
 docker pull ebasto/decipher-manuscript-natmi@sha256:1269438fa798330eba47d51ac910d76a6298fb471c6e9449685a0a1dbb2282b7 
 docker pull ebasto/decipher-manuscript-liana-plus:1.0.0@sha256:d300ec7872d9a0cf8ae91fc05798f56a3aa3982657bb3883f21bcef63b8ee580
 docker pull ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a
+
 #################################
 ####### Analysis ############
 #################################
 
 ##################################
-#IMPORTANT: Find dataset keys in the file config.json, at the root of each structure, e.g. cz_human_kidney_v1.5, cz_influenza, etc. 
+#IMPORTANT: replace dataset_key with the dataset root  of each structure  in the scripts/config.json,, e.g. cz_human_kidney_v1.5, cz_influenza, etc. 
 ##################################
 
-# annotate datasets without annotations
-# run azimuth on SevMildCOVID
-cd data/SevMildCOVID
-docker run -it --rm -v "$(pwd):/workspace" -w /workspace satijalab/azimuth:0.5.0 bash
-
-#### Convert anndata objects to R-based objects (Seurat) ####
+#### Convert CELLxGENE anndata objects to Seurat objects ####
 #trigger environment
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-celloracle@sha256:419f15c53249e4c09a0c361b8e9ab0857d46c1e797d0f3c40af35a1ce583c1b1
 
 #general command form
 python3 scripts/analysis_cellxgene_datasets/1_preprocess_h5ad.py dataset_key
 
-#commands for each dataset
-python3 scripts/analysis_cellxgene_datasets/1_preprocess_h5ad.py lupus
-
-#### Process initial object for downstream analyses ####
-docker run -it --rm --memory=180g --memory-swap=185g \
-  -v "$(pwd):/app" -w /app \
-  ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a \
-  bash
-
 #### --------------------------------- ####
 ####  Custom pre-processing (selected) ####
 #### --------------------------------- ####
 # run azimuth on SevMildCOVID
-#TODO: understand why we have three different SevMilCOVID folders here?
-Rscript scripts/analysis_cellxgene_datasets/custom_pre_processing_SevMilCovid.r SevCOVID
-Rscript scripts/analysis_cellxgene_datasets/custom_pre_processing_SevMilCovid.r MilCOVID
-
-Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r SevCOVID_Azimuthl1
-Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r MilCOVID_Azimuthl1
-
+cd data/SevMildCOVID
+docker run -it --rm -v "$(pwd):/workspace" -w /workspace satijalab/azimuth:0.5.0 bash
 Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r SevCOVID_Azimuthl2
 Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r MilCOVID_Azimuthl2
 

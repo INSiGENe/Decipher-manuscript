@@ -1,35 +1,3 @@
-#test one one
-
-library(Seurat)
-library(Matrix)
-
-# Define paths
-cov01_path <- "data/SevMilCOVID/cov01"
-mtx_file <- file.path(cov01_path, "GSE155673_cov01_matrix.mtx")
-barcodes_file <- file.path(cov01_path, "GSE155673_cov01_barcodes.tsv")
-features_file <- "data/SevMilCOVID/GSE155673_features.tsv"
-
-# Read matrix
-expression_matrix <- readMM(mtx_file)
-
-# Read barcodes
-barcodes <- readLines(barcodes_file)
-
-# Read features (column 2 has gene symbols)
-features <- read.delim(features_file, header = FALSE)
-gene_names <- make.unique(as.character(features$V2))  # Ensure uniqueness
-
-# Add row and column names to the matrix
-rownames(expression_matrix) <- gene_names
-colnames(expression_matrix) <- barcodes
-
-# Create Seurat object
-cov01_seurat <- CreateSeuratObject(counts = expression_matrix, project = "cov01")
-
-# View summary
-cov01_seurat
-
-#test on all
 library(Seurat)
 library(Matrix)
 
