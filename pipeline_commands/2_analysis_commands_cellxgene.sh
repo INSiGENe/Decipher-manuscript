@@ -1,3 +1,4 @@
+#operate from an analysis directory
 
 #################################
 ####### Download Docker images ############
@@ -10,57 +11,43 @@ docker pull ebasto/decipher-manuscript-nichenetr@sha256:146e50752019a18d4125729c
 docker pull ebasto/decipher-manuscript-natmi@sha256:1269438fa798330eba47d51ac910d76a6298fb471c6e9449685a0a1dbb2282b7 
 docker pull ebasto/decipher-manuscript-liana-plus:1.0.0@sha256:d300ec7872d9a0cf8ae91fc05798f56a3aa3982657bb3883f21bcef63b8ee580
 docker pull ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a
+docker pull ebasto/decipher-manuscript-azimuth:1.0.0@sha256:128653884fd49cf2f59b00cd2c8ca6509e6cc111784ced78f6c24b163600f4ab
+#docker pull ebasto/decipher-manuscript-azimuth:1.0.0@sha256:c4e145e5d22c52ad6f6692170188bbfd31e808fe67c70f025c31ca72fbb8e903
 
 #################################
 ####### Analysis ############
 #################################
-
-##################################
 #IMPORTANT: replace dataset_key with the dataset root  of each structure  in the scripts/config.json,, e.g. cz_human_kidney_v1.5, cz_influenza, etc. 
-##################################
+
+#### --------------------------------- ####
+####  pre-process python objects ####
+#### --------------------------------- ####
 
 #### Convert CELLxGENE anndata objects to Seurat objects ####
-#trigger environment
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-celloracle@sha256:419f15c53249e4c09a0c361b8e9ab0857d46c1e797d0f3c40af35a1ce583c1b1
-
 #general command form
 python3 scripts/analysis_cellxgene_datasets/1_preprocess_h5ad.py dataset_key
 
 #### --------------------------------- ####
-####  Custom pre-processing (selected) ####
+####  Custom pre-processing (Only Severe vs Mild COVID-19) ####
 #### --------------------------------- ####
 
-cd data/SevMildCOVID
-
-docker run -it --rm --memory=180g --memory-swap=185g \
-  -v "$(pwd):/app" -w /app \
-  ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a \
-  bash
-
-Rscript scripts/analysis_cellxgene_datasets/custom_sevmild_covid/1_severe_mild_covid_analysis_replicate.r
+# run intial pre-processing of raw data
+docker run -it --rm -v "$(pwd):/app" -w /app ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a bash
+Rscript scripts/analysis_cellxgene_datasets/custom_sevmil_covid/1_create_seurat_object.r
 
 # run azimuth on SevMildCOVID
+docker run -it --rm -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-azimuth:1.0.0@sha256:128653884fd49cf2f59b00cd2c8ca6509e6cc111784ced78f6c24b163600f4ab bash
+Rscript scripts/analysis_cellxgene_datasets/custom_sevmil_covid/2_annotation.r
 
-docker run -it --rm -v "$(pwd):/workspace" -w /workspace satijalab/azimuth:0.5.0 bash
+# separate azimuth results into severe and mild
+docker run -it --rm -v "$(pwd):/app" -w /app ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a bash
+Rscript scripts/analysis_cellxgene_datasets/custom_sevmil_covid/3_separate_severe_and_mild.r SevCOVID_Azimuthl2
+Rscript scripts/analysis_cellxgene_datasets/custom_sevmil_covid/3_separate_severe_and_mild.r MilCOVID_Azimuthl2
 
-
-
-Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r SevCOVID_Azimuthl2
-Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r MilCOVID_Azimuthl2
-
-#### ----------------------------- ####
-####  Generic pre-processing (all) ####
-#### ----------------------------- ####
-#TODO: distinguish between CZ pipeline and custom pipelines
-docker run -it --rm --memory=180g --memory-swap=185g \
-  -v "$(pwd):/app" -w /app \
-  ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a \
-  bash
-  
-Rscript scripts/analysis_cellxgene_datasets/2_preprocess_object_for_analysis.R dataset_key
 
 #### run scCODA analysis for SevMildCOVID ####
-
+#TODO go over this
 docker run -it --rm --memory=180g --memory-swap=185g \
   -v "$(pwd):/app" -w /app \
   ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a \
@@ -79,11 +66,18 @@ sudo mkdir -p results/MilCOVID_Azimuthl2/sccoda
 sudo mv data/SevMilCOVID/results_sccoda_severe_vs_healthy.csv results/SevCOVID_Azimuthl2/sccoda
 sudo mv data/SevMilCOVID/results_sccoda_moderate_vs_healthy.csv results/MilCOVID_Azimuthl2/sccoda
 
+#### ----------------------------- ####
+####  Generic pre-processing (all) ####
+#### ----------------------------- ####
+#TODO: distinguish between CZ pipeline and custom pipelines
+docker run -it --rm -v "$(pwd):/app" -w /app ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a bash
+  
+Rscript scripts/analysis_cellxgene_datasets/2_preprocess_object_for_analysis.R dataset_key
+
+
 #### ----------------------- ####
 ####       Run Cytosig       ####
 #### ----------------------- ####
-#TODO: operate from a single analysis directory
-cd projects/Manuscript_jan_2025
 
 #analysis container
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-cytosig@sha256:583a450ae25f91686dbf9db9b3297d7f82f81f87b809f520daf226c3a661b11b

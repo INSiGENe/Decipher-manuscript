@@ -1,6 +1,3 @@
-#restore environment
-library(renv)
-renv::restore()
 
 ############
 #libraries ----
