@@ -1,23 +1,7 @@
-FROM satijalab/azimuth
+FROM ebasto/decipher-manuscript-decipherc2c@sha256:7e43d263693b4c2a87a7a9459dcb1fd5ecc5a969ef84a7b3b3c2b71205efafb5
 
-# Install system libraries required for devtools-related packages
-RUN apt-get update && apt-get install -y \
-    libfreetype6-dev \
-    libharfbuzz-dev \
-    libfribidi-dev \
-    libpng-dev \
-    libtiff5-dev \
-    libjpeg-dev \
-    libfontconfig1-dev \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+RUN R -e 'remotes::install_github("satijalab/seurat-data@v0.2.1", upgrade = "never")'
 
-# Fix for systemfonts: preinstall cpp11 (no other packages)
-RUN Rscript -e "install.packages('cpp11', repos='https://cloud.r-project.org')"
+RUN R -e 'BiocManager::install("glmGamPoi",update = FALSE)'
 
-
-# Install devtools and remotes
-RUN Rscript -e "install.packages(c('devtools', 'remotes'), repos='https://cloud.r-project.org')"
-
-# Install seurat-data from GitHub via remotes
-RUN Rscript -e "remotes::install_github('satijalab/seurat-data')" 
+RUN R -e 'remotes::install_github("satijalab/azimuth@release/0.4.6", upgrade = "never")'
