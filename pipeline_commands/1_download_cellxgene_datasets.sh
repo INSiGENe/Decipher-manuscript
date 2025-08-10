@@ -92,7 +92,7 @@ for filename in "${files[@]}"; do
   curl -s -L "$url" -o "${parent_dir}/${filename}"
 done
 
-cd data/SevMildCOVID
+cd data/SevMilCOVID
 
 # Unzip all .gz files in the root directory and delete the .gz files
 echo "Unzipping root-level files..."

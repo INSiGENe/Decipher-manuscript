@@ -29,9 +29,22 @@ python3 scripts/analysis_cellxgene_datasets/1_preprocess_h5ad.py dataset_key
 #### --------------------------------- ####
 ####  Custom pre-processing (selected) ####
 #### --------------------------------- ####
-# run azimuth on SevMildCOVID
+
 cd data/SevMildCOVID
+
+docker run -it --rm --memory=180g --memory-swap=185g \
+  -v "$(pwd):/app" -w /app \
+  ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a \
+  bash
+
+Rscript scripts/analysis_cellxgene_datasets/custom_sevmild_covid/1_severe_mild_covid_analysis_replicate.r
+
+# run azimuth on SevMildCOVID
+
 docker run -it --rm -v "$(pwd):/workspace" -w /workspace satijalab/azimuth:0.5.0 bash
+
+
+
 Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r SevCOVID_Azimuthl2
 Rscript scripts/analysis_cellxgene_datasets/1.1_preprocess_SevMilCovid_Azimuth.r MilCOVID_Azimuthl2
 
