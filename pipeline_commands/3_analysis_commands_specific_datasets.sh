@@ -10,6 +10,8 @@ docker pull ebasto/decipher-manuscript-connectome@sha256:851edafd24ec10d67cd9eda
 docker pull ebasto/decipher-manuscript-nichenetr@sha256:146e50752019a18d4125729c3d4b09ccd88a11e188525dc48eb9dcdcb72967ec
 docker pull ebasto/decipher-manuscript-natmi@sha256:1269438fa798330eba47d51ac910d76a6298fb471c6e9449685a0a1dbb2282b7 
 docker pull ebasto/decipher-manuscript-liana-plus:1.0.0@sha256:d300ec7872d9a0cf8ae91fc05798f56a3aa3982657bb3883f21bcef63b8ee580
+
+
 #################################
 #######  Manuscript pre-processing ############
 #################################

@@ -10,106 +10,107 @@ library(devtools)
 load_all()
 
 set.seed(1)
-figures_folder <- "figures_04_08_2025"
-comparison_name <- "SevCOVID_Azimuthl2"
-#also run the pubmed code below for comparison_name <- "MilCOVID_Azimuthl2"
-data_path <- file.path("results",comparison_name,"data")
-capped_regulons_all_clusters <- readRDS(file.path(data_path,"capped_regulons_all_clusters.rds"))
-regulon_deltas_by_cluster <- readRDS(file.path(data_path,"regulon_deltas_by_cluster.rds"))
-significant_regulon_markers_by_cluster <- readRDS(file.path(data_path,"significant_regulon_markers_by_cluster.rds"))
+figures_folder <- "figures_11_08_2025"
 n_pubmed <- 40
 
 ###### PUBMED code
-for(selected_ct in c("CD14_Mono","CD16_Mono")){
-  # Run the refactored code
-  regulons <- regulon_deltas_by_cluster[[selected_ct]] %>%
-    filter(class == "real") %>%
-    arrange(desc(deltaPagoda)) %>%
-    dplyr::slice_head(n=10) %>%
-    pull(name)
-  data <- extract_regulon_data(regulons, capped_regulons_all_clusters, significant_regulon_markers_by_cluster, selected_ct)
-  plot_tf_tg_network(data, regulons)
+for(comparison_name in c("SevCOVID_Azimuthl2","MilCOVID_Azimuthl2")){
+  data_path <- file.path("results",comparison_name,"data")
+  capped_regulons_all_clusters <- readRDS(file.path(data_path,"capped_regulons_all_clusters.rds"))
+  regulon_deltas_by_cluster <- readRDS(file.path(data_path,"regulon_deltas_by_cluster.rds"))
+  significant_regulon_markers_by_cluster <- readRDS(file.path(data_path,"significant_regulon_markers_by_cluster.rds"))
+  for(selected_ct in c("CD14_Mono","CD16_Mono")){
+    # Run the refactored code
+    regulons <- regulon_deltas_by_cluster[[selected_ct]] %>%
+      filter(class == "real") %>%
+      arrange(desc(deltaPagoda)) %>%
+      dplyr::slice_head(n=10) %>%
+      pull(name)
+    data <- extract_regulon_data(regulons, capped_regulons_all_clusters, significant_regulon_markers_by_cluster, selected_ct)
+    plot_tf_tg_network(data, regulons)
 
-  # Create a binary matrix
-  binary_matrix <- data$edges %>%
-    mutate(value = 1) %>%  # Assign 1 for each edge
-    tidyr::pivot_wider(names_from = to, values_from = value, values_fill = 0) %>%
-    tibble::column_to_rownames("from")
+    # Create a binary matrix
+    binary_matrix <- data$edges %>%
+      mutate(value = 1) %>%  # Assign 1 for each edge
+      tidyr::pivot_wider(names_from = to, values_from = value, values_fill = 0) %>%
+      tibble::column_to_rownames("from")
 
-  # Filter columns where more than one 'from' talks to a 'to'
-  binary_matrix <- binary_matrix[, colSums(binary_matrix) > 1]
+    # Filter columns where more than one 'from' talks to a 'to'
+    binary_matrix <- binary_matrix[, colSums(binary_matrix) > 1]
 
-  #see frequency of genes mentioned in pubmed
-  # Define genes
-  genes <- colnames(binary_matrix)  # Replace with your genes of interest
+    #see frequency of genes mentioned in pubmed
+    # Define genes
+    genes <- colnames(binary_matrix)  # Replace with your genes of interest
 
-  # # Apply the function to each gene and store the results in a data frame
-  PubMed_Count = sapply(genes, get_n_pubmed_articles_per_gene)
+    # # Apply the function to each gene and store the results in a data frame
+    PubMed_Count = sapply(genes, get_n_pubmed_articles_per_gene)
 
-  gene_counts <- data.frame(
-    Gene = genes,
-    PubMed_Count = PubMed_Count
-  )
+    gene_counts <- data.frame(
+      Gene = genes,
+      PubMed_Count = PubMed_Count
+    )
 
-  top_genes <- gene_counts %>%
-    filter(Gene %in% genes) %>%
-    arrange(desc(PubMed_Count)) %>%
-    top_n(n = n_pubmed, wt = PubMed_Count) %>%
-    pull(Gene)
+    top_genes <- gene_counts %>%
+      filter(Gene %in% genes) %>%
+      arrange(desc(PubMed_Count)) %>%
+      top_n(n = n_pubmed, wt = PubMed_Count) %>%
+      pull(Gene)
 
-  binary_matrix <- binary_matrix[,top_genes]
+    binary_matrix <- binary_matrix[,top_genes]
 
-  # Convert binary_matrix to matrix format
-  binary_matrix_mat <- as.matrix(binary_matrix)
-  # Define the color palette with custom logic for red and white
-  for(i in 1:nrow(binary_matrix_mat)){
-    for(j in 1:ncol(binary_matrix_mat)){
-      if(binary_matrix_mat[i,j] == 1 & colnames(binary_matrix_mat)[j] %in% top_genes)
-        binary_matrix_mat[i,j] <- 1.2
+    # Convert binary_matrix to matrix format
+    binary_matrix_mat <- as.matrix(binary_matrix)
+    # Define the color palette with custom logic for red and white
+    for(i in 1:nrow(binary_matrix_mat)){
+      for(j in 1:ncol(binary_matrix_mat)){
+        if(binary_matrix_mat[i,j] == 1 & colnames(binary_matrix_mat)[j] %in% top_genes)
+          binary_matrix_mat[i,j] <- 1.2
+      }
     }
+    my_palette <- c("white", "black", "red")
+    file_name <- paste(selected_ct,"tg_heatmaps.png")
+    file_dir <- file.path("figures")
+
+    # Perform hierarchical clustering on rows and columns
+    row_dendrogram <- hclust(dist(binary_matrix_mat))   # Hierarchical clustering on rows
+    col_dendrogram <- hclust(dist(t(binary_matrix_mat))) # Hierarchical clustering on columns
+
+    # Order the matrix based on clustering
+    binary_matrix_ordered <- binary_matrix_mat[row_dendrogram$order, col_dendrogram$order]
+
+    # Convert the ordered matrix to a data frame for ggplot2
+    binary_matrix_df <- as.data.frame(binary_matrix_ordered)
+    binary_matrix_df$row <- factor(rownames(binary_matrix_ordered), levels = rownames(binary_matrix_ordered)) # Set ordered row levels
+
+    # Melt the data for ggplot2
+    binary_matrix_melted <- melt(binary_matrix_df, id.vars = "row")
+
+    # Create the heatmap plot
+    p <- ggplot(binary_matrix_melted, aes(x = variable, y = row, fill = value)) +
+      geom_tile(color = "white") +
+      scale_fill_gradientn(colors = my_palette,
+                          breaks = c(-0.1, 0.9, 1.1, 1.2),
+                          limits = c(-0.1, 1.2),
+                          guide = "none") +
+      labs(title = NULL) +
+      theme_minimal() +
+      theme(
+        #plot.title = element_text(size = 8, hjust = 0.5),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 8),
+        # Conditionally set y-axis labels
+        axis.text.y = element_text(size = 8),
+        axis.title = element_blank(),
+        plot.margin = unit(c(1, 1, 1, 1), "lines")
+      ) +
+      scale_y_discrete(position = "right") #do this for severe and comment out for moderate
+      print(comparison_name)
+      print(selected_ct)
+      #scale_y_discrete(labels = function(x) ifelse(x %in% top_genes, x, ""))  # Conditional row labels
+    filename <- paste0(comparison_name,"_",selected_ct,"_tgs_heatmap_pubmed.png")
+    ggsave(file.path(figures_folder,filename),p,width = 12,height = 5.5,units="cm")
   }
-  my_palette <- c("white", "black", "red")
-  file_name <- paste(selected_ct,"tg_heatmaps.png")
-  file_dir <- file.path("figures")
-
-  # Perform hierarchical clustering on rows and columns
-  row_dendrogram <- hclust(dist(binary_matrix_mat))   # Hierarchical clustering on rows
-  col_dendrogram <- hclust(dist(t(binary_matrix_mat))) # Hierarchical clustering on columns
-
-  # Order the matrix based on clustering
-  binary_matrix_ordered <- binary_matrix_mat[row_dendrogram$order, col_dendrogram$order]
-
-  # Convert the ordered matrix to a data frame for ggplot2
-  binary_matrix_df <- as.data.frame(binary_matrix_ordered)
-  binary_matrix_df$row <- factor(rownames(binary_matrix_ordered), levels = rownames(binary_matrix_ordered)) # Set ordered row levels
-
-  # Melt the data for ggplot2
-  binary_matrix_melted <- melt(binary_matrix_df, id.vars = "row")
-
-  # Create the heatmap plot
-  p <- ggplot(binary_matrix_melted, aes(x = variable, y = row, fill = value)) +
-    geom_tile(color = "white") +
-    scale_fill_gradientn(colors = my_palette,
-                         breaks = c(-0.1, 0.9, 1.1, 1.2),
-                         limits = c(-0.1, 1.2),
-                         guide = "none") +
-    labs(title = NULL) +
-    theme_minimal() +
-    theme(
-      #plot.title = element_text(size = 8, hjust = 0.5),
-      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 8),
-      # Conditionally set y-axis labels
-      axis.text.y = element_text(size = 8),
-      axis.title = element_blank(),
-      plot.margin = unit(c(1, 1, 1, 1), "lines")
-    ) +
-    scale_y_discrete(position = "right") #do this for severe and comment out for moderate
-    print(comparison_name)
-    print(selected_ct)
-    #scale_y_discrete(labels = function(x) ifelse(x %in% top_genes, x, ""))  # Conditional row labels
-  filename <- paste0(comparison_name,"_",selected_ct,"_tgs_heatmap_pubmed.png")
-  ggsave(file.path(figures_folder,filename),p,width = 12,height = 5.5,units="cm")
 }
+
 ######### end PUBMED code
 
 ##############
@@ -460,7 +461,7 @@ feature_statistics_moderate <- readRDS("results/MilCOVID_Azimuthl2/data/feature_
 # Define target receiver clusters and sender cell types
 target_clusters <- c("CD14_Mono", "CD16_Mono")
 sender_cts <- c("Eryth", "NK", "cDC2", "CD16_Mono", "CD14_Mono", "CD8_TEM","Platelet","pDC")
-output_dir <- "figures_04_08_2025"  # adjust if needed
+output_dir <- figures_folder 
 
 #calculate global stats
 # GLOBAL SCALING VALUES

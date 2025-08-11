@@ -42,4 +42,4 @@ do
 done
 
 # Run follow-up processing step
-python3 scripts/4_cytosig_clean.py ${dataset_key}
+python3 scripts/analysis_cellxgene_datasets/4_cytosig_clean.py ${dataset_key}

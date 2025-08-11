@@ -17,8 +17,8 @@ library(purrr)
 
 # ---- reproducible seed ----
 set.seed(123)
-figures_folder <- "figures_04_08_2025"
-
+figures_folder <- "figures_11_08_2025"
+dir.create(figures_folder,recursive=TRUE)
 # cell-type funnel ----
 
 #params
