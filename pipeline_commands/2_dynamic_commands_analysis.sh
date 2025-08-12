@@ -12,7 +12,6 @@ docker pull ebasto/decipher-manuscript-natmi@sha256:1269438fa798330eba47d51ac910
 docker pull ebasto/decipher-manuscript-liana-plus:1.0.0@sha256:d300ec7872d9a0cf8ae91fc05798f56a3aa3982657bb3883f21bcef63b8ee580
 docker pull ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a
 docker pull ebasto/decipher-manuscript-azimuth:1.0.0@sha256:128653884fd49cf2f59b00cd2c8ca6509e6cc111784ced78f6c24b163600f4ab
-#docker pull ebasto/decipher-manuscript-azimuth:1.0.0@sha256:c4e145e5d22c52ad6f6692170188bbfd31e808fe67c70f025c31ca72fbb8e903
 
 #################################
 ####### Analysis ############

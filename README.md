@@ -21,7 +21,7 @@ The pipeline is orchestrated using pipeline commands in the **pipeline_commands*
    - Downloads datasets from CELLxGENE and GEO (e.g., severe vs mild COVID-19) and set up directory structures for manual-analysis/download (MAD) datasets.  
    - MAD datasets download instructions are documented in the paper’s **Methods** and **Data Availability** sections.
 
-2. **`automated_analysis`**  
+2. **`dynamic_commands_analysis`**  
    - Uses `scripts/config.json` to pull dataset-specific parameters dynamically.  
    - Pulls Docker images for preprocessing and multiple benchmarking methods:  
      - **Cipher** (R-based)
@@ -32,7 +32,7 @@ The pipeline is orchestrated using pipeline commands in the **pipeline_commands*
      - **LIANA+**  
    - Preprocessing steps convert Python `.h5ad` files to R-compatible formats.
 
-3. **manual_analysis**  
+3. **`static_commands_analysis`**  
    - For datasets without `config.json` parameters, commands are defined directly in the scripts, hence each dataset and step has a unique script. 
    - Each section begins with a Docker pull command, followed by a set of independent commands that can be run sequentially or in parallel.
 

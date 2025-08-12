@@ -12,7 +12,6 @@ docker pull ebasto/decipher-manuscript-nichenetr@sha256:146e50752019a18d4125729c
 docker pull ebasto/decipher-manuscript-natmi@sha256:1269438fa798330eba47d51ac910d76a6298fb471c6e9449685a0a1dbb2282b7 
 docker pull ebasto/decipher-manuscript-liana-plus:1.0.0@sha256:d300ec7872d9a0cf8ae91fc05798f56a3aa3982657bb3883f21bcef63b8ee580
 
-
 #################################
 #######  Manuscript pre-processing ############
 #################################
@@ -25,12 +24,6 @@ source("scripts/analysis_specific_datasets/erp/erp_0_pre_processing_feb_2025.R")
 source("scripts/analysis_specific_datasets/lupus/lupus_0_pre_processing_feb_2025.R") 
 source("scripts/analysis_specific_datasets/sepsis/sepsis_0_pre_processing_feb_2025.R") 
 source("scripts/analysis_specific_datasets/tnbc/tnbc_0_pre_processing_feb_2025.R") 
-
-
-#################################
-####### Run Decipher analysis ############
-#################################
-sudo docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-decipherc2c@sha256:7e43d263693b4c2a87a7a9459dcb1fd5ecc5a969ef84a7b3b3c2b71205efafb5
 
 #################################
 ####### CellOracle ############
@@ -48,8 +41,6 @@ taskset -c 19-22 python3 scripts/analysis_specific_datasets/covid/covid_1_cell_o
 tasket -c 23-25 python3 scripts/analysis_specific_datasets/5yr_pic/5yr_pic_1_cell_oracle_jan_2025.py
 tasket -c 26-28 python3 scripts/analysis_specific_datasets/analysis_specific_datasets/cord_pic/cord_pic_1_cell_oracle_jan_2025.py
 taskset -c 10-18 python3 scripts/analysis_specific_datasets/lupus/lupus_1_cell_oracle_feb_2025.py #this requires more cores due to the size of the dataset
-
-#taskset -c 0-3 python cell_oracle_mar_2025.py SkinAtlas_AD CellOracle
 
 #################################
 ####### Decipher ############
