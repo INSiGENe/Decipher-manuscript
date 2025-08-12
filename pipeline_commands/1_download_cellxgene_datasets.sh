@@ -1,4 +1,4 @@
-#navigate to analysis directory
+#set the working directory to the project root (Decipher folder)
 
 #################################
 ####### Download datasets ############

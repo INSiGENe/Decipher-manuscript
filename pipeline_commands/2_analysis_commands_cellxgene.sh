@@ -1,4 +1,4 @@
-#operate from an analysis directory
+#set the working directory to the project root (Decipher folder)
 
 #################################
 ####### Download Docker images ############
@@ -17,10 +17,11 @@ docker pull ebasto/decipher-manuscript-azimuth:1.0.0@sha256:128653884fd49cf2f59b
 #################################
 ####### Analysis ############
 #################################
-#IMPORTANT: replace dataset_key with the dataset root  of each structure  in the scripts/config.json,, e.g. cz_human_kidney_v1.5, cz_influenza, etc. 
+
+### ---> #IMPORTANT: replace dataset_key with the dataset root  of each structure  in the scripts/config.json,, e.g. cz_human_kidney_v1.5, cz_influenza, etc. 
 
 #### --------------------------------- ####
-####  pre-process python objects ####
+####  pre-process python objects (All CELLxGENE except Severe vs Mild COVID_19 dataset) ####
 #### --------------------------------- ####
 
 #### Convert CELLxGENE anndata objects to Seurat objects ####
@@ -53,9 +54,8 @@ docker run -it --rm -v "$(pwd):/app" -w /app ebasto/manuscript_pre_processing:1.
   
 Rscript scripts/analysis_cellxgene_datasets/2_preprocess_object_for_analysis.R dataset_key
 
-
 #### ----------------------- ####
-####       Run Cytosig       ####
+####       Run Cytosig (all)      ####
 #### ----------------------- ####
 
 #analysis container

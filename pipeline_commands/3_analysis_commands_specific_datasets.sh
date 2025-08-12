@@ -1,3 +1,4 @@
+#set the working directory to the project root (Decipher folder)
 
 #################################
 ####### Download Docker images ############
