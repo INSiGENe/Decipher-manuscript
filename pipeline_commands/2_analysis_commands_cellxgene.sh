@@ -45,27 +45,6 @@ docker run -it --rm -v "$(pwd):/app" -w /app ebasto/manuscript_pre_processing:1.
 Rscript scripts/analysis_cellxgene_datasets/custom_sevmil_covid/3_separate_severe_and_mild.r SevCOVID_Azimuthl2
 Rscript scripts/analysis_cellxgene_datasets/custom_sevmil_covid/3_separate_severe_and_mild.r MilCOVID_Azimuthl2
 
-
-#### run scCODA analysis for SevMildCOVID ####
-#TODO go over this
-docker run -it --rm --memory=180g --memory-swap=185g \
-  -v "$(pwd):/app" -w /app \
-  ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a \
-  bash
-
-Rscript scripts/analysis_cellxgene_datasets/SevMilCOVID_Azimuth_convert_R_object_to_python.R dataset_key
-
-docker run -it \
-  -v "$(pwd):/workspace" \
-  -w /workspace \
-  wollmilchsau/scanpy_sccoda:latest
-python3 scripts/analysis_cellxgene_datasets/SevMilCOVID_Azimuth_run_scCoda.py
-
-sudo mkdir -p results/SevCOVID_Azimuthl2/sccoda
-sudo mkdir -p results/MilCOVID_Azimuthl2/sccoda
-sudo mv data/SevMilCOVID/results_sccoda_severe_vs_healthy.csv results/SevCOVID_Azimuthl2/sccoda
-sudo mv data/SevMilCOVID/results_sccoda_moderate_vs_healthy.csv results/MilCOVID_Azimuthl2/sccoda
-
 #### ----------------------------- ####
 ####  Generic pre-processing (all) ####
 #### ----------------------------- ####
