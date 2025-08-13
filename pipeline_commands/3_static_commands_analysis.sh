@@ -39,13 +39,15 @@ taskset -c 8-11 python3 scripts/analysis_specific_datasets/tnbc/tnbc_1_cell_orac
 taskset -c 11-14 python3 scripts/analysis_specific_datasets/sepsis/sepsis_1_cell_oracle_feb_2025.py 
 taskset -c 19-22 python3 scripts/analysis_specific_datasets/covid/covid_1_cell_oracle_feb_2025.py 
 tasket -c 23-25 python3 scripts/analysis_specific_datasets/5yr_pic/5yr_pic_1_cell_oracle_jan_2025.py
-tasket -c 26-28 python3 scripts/analysis_specific_datasets/analysis_specific_datasets/cord_pic/cord_pic_1_cell_oracle_jan_2025.py
+tasket -c 26-28 python3 scripts/analysis_specific_datasets/cord_pic/cord_pic_1_cell_oracle_jan_2025.py
 taskset -c 10-18 python3 scripts/analysis_specific_datasets/lupus/lupus_1_cell_oracle_feb_2025.py #this requires more cores due to the size of the dataset
 
 #################################
 ####### Decipher ############
 #################################
 sudo docker run -it -m 40g --memory-swap 44g -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-decipherc2c@sha256:7e43d263693b4c2a87a7a9459dcb1fd5ecc5a969ef84a7b3b3c2b71205efafb5
+#select yes when asked about setting up reticulate and no if asked about muscData
+
 source("scripts/analysis_specific_datasets/BCG/bcg_2_decipher_pipeline_v1_modularized.R") 
 source("scripts/analysis_specific_datasets/erp/erp_2_decipher_pipeline_v1_modularized.R") 
 source("scripts/analysis_specific_datasets/tnbc/tnbc_2_decipher_pipeline_v1_modularized.R") 
@@ -123,3 +125,26 @@ bash scripts/analysis_specific_datasets/erp/erp_7_cytosig_analysis_feb_2025.sh
 bash scripts/analysis_specific_datasets/lupus/lupus_7_cytosig_analysis_feb_2025.sh #running
 bash scripts/analysis_specific_datasets/sepsis/sepsis_7_cytosig_analysis_feb_2025.sh #running
 bash scripts/analysis_specific_datasets/tnbc/tnbc_7_cytosig_analysis_feb_2025.sh
+
+
+
+#################################
+####### Robustness benchmarking ############
+#################################
+#download and create sample seurat object
+#select yes when asked about setting up reticulate and no if asked about muscData
+sudo docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-decipherc2c@sha256:7e43d263693b4c2a87a7a9459dcb1fd5ecc5a969ef84a7b3b3c2b71205efafb5
+source('scripts/analysis_specific_datasets/sample_dataset/sample_dataset_GRN.R') 
+
+#prepare data for CellOracle
+docker run -it --rm -v "$(pwd):/app" -w /app ebasto/manuscript_pre_processing:1.0.4@sha256:9b5c93bba509359a11181bbb297e1af3b99c8b3130e8adb105549414ebd0fb0a bash
+Rscript scripts/analysis_specific_datasets/sample_dataset/write_data_for_CellOracle.r
+
+#run CellOracle
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-celloracle@sha256:419f15c53249e4c09a0c361b8e9ab0857d46c1e797d0f3c40af35a1ce583c1b1
+taskset -c 0-3 python3 scripts/analysis_cellxgene_datasets/5_cell_oracle.py sample_analysis
+
+#run benchmarking
+sudo docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-decipherc2c@sha256:7e43d263693b4c2a87a7a9459dcb1fd5ecc5a969ef84a7b3b3c2b71205efafb5
+source('scripts/benchmarking_and_figure_scripts/2a_robustness_benchmarking.R') 
+

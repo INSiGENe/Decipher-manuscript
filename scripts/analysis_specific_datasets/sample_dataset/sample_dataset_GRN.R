@@ -40,13 +40,3 @@ seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_conditi
 ##save outputs for Decipher analysis
 saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.rds"))
 
-seurat_oi <- readRDS(file.path(pre_processing_path,"seurat_object_oi.rds"))
-
-#in addition, we need to create python-compatible h5ad objects for the CO pipeline, here, I've opted against it
-#as they are not necessary for this script
-for(this_cluster in unique(kang.seurat$cluster)){
-   seurat_object_oi_this_cluster <- subset(kang.seurat,subset = cluster == this_cluster)
-   sce.object = as.SingleCellExperiment(seurat_object_oi_this_cluster)
-   sce.object@assays@data[["logcounts"]] <- NULL
-   writeH5AD(sce.object, file.path("pre_processing/h5ad_by_cluster",paste(this_cluster,".h5ad",sep="")),X_name = "counts")
- }

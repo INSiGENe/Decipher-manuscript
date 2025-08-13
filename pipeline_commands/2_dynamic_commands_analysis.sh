@@ -88,6 +88,7 @@ taskset -c 4-7 python3 scripts/analysis_cellxgene_datasets/5_cell_oracle.py MilC
 #### ----------------------- ####
 #analysis container
 docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-decipherc2c@sha256:7e43d263693b4c2a87a7a9459dcb1fd5ecc5a969ef84a7b3b3c2b71205efafb5 bash
+#select yes when asked about setting up reticulate and no if asked about muscData
 
 #generic analysis command
 Rscript scripts/analysis_cellxgene_datasets/6_decipher_pipeline_v1_modularized.R MilCOVID_Azimuthl2
