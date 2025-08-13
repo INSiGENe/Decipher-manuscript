@@ -1,5 +1,140 @@
+
+# Load necessary library
+library(Seurat)
+library(dplyr)
+library(babelgene)
 library(devtools)
-load_all()
+library(SummarizedExperiment)
+library(zellkonverter)
+library(SingleCellExperiment)
+library(basilisk)
+library(HGNChelper)
+library(openxlsx)
+library(tibble)
+library(stringr)
+
+############
+#python env setup ----
+############
+
+# Choose the AnnData version (e.g., latest "0.10.9")
+zellkonverter_env <- zellkonverter:::zellkonverterAnnDataEnv("0.10.9")
+
+#Force Basilisk to set up the environment that zellkonverter needs
+# Manually trigger environment setup
+basilisk::basiliskStart(zellkonverter_env)
+#basilisk::basiliskStop(zellkonverter_env)
+
+#############
+#functions ----
+############
+
+# Function to read and create Seurat object from file prefixes
+create_seurat_object <- function(matrix_file, features_file, barcodes_file,data_dir) {
+  matrix <- Read10X(data.dir = data_dir,
+                    gene.column = 2,
+                    barcode.column = 1)
+  seurat_obj <- CreateSeuratObject(counts = matrix, project = "GSE244126_RAW")
+  return(seurat_obj)
+}
+
+# Function to create directories if they don't exist
+create_dir <- function(dir) {
+  if (!dir.exists(dir)) {
+    dir.create(dir)
+  }
+}
+
+writeH5ADObjects <- function(seurat_object, pre_processing_path) {
+  # Create a new directory for h5ad files if it doesn't exist
+  h5ad_dir_path <- file.path(pre_processing_path, "h5ad_by_cluster")
+  if (!dir.exists(h5ad_dir_path)) {
+    dir.create(h5ad_dir_path)
+  }
+
+  # Process each cluster found in the Seurat object
+  for (this_cluster in unique(seurat_object$cluster)) {
+    # Subset the Seurat object for the current cluster
+    seurat_object_this_cluster <- seurat_object[,which(seurat_object$cluster == this_cluster),seed=NULL]
+
+    # Convert to SingleCellExperiment
+    sce.object <- Seurat::as.SingleCellExperiment(seurat_object_this_cluster)
+
+    # Remove the logcounts assay if it exists
+    if ("logcounts" %in% names(SummarizedExperiment::assays(sce.object))) {
+      SummarizedExperiment::assays(sce.object)[["logcounts"]] <- NULL
+    }
+
+    # Write the SCE object to an h5ad file
+    zellkonverter::writeH5AD(sce.object,
+                             file.path(h5ad_dir_path, paste(this_cluster, ".h5ad", sep = "")),
+                             X_name = "counts")
+  }
+}
+
+cleanSymbols <- function(string) {
+  # Remove or replace various symbols with safer alternatives
+  string <- stringr::str_remove_all(string, "/")
+  string <- stringr::str_replace_all(string, " ", "_")
+  string <- stringr::str_replace_all(string, "\\+", "_plus_")
+  string <- stringr::str_replace_all(string, "\\-", "_minus_")
+  string <- stringr::str_replace_all(string, "\\(", "")
+  string <- stringr::str_replace_all(string, "\\)", "")
+  string <- stringr::str_replace_all(string, "%", "_percent_")
+  string <- stringr::str_replace_all(string, "\\.", "_dot_")
+  string <- stringr::str_replace_all(string, ",", "_comma_")
+  string <- stringr::str_replace_all(string, ":", "_colon_")
+  string <- stringr::str_replace_all(string, ";", "_semicolon_")
+  string <- stringr::str_replace_all(string, "&", "_and_")
+  string <- stringr::str_replace_all(string, "\\?", "_question_")
+  string <- stringr::str_replace_all(string, "!", "_exclamation_")
+  string <- stringr::str_replace_all(string, "\"", "_quote_")
+  string <- stringr::str_replace_all(string, "'", "_apostrophe_")
+  string <- stringr::str_replace_all(string, "=", "_equals_")
+  string <- stringr::str_replace_all(string, "\\*", "_asterisk_")
+  string <- stringr::str_replace_all(string, "#", "_hash_")
+  string <- stringr::str_replace_all(string, "@", "_at_")
+  string <- stringr::str_replace_all(string, "\\$", "_dollar_")
+  string <- stringr::str_replace_all(string, "\\^", "_caret_")
+  string <- stringr::str_replace_all(string, "<", "_less_than_")
+  string <- stringr::str_replace_all(string, ">", "_greater_than_")
+  string <- stringr::str_replace_all(string, "\\[", "_lbracket_")
+  string <- stringr::str_replace_all(string, "\\]", "_rbracket_")
+  string <- stringr::str_replace_all(string, "\\{", "_lbrace_")
+  string <- stringr::str_replace_all(string, "\\}", "_rbrace_")
+  string <- stringr::str_replace_all(string, "\\|", "_pipe_")
+  string <- stringr::str_replace_all(string, "\\\\", "_backslash_")
+  string <- stringr::str_replace_all(string, "/", "_slash_")
+  string <- stringr::str_replace_all(string, "__", "_")  # Remove double underscores
+  return(string)
+}
+
+generateQCDataByClusterAndCondition <- function(seuratObj, maxClusterNameLength) {
+  # Check if seuratObj is a Seurat object
+  if (!inherits(seuratObj, "Seurat")) {
+    stop("seuratObj must be a Seurat object")
+  }
+
+  # Check if maxClusterNameLength is a positive integer
+  if (!is.numeric(maxClusterNameLength) || maxClusterNameLength <= 0) {
+    stop("maxClusterNameLength must be a positive integer")
+  }
+
+  # Extract base data from Seurat object
+  metaData <- seuratObj@meta.data
+  baseData <- dplyr::tibble(
+    cell = colnames(seuratObj),
+    cluster = stringr::str_sub(metaData$cluster, start = 1, end = maxClusterNameLength),
+    condition = metaData$condition
+  )
+
+  # Aggregate QC plot data
+  qcPlotData <- baseData %>%
+    dplyr::count(cluster, condition)
+
+  return(qcPlotData)
+}
+
 
 #set a seed
 set.seed(123)
@@ -24,7 +159,7 @@ dir.create(liana_data_filepath,recursive=TRUE)
 
 # DECIPHER PRE-PROCESSING ----
 ## load data
-seurat_object <- readRDS(file.path(dataset_path,"seurat_object_integrated_annotated.rds"))
+seurat_object <- readRDS(file.path(dataset_path,"read_seurat_object_annotated.rds"))
 DefaultAssay(seurat_object) <- "RNA"
 seurat_object[["integrated"]] <- NULL
 
@@ -156,7 +291,7 @@ data_matrix <- exp(as.matrix(data_matrix))- 1
 write.table(100 * data_matrix, file.path(natmi_data_filepath,"case/em.txt"), quote = F, sep = "\t",row.names=TRUE,col.names=TRUE)
 meta_data <- seurat_object_oi_subset@meta.data %>%
   rownames_to_column(var="barcode") %>%
-  rename(annotation=cluster)%>%
+  dplyr::rename(annotation=cluster)%>%
   select(barcode,annotation)
 write.table(meta_data,file.path(natmi_data_filepath,"case/metadata.txt"), quote = F,sep="\t",row.names=FALSE,col.names=TRUE)
 
@@ -168,7 +303,7 @@ data_matrix <- exp(as.matrix(data_matrix)) - 1
 write.table(100 * data_matrix, file.path(natmi_data_filepath,"control/em.txt"), quote = F, sep = "\t",row.names=TRUE,col.names=TRUE)
 meta_data <- seurat_object_oi_subset@meta.data %>%
   rownames_to_column(var="barcode") %>%
-  rename(annotation=cluster)%>%
+  dplyr::rename(annotation=cluster)%>%
   select(barcode,annotation)
 write.table(meta_data,file.path(natmi_data_filepath,"control/metadata.txt"), quote = F,sep="\t",row.names=FALSE,col.names=TRUE)
 

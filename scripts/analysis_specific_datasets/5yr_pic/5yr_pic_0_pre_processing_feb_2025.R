@@ -147,7 +147,7 @@ dir.create(liana_data_filepath,recursive=TRUE)
 
 # DECIPHER PRE-PROCESSING ----
 ## load data
-seurat_object <- readRDS(file.path(dataset_path,"seurat_object_integrated_annotated.rds"))
+seurat_object <- readRDS(file.path(dataset_path,"read_seurat_object_annotated.rds"))
 DefaultAssay(seurat_object) <- "RNA"
 seurat_object[["integrated"]] <- NULL
 
@@ -276,7 +276,7 @@ data_matrix <- exp(as.matrix(data_matrix))- 1
 write.table(100 * data_matrix, file.path(natmi_data_filepath,"case/em.txt"), quote = F, sep = "\t",row.names=TRUE,col.names=TRUE)
 meta_data <- seurat_object_oi_subset@meta.data %>%
   rownames_to_column(var="barcode") %>%
-  rename(annotation=cluster)%>%
+  dplyr::rename(annotation=cluster)%>%
   select(barcode,annotation)
 write.table(meta_data,file.path(natmi_data_filepath,"case/metadata.txt"), quote = F,sep="\t",row.names=FALSE,col.names=TRUE)
 
@@ -288,7 +288,7 @@ data_matrix <- exp(as.matrix(data_matrix)) - 1
 write.table(100 * data_matrix, file.path(natmi_data_filepath,"control/em.txt"), quote = F, sep = "\t",row.names=TRUE,col.names=TRUE)
 meta_data <- seurat_object_oi_subset@meta.data %>%
   rownames_to_column(var="barcode") %>%
-  rename(annotation=cluster)%>%
+  dplyr::rename(annotation=cluster)%>%
   select(barcode,annotation)
 write.table(meta_data,file.path(natmi_data_filepath,"control/metadata.txt"), quote = F,sep="\t",row.names=FALSE,col.names=TRUE)
 
