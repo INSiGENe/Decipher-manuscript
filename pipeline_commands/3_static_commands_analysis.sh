@@ -102,7 +102,7 @@ Rscript scripts/analysis_specific_datasets/lupus/lupus_4_nichenet_analysis_feb_2
 ####### LIANA+ ############
 #################################
 
-docker run -it -m 20g --memory-swap 24g -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-liana-plus:1.0.0@sha256:d300ec7872d9a0cf8ae91fc05798f56a3aa3982657bb3883f21bcef63b8ee580 
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-liana-plus:1.0.0@sha256:d300ec7872d9a0cf8ae91fc05798f56a3aa3982657bb3883f21bcef63b8ee580 
 python3 scripts/analysis_specific_datasets/5yr_pic/5yr_pic_6_liana_plus_analysis_feb_2025.py 
 python3 scripts/analysis_specific_datasets/BCG/bcg_6_liana_plus_analysis_feb_2025.py 
 python3 scripts/analysis_specific_datasets/cord_pic/cord_pic_6_liana_plus_analysis_feb_2025.py 
