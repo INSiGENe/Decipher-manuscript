@@ -24,12 +24,14 @@ The pipeline is orchestrated using pipeline commands in the **pipeline_commands*
 2. **`dynamic_commands_analysis`**  
    - Uses `scripts/config.json` to pull dataset-specific parameters dynamically.  
    - Pulls Docker images for preprocessing and multiple benchmarking methods:  
-     - **Cipher** (R-based)
+     - **Decipher** (R-based)
      - **Cytosig** (R-based)
-     - **SCEloracle** (R-based, prerequisite for Cipher)
-     - **Connect.omniscient**
+     - **CellOracle** (python-based, prerequisite for Decipher)
+     - **Connectome**
      - **NATMI**
      - **LIANA+**  
+     - **NicheNet**
+     - **Cytosig**
    - Preprocessing steps convert Python `.h5ad` files to R-compatible formats.
 
 3. **`static_commands_analysis`**  
