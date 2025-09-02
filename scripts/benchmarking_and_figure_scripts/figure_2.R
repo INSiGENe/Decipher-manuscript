@@ -25,7 +25,7 @@ library(viridis)
 ##########################
 
 set.seed(1)
-figures_folder <- "figures_13_08_2025"
+figures_folder <- "figures_26_08_2025"
 #supp_figures_folder <- "figures_14_06_2025/supp"
 dir.create(figures_folder,recursive = TRUE)
 #dir.create(supp_figures_folder,recursive = TRUE)
