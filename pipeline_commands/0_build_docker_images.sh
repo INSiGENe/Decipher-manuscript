@@ -14,11 +14,7 @@ docker run -it --rm \
     ebasto/decipherc2c:base-dev \
     bash
 
-#ok so we need to transfer over our R functions primarily and other scripts that we use to the 
+#
 
- lockfile <- renv::lockfile_read("renv.lock")
- packages <- names(lockfile$Packages)
- renv::install(packages,exclude = c("DelayedArray"))
 
- renv::install("bioconductor::DelayedArray")
 
