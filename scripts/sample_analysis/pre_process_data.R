@@ -1,3 +1,4 @@
+renv::restore()
 library(devtools)
 load_all()
 
@@ -17,20 +18,21 @@ k_parameter = 10
 min_meta_cells_parameter = 100
 
 #Parameters: directories ----
-dataset_path <- "sample_analysis"
-dir.create(dataset_path)
-pre_processing_path <- file.path(dataset_path,"pre_processing")
 reference_filepath <- "reference_data"
-output_filepath <- dataset_path
-output_data_filepath <- file.path(output_filepath,"validity/data")
-output_figures_filepath <- file.path(output_filepath,"validity/figures")
-output_importances_filepath <- file.path(output_filepath,"validity/importances")
+dataset_path <- "results/sample_analysis"
+pre_processing_path <- file.path(dataset_path,"pre_processing")
+output_data_filepath <- file.path(dataset_path,"data")
+output_figures_filepath <- file.path(dataset_path,"validity/figures")
+output_importances_filepath <- file.path(dataset_path,"validity/importances")
+
 #directory set up----
+dir.create(dataset_path)
 dir.create(pre_processing_path)
-dir.create(file.path(pre_processing_path,"validity/h5ad_by_cluster"))
 dir.create(output_data_filepath,recursive=TRUE)
 dir.create(output_figures_filepath,recursive=TRUE)
 dir.create(output_importances_filepath,recursive=TRUE)
+
+#not sure what this is about: dir.create(file.path(pre_processing_path,"validity/h5ad_by_cluster"))
 
 #Parameters: analysis ----
 flag.normalize.non.log <- FALSE
@@ -118,7 +120,7 @@ L_set_relevant_features_all_clusters <- getRelevantFeaturesForEachCluster(
   expressed_receptors_all_clusters)
 
 regulon_grns_by_cluster <- getRegulonsAllClusters(
-  output_filepath,
+  dataset_path,
   decipher_seurat)
 
 capped_regulons_all_clusters <- capRegulonsAllClusters(
