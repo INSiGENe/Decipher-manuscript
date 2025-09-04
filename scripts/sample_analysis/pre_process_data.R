@@ -1,6 +1,8 @@
 renv::restore()
 library(devtools)
 load_all()
+library(muscData)
+renv::install("muscData")
 
 #global options ----
 i = 123
@@ -17,22 +19,27 @@ control_condition = "ctrl"
 k_parameter = 10
 min_meta_cells_parameter = 100
 
+
+create_project_dirs <- function(dataset_path) {
+  dirs <- c(
+    dataset = dataset_path,
+    pre_processing = file.path(dataset_path, "pre_processing"),
+    data = file.path(dataset_path, "data"),
+    figures = file.path(dataset_path, "validity", "figures"),
+    importances = file.path(dataset_path, "validity", "importances")
+  )
+
+  dir.create(dataset_path, recursive = TRUE, showWarnings = FALSE)
+  for (d in dirs) if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
+
+  invisible(dirs)   # returns the paths (named) invisibly
+}
+
 #Parameters: directories ----
 reference_filepath <- "reference_data"
 dataset_path <- "results/sample_analysis"
-pre_processing_path <- file.path(dataset_path,"pre_processing")
-output_data_filepath <- file.path(dataset_path,"data")
-output_figures_filepath <- file.path(dataset_path,"validity/figures")
-output_importances_filepath <- file.path(dataset_path,"validity/importances")
-
-#directory set up----
-dir.create(dataset_path)
-dir.create(pre_processing_path)
-dir.create(output_data_filepath,recursive=TRUE)
-dir.create(output_figures_filepath,recursive=TRUE)
-dir.create(output_importances_filepath,recursive=TRUE)
-
-#not sure what this is about: dir.create(file.path(pre_processing_path,"validity/h5ad_by_cluster"))
+paths <- create_project_dirs("results/sample_analysis")
+#not sure what this is about: dir.create(file.path(paths['pre_processing'],"validity/h5ad_by_cluster"))
 
 #Parameters: analysis ----
 flag.normalize.non.log <- FALSE
@@ -41,9 +48,9 @@ flag.normalize.non.log <- FALSE
 # #including seurat object and h5ad objects
 seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition,case_condition,control_condition)
 # #save outputs for Decipher analysis
-saveRDS(seurat_oi,file.path("sample_analysis/pre_processing","seurat_object_oi.rds"))
+saveRDS(seurat_oi,file.path(path["data"],"seurat_object_oi.rds"))
 
-seurat_oi <- readRDS(file.path(pre_processing_path,"seurat_object_oi.rds"))
+seurat_oi <- readRDS(file.path(paths['pre_processing'],"seurat_object_oi.rds"))
 
 #in addition, we need to create python-compatible h5ad objects for the CO pipeline, here, I've opted against it
 #as they are not necessary for this script
@@ -67,12 +74,12 @@ seurat_oi$orig.condition <- seurat_oi[["condition"]]
 ##QC ----
 ##############
 CpC_data <- generateQCDataByClusterAndCondition(seurat_oi,max(stringr::str_length(unique(seurat_oi$cluster))))
-plotQC_CpC(CpC_data,outputPath=output_figures_filepath)
+plotQC_CpC(CpC_data,outputPath=paths['figures'])
 
 #PARAM: select the minimum number of cells per cluster + condition
 clusters_passing_CpC_filter <- getClustersPassingCpCFilter(CpC_data,minCpc = 100)
 seurat_oi <- seurat_oi[, which(seurat_oi$cluster %in% clusters_passing_CpC_filter), seed=NULL]
-plotQC_UpC(seuratObject = seurat_oi, outputPath = output_figures_filepath,id = "_sc")
+plotQC_UpC(seuratObject = seurat_oi, outputPath = paths['figures'],id = "_sc")
 ##############
 ##Meta cells ----
 ##############
@@ -82,19 +89,19 @@ decipher_seurat <- metaCellModule(
   k = k_parameter
 )
 
-plotQC_UpC(seuratObject = decipher_seurat,outputPath = output_figures_filepath,id = "_meta")
+plotQC_UpC(seuratObject = decipher_seurat,outputPath = paths['figures'],id = "_meta")
 
 CpC_data_meta <- generateQCDataByClusterAndCondition(decipher_seurat,max(stringr::str_length(unique(decipher_seurat$cluster))))
-plotQC_CpC(CpC_data_meta,outputPath=output_figures_filepath,id = "_meta")
+plotQC_CpC(CpC_data_meta,outputPath=paths['figures'],id = "_meta")
 
 
 parameter_record <- data.frame(
   "k" = k_parameter,
   "min_meta_cells" = min_meta_cells_parameter
 )
-write.csv(parameter_record,file.path(paste0(output_data_filepath,"/",i,"_parameter_record.csv")))
+write.csv(parameter_record,file.path(paste0(paths['data'],"/",i,"_parameter_record.csv")))
 
-saveRDS(decipher_seurat,file.path(paste0(output_data_filepath,"/",i,"_pseudobulk_seurat.rds")))
+saveRDS(decipher_seurat,file.path(paste0(paths['data'],"/",i,"_pseudobulk_seurat.rds")))
 
 ##############
 #data pre-processing: main analysis ----
@@ -210,34 +217,34 @@ decipher_scores_by_cluster <- addListNameToDFElements(
   decipher_scores_by_cluster,
   "receiver_cluster")
 
-saveRDS(decipher_scores_by_cluster,file.path(output_data_filepath,paste0("Run_",i , "_decipher_scores_by_cluster.rds")))
-saveRDS(decipher_scores_by_regulon_and_cluster,file.path(output_data_filepath,paste0("Run_",i , "_decipher_scores_by_regulon_and_cluster.rds")))
+saveRDS(decipher_scores_by_cluster,file.path(paths['data'],paste0("Run_",i , "_decipher_scores_by_cluster.rds")))
+saveRDS(decipher_scores_by_regulon_and_cluster,file.path(paths['data'],paste0("Run_",i , "_decipher_scores_by_regulon_and_cluster.rds")))
 
 
 
-dataset_path <- file.path(output_data_filepath,"for_plotting")
-output_figures_filepath <- file.path(dataset_path,"figures")
-output_data_filepath <- file.path(dataset_path,"data")
-dir.create(output_data_filepath,recursive = TRUE)
-dir.create(output_figures_filepath,recursive=TRUE)
-saveRDS(decipher_scores_by_regulon_and_cluster,file.path(output_data_filepath,"decipher_scores_by_regulon_and_cluster.rds"))
-saveRDS(regulon_scores_by_cluster,file.path(output_data_filepath,"regulon_scores_by_cluster.rds"))
-saveRDS(interaction_potential_by_clusters,file.path(output_data_filepath,"interaction_potential_by_clusters.rds"))
-saveRDS(regulon_deltas_by_cluster,file.path(output_data_filepath,"regulon_deltas_by_cluster.rds"))
-saveRDS(significant_regulons_by_cluster,file.path(output_data_filepath,"significant_regulons_by_cluster.rds"))
-saveRDS(significant_regulon_markers_by_cluster,file.path(output_data_filepath,"significant_regulon_markers_by_cluster.rds"))
-saveRDS(interaction_deltas_by_cluster,file.path(output_data_filepath,"interaction_deltas_by_cluster.rds"))
-saveRDS(regulon_grns_by_cluster,file.path(output_data_filepath,"regulon_grns_by_cluster.rds"))
-saveRDS(lr_markers_by_cluster,file.path(output_data_filepath,"lr_markers_by_cluster.rds"))
-saveRDS(de_markers_by_cluster,file.path(output_data_filepath,"de_markers_by_cluster.rds"))
-saveRDS(feature_statistics,file.path(output_data_filepath,"feature_statistics.rds"))
-saveRDS(decipher_seurat_lr,file.path(output_data_filepath,"decipher_seurat_lr.rds"))
-saveRDS(L.set,file.path(output_data_filepath,"L_set.rds"))
-saveRDS(decipher_scores_by_cluster,file.path(output_data_filepath,"decipher_scores_by_cluster.rds"))
-saveRDS(interaction_potentials_matrix_clusters_all_clusters,file.path(output_data_filepath,"interaction_potentials_matrix_clusters_all_clusters.rds"))
-saveRDS(expressed_receptors_all_clusters, file.path(output_data_filepath, "expressed_receptors_all_clusters.rds"))
-saveRDS(capped_regulons_all_clusters, file.path(output_data_filepath, "capped_regulons_all_clusters.rds"))
-saveRDS(L_set_relevant_features_all_clusters, file.path(output_data_filepath, "L_set_relevant_features_all_clusters.rds"))
+dataset_path <- file.path(paths['data'],"for_plotting")
+paths['figures'] <- file.path(dataset_path,"figures")
+paths['data'] <- file.path(dataset_path,"data")
+dir.create(paths['data'],recursive = TRUE)
+dir.create(paths['figures'],recursive=TRUE)
+saveRDS(decipher_scores_by_regulon_and_cluster,file.path(paths['data'],"decipher_scores_by_regulon_and_cluster.rds"))
+saveRDS(regulon_scores_by_cluster,file.path(paths['data'],"regulon_scores_by_cluster.rds"))
+saveRDS(interaction_potential_by_clusters,file.path(paths['data'],"interaction_potential_by_clusters.rds"))
+saveRDS(regulon_deltas_by_cluster,file.path(paths['data'],"regulon_deltas_by_cluster.rds"))
+saveRDS(significant_regulons_by_cluster,file.path(paths['data'],"significant_regulons_by_cluster.rds"))
+saveRDS(significant_regulon_markers_by_cluster,file.path(paths['data'],"significant_regulon_markers_by_cluster.rds"))
+saveRDS(interaction_deltas_by_cluster,file.path(paths['data'],"interaction_deltas_by_cluster.rds"))
+saveRDS(regulon_grns_by_cluster,file.path(paths['data'],"regulon_grns_by_cluster.rds"))
+saveRDS(lr_markers_by_cluster,file.path(paths['data'],"lr_markers_by_cluster.rds"))
+saveRDS(de_markers_by_cluster,file.path(paths['data'],"de_markers_by_cluster.rds"))
+saveRDS(feature_statistics,file.path(paths['data'],"feature_statistics.rds"))
+saveRDS(decipher_seurat_lr,file.path(paths['data'],"decipher_seurat_lr.rds"))
+saveRDS(L.set,file.path(paths['data'],"L_set.rds"))
+saveRDS(decipher_scores_by_cluster,file.path(paths['data'],"decipher_scores_by_cluster.rds"))
+saveRDS(interaction_potentials_matrix_clusters_all_clusters,file.path(paths['data'],"interaction_potentials_matrix_clusters_all_clusters.rds"))
+saveRDS(expressed_receptors_all_clusters, file.path(paths['data'], "expressed_receptors_all_clusters.rds"))
+saveRDS(capped_regulons_all_clusters, file.path(paths['data'], "capped_regulons_all_clusters.rds"))
+saveRDS(L_set_relevant_features_all_clusters, file.path(paths['data'], "L_set_relevant_features_all_clusters.rds"))
 
 
 #plot for a particular seeda
