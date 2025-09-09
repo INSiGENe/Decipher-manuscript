@@ -1,7 +1,8 @@
 renv::restore()
 library(devtools)
 load_all()
-
+devtools::install_github("immunogenomics/presto")
+library(presto)
 #global options ----
 i = 123
 set.seed(i)
@@ -14,7 +15,7 @@ species <-  "human"
 condition_name <- "condition"
 case_condition = "stim"
 control_condition = "ctrl"
-k_parameter = 10
+k_parameter = 2
 min_meta_cells_parameter = 100
 
 

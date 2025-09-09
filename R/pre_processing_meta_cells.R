@@ -531,7 +531,7 @@ KeepClustersWithMtNCellsPerCondition <- function(seurat_object,N){
 #' @importFrom stringr str_sub
 #' @export
 calculate_suggested_number_of_metacell_neighbours <- function(seurat_object,param_min_n_cells){
-  UpC <- colSums(seurat_object@assays$RNA@counts)
+  UpC <- colSums(seurat_object[["RNA"]]$counts)
   UpCdf <- data.frame(
     cell = colnames(seurat_object),
     cluster = stringr::str_sub(seurat_object@meta.data$cluster, start = 1, end = 20),
@@ -547,6 +547,9 @@ calculate_suggested_number_of_metacell_neighbours <- function(seurat_object,para
       dplyr::summarize(
         median_UpC = median(UpC, na.rm = TRUE),
         count = dplyr::n())
+
+    if (nrow(median_values) == 0)
+      stop("No groups left after filtering; check cluster/condition columns or lower param_min_n_cells.")
 
     min_k <- ceiling(10000/min(median_values$median_UpC))
 

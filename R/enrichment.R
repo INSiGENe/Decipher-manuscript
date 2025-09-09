@@ -220,6 +220,7 @@ getDifferentiallyExpressedTargetsForRegulonsAllClusters <- function(decipher_seu
   significant_regulon_markers_all_clusters <- list()
 
   for(this_cluster in unique(decipher_seurat$cluster)){
+    print(paste('processing cluster',this_cluster))
     significant_regulon_deltas_this_cluster <- significant_regulon_deltas_all_clusters[[this_cluster]]
     regulon_this_cluster <- regulons_all_clusters[[this_cluster]]
     # main object

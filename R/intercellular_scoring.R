@@ -378,11 +378,11 @@ getInteractionPotentialsMatrixThisCluster <- function(seurat_obj,seurat_obj_this
 
   # Extract indices for case condition and data for case and control
   ind_case <- which(seurat_obj$condition == "case")
-  data_seurat_obj_case <- seurat_obj@assays$RNA@data[,ind_case]
-  data_seurat_obj_control <- seurat_obj@assays$RNA@data[,-ind_case]
+  data_seurat_obj_case <- seurat_obj[["RNA"]]$data[,ind_case]
+  data_seurat_obj_control <- seurat_obj[["RNA"]]$data[,-ind_case]
 
   # Extract receptor data from the downsampled Seurat object for this cluster
-  data_seurat_obj_this_cluster_ds <- seurat_obj_this_cluster_ds@assays$RNA@data
+  data_seurat_obj_this_cluster_ds <- seurat_obj_this_cluster_ds[["RNA"]]$data
   data_seurat_obj_this_cluster_ds_receptors <- data_seurat_obj_this_cluster_ds[which(rownames(data_seurat_obj_this_cluster_ds) %in% unique(selected_lr_pairs$receptor)),]
 
   # Compute mean expression levels of ligands in case and control
