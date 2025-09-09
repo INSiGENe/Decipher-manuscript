@@ -234,4 +234,4 @@ saveRDS(L_set_relevant_features_all_clusters, file.path(paths['data'], "L_set_re
 
 
 #plot for a particular seeda
-plotDecipherPrioritizedMap(dataset_path,top_n=4,dataset_name="sample_1", abs_decipher_plot_limit = 20,width=21,height=9
+plotDecipherPrioritizedMap(dataset_path,top_n=4,dataset_name="sample_1", abs_decipher_plot_limit = 20,width=21,height=9)
