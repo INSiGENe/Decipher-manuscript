@@ -335,6 +335,9 @@ getRepresentativeInteractionsForMTOClusters <- function(mtoInteractionsClusters,
 #' @export
 calculateInteractionDeltas <- function(interaction_potentials_matrix_this_cluster,decipher_seurat_lr){
   new_seurat <- Seurat::CreateSeuratObject(counts = interaction_potentials_matrix_this_cluster,meta.data = decipher_seurat_lr@meta.data[colnames(interaction_potentials_matrix_this_cluster),])
+  new_seurat[["RNA"]]$data <- new_seurat[["RNA"]]$counts
+  #maybe I should normalize here, though these are not really counts
+  #new_seurat <- Seurat::NormalizeData(new_seurat, normalization.method = "LogNormalize", scale.factor = 10000)
   SeuratObject::Idents(new_seurat) <- new_seurat$condition
   # Perform differential expression analysis to find markers between specified conditions
   interaction_deltas <- FindMarkers(new_seurat,ident.1 = "case",logfc.threshold = 0.1)
@@ -639,7 +642,7 @@ getInteractionPotentialMatrixForRepresentativeInteractionsAllClusters <- functio
     decipher_seurat_this_cluster <- decipher_seurat[, which(decipher_seurat$cluster == this_cluster), seed=NULL]
     # set identity
     SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
-    data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
+    data_this_cluster <- decipher_seurat_this_cluster[["RNA"]]$data
 
     if(flag.normalize.non.log){
       decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
@@ -765,7 +768,7 @@ getInteractionPotentialMatrixForRepresentativeInteractionsAllClustersWParamPairi
 
     SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
 
-    data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
+    data_this_cluster <- decipher_seurat_this_cluster[["RNA"]]$data
 
     data_this_cluster_receptors <- data_this_cluster[which(rownames(data_this_cluster) %in% unique(L_set_relevant_features_all_clusters[[case_cluster]]$receptor)), ]
 

@@ -1,8 +1,9 @@
 renv::restore()
 library(devtools)
+library(presto)
 load_all()
 devtools::install_github("immunogenomics/presto")
-library(presto)
+
 #global options ----
 i = 123
 set.seed(i)

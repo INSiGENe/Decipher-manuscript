@@ -121,7 +121,7 @@ getRandomForestWeightsAllClusters <- function(decipher_seurat, significant_regul
     decipher_seurat_this_cluster <- decipher_seurat[, which(decipher_seurat$cluster == this_cluster), seed=NULL]
     # set identity
     SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
-    data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
+    data_this_cluster <- decipher_seurat_this_cluster[["RNA"]]$data
 
     if(flag.normalize.non.log){
       decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
@@ -196,7 +196,7 @@ FindLRMarkersAllClusters <- function(decipher_seurat, rf_results_all_clusters, f
     decipher_seurat_this_cluster <- decipher_seurat[, which(decipher_seurat$cluster == this_cluster), seed=NULL]
     # set identity
     SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
-    data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
+    data_this_cluster <- decipher_seurat_this_cluster[["RNA"]]$data
 
     if(flag.normalize.non.log){
       decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
@@ -254,7 +254,7 @@ FindLMarkersAllClustersSC <- function(decipher_seurat, expressed_ligands, flag.n
     decipher_seurat_this_cluster <- decipher_seurat[, which(decipher_seurat$cluster == this_cluster), seed=NULL]
     # set identity
     SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
-    data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
+    data_this_cluster <- decipher_seurat_this_cluster[["RNA"]]$data
 
     if(flag.normalize.non.log){
       decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
@@ -307,7 +307,7 @@ FindMarkersAllClusters <- function(decipher_seurat, flag.normalize.non.log,rando
     decipher_seurat_this_cluster <- decipher_seurat[, which(decipher_seurat$cluster == this_cluster), seed=NULL]
     # set identity
     SeuratObject::Idents(decipher_seurat_this_cluster) <- decipher_seurat_this_cluster@meta.data$condition
-    data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
+    data_this_cluster <- decipher_seurat_this_cluster[["RNA"]]$data
 
     if(flag.normalize.non.log){
       decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
@@ -402,7 +402,7 @@ getRandomForestWeightsAllClustersWParamPairings <- function(decipher_seurat, sig
     interaction_potentials_matrix_clusters <- interaction_potentials_matrix_clusters_all_clusters[[case_cluster]]
 
 
-    data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
+    data_this_cluster <- decipher_seurat_this_cluster[["RNA"]]$data
 
     data_this_cluster_receptors <- data_this_cluster[which(rownames(data_this_cluster) %in% unique(L_set_relevant_features_all_clusters[[case_cluster]]$receptor)),]
     for(this.tf in significant_regulon_deltas_this_cluster$name){
@@ -488,7 +488,7 @@ FindLRMarkersAllClustersWParamPairings <- function(decipher_seurat, rf_results_a
       decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
     }
 
-    data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
+    data_this_cluster <- decipher_seurat_this_cluster[["RNA"]]$data
 
     all_rf_results_matrix <- rf_results_all_clusters[[case_cluster]]
     lr_markers_all_clusters[[case_cluster]] <- FindMarkers(
@@ -550,7 +550,7 @@ FindMarkersAllClustersWParamPairings <- function(decipher_seurat, flag.normalize
       decipher_seurat_this_cluster <- NormalizeData(decipher_seurat_this_cluster, normalization.method = "RC", scale.factor = 100000)
     }
 
-    data_this_cluster <- decipher_seurat_this_cluster@assays$RNA@data
+    data_this_cluster <- decipher_seurat_this_cluster[["RNA"]]$data
 
     de_markers_this_cluster <- FindMarkers(
       object = decipher_seurat_this_cluster,
