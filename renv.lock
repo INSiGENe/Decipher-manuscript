@@ -6179,53 +6179,6 @@
       "Maintainer": "Torsten Hothorn <Torsten.Hothorn@R-project.org>",
       "Repository": "CRAN"
     },
-    "muscData": {
-      "Package": "muscData",
-      "Version": "1.22.0",
-      "Source": "Bioconductor",
-      "Title": "Multi-sample multi-group scRNA-seq data",
-      "Description": "Data package containing a collection of multi-sample multi-group scRNA-seq datasets in SingleCellExperiment Bioconductor object format.",
-      "Authors@R": "person(\"Helena L.\", \"Crowell\", email = \"helena.crowell@uzh.ch\", role = c(\"aut\", \"cre\"))",
-      "URL": "https://github.com/HelenaLC/muscData",
-      "BugReports": "https://github.com/HelenaLC/muscData/issues",
-      "License": "MIT + file LICENSE",
-      "Depends": [
-        "R (>= 3.6)",
-        "ExperimentHub",
-        "SingleCellExperiment"
-      ],
-      "Imports": [
-        "utils"
-      ],
-      "Suggests": [
-        "BiocStyle",
-        "dplyr",
-        "DropletUtils",
-        "knitr",
-        "GEOquery",
-        "Matrix",
-        "matrixStats",
-        "methods",
-        "muscat",
-        "rmarkdown",
-        "R.utils",
-        "readxl",
-        "scater",
-        "scds",
-        "Seurat"
-      ],
-      "biocViews": "ExperimentHub, ExperimentData, ExpressionData, GEO, Homo_sapiens_Data, ImmunoOncologyData, SingleCellData",
-      "VignetteBuilder": "knitr",
-      "RoxygenNote": "6.1.1",
-      "git_url": "https://git.bioconductor.org/packages/muscData",
-      "git_branch": "RELEASE_3_21",
-      "git_last_commit": "497deeb",
-      "git_last_commit_date": "2025-04-15",
-      "Repository": "Bioconductor 3.21",
-      "NeedsCompilation": "no",
-      "Author": "Helena L. Crowell [aut, cre]",
-      "Maintainer": "Helena L. Crowell <helena.crowell@uzh.ch>"
-    },
     "nlme": {
       "Package": "nlme",
       "Version": "3.1-168",
@@ -7103,6 +7056,60 @@
       "Collate": "'adjective.R' 'adverb.R' 'exclamation.R' 'verb.R' 'rpackage.R' 'package.R'",
       "NeedsCompilation": "no",
       "Repository": "CRAN"
+    },
+    "presto": {
+      "Package": "presto",
+      "Version": "1.0.0",
+      "Source": "GitHub",
+      "Title": "Fast Functions for Differential Expression using Wilcox and AUC",
+      "Authors@R": "c( person(\"Ilya\", \"Korsunsky\", email = \"ilya.korsunsky@gmail.com\",  role = c(\"aut\"), comment = c(ORCID = \"0000-0003-4848-3948\")), person(\"Aparna\", \"Nathan\",  role = \"aut\"), person(\"Nghia\", \"Millard\",  role = \"aut\", comment = c(ORCID = \"0000-0002-0518-7674\")), person(\"Soumya\", \"Raychaudhuri\",  role = c(\"aut\"), comment = c(ORCID = \"0000-0002-1901-8265\")), person(\"Kamil\", \"Slowikowski\", email = \"kslowikowski@gmail.com\", role = c(\"cre\", \"ctb\"), comment = c(ORCID = \"0000-0002-2843-6370\")), person(\"Austin\", \"Hartman\", role = c(\"ctb\"), comment = c(ORCID = \"0000-0001-7278-1852\")) )",
+      "Description": "Scalable implementation of the Wilcoxon rank sum test and auROC statistic. Interfaces to dense and sparse matrices, as well as genomics analysis frameworks Seurat and SingleCellExperiment.",
+      "License": "GPL-3",
+      "LazyData": "true",
+      "Encoding": "UTF-8",
+      "Depends": [
+        "R (>= 3.4.0)",
+        "Rcpp",
+        "data.table"
+      ],
+      "LinkingTo": [
+        "Rcpp",
+        "RcppArmadillo"
+      ],
+      "biocViews": "",
+      "Imports": [
+        "dplyr",
+        "methods",
+        "tidyr",
+        "purrr",
+        "tibble",
+        "Matrix",
+        "rlang",
+        "stats",
+        "utils"
+      ],
+      "RoxygenNote": "7.2.1",
+      "Suggests": [
+        "knitr",
+        "rmarkdown",
+        "testthat",
+        "Seurat",
+        "SingleCellExperiment",
+        "SummarizedExperiment",
+        "broom",
+        "BiocStyle",
+        "DESeq2"
+      ],
+      "NeedsCompilation": "yes",
+      "VignetteBuilder": "knitr",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "presto",
+      "RemoteUsername": "immunogenomics",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "7636b3d0465c468c35853f82f1717d3a64b3c8f6",
+      "Author": "Ilya Korsunsky [aut] (ORCID: <https://orcid.org/0000-0003-4848-3948>), Aparna Nathan [aut], Nghia Millard [aut] (ORCID: <https://orcid.org/0000-0002-0518-7674>), Soumya Raychaudhuri [aut] (ORCID: <https://orcid.org/0000-0002-1901-8265>), Kamil Slowikowski [cre, ctb] (ORCID: <https://orcid.org/0000-0002-2843-6370>), Austin Hartman [ctb] (ORCID: <https://orcid.org/0000-0001-7278-1852>)",
+      "Maintainer": "Kamil Slowikowski <kslowikowski@gmail.com>"
     },
     "prettyunits": {
       "Package": "prettyunits",
