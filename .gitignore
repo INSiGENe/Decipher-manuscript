@@ -8,3 +8,5 @@ sample_analysis/pre_processing/
 sample_analysis/validity/
 R/all_functions.R
 reference_data/nichenet/
+results/
+Rplots.pdf
