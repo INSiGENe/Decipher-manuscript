@@ -1,8 +1,6 @@
 renv::restore()
 library(devtools)
 load_all()
-library(muscData)
-renv::install("muscData")
 
 #set up zellkonverter
 zellkonverter_env <- zellkonverter:::zellkonverterAnnDataEnv("0.10.9")
@@ -23,12 +21,11 @@ control_condition = "ctrl"
 k_parameter = 10
 min_meta_cells_parameter = 100
 
-
 create_project_dirs <- function(dataset_path) {
   dirs <- c(
     dataset = dataset_path,
     pre_processing = file.path(dataset_path, "pre_processing"),
-    co_input = file.path(paths["pre_processing"],"h5ad_by_cluster"),
+    co_input = file.path(dataset_path,'pre_processing',"h5ad_by_cluster"),
     data = file.path(dataset_path, "data"),
     figures = file.path(dataset_path, "validity", "figures"),
     importances = file.path(dataset_path, "validity", "importances")
@@ -51,8 +48,21 @@ flag.normalize.non.log <- FALSE
 
 # #create sample dataset ----
 # #including seurat object and h5ad objects
+#will ask you to dset up a cache, say yes
 seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition,case_condition,control_condition)
-# #save outputs for Decipher analysis
+
+# sampling so we can quickly go through the pipeline :) 
+cells_to_keep <- seurat_oi[[]] %>%
+  tibble::rownames_to_column("cell_barcode") %>%
+  dplyr::group_by(condition, cluster) %>%
+  dplyr::filter(dplyr::n() >= 300) %>%
+  dplyr::slice_sample(n = 500, replace = FALSE) %>%
+  dplyr::ungroup() %>%
+  dplyr::pull(cell_barcode)
+
+seurat_oi <- subset(seurat_oi, cells = cells_to_keep)
+
+# #save outputs for subsequent analysis
 saveRDS(seurat_oi,file.path(paths["data"],"seurat_object_oi.rds"))
 
 #in addition, we need to create python-compatible h5ad objects for the CO pipeline

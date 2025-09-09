@@ -18,11 +18,12 @@ k_parameter = 10
 min_meta_cells_parameter = 100
 
 
+
 create_project_dirs <- function(dataset_path) {
   dirs <- c(
     dataset = dataset_path,
     pre_processing = file.path(dataset_path, "pre_processing"),
-    co_input = file.path(paths["pre_processing"],"h5ad_by_cluster"),
+    co_input = file.path(dataset_path,'pre_processing',"h5ad_by_cluster"),
     data = file.path(dataset_path, "data"),
     figures = file.path(dataset_path, "validity", "figures"),
     importances = file.path(dataset_path, "validity", "importances")
