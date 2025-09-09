@@ -1,8 +1,6 @@
 renv::restore()
 library(devtools)
-library(presto)
 load_all()
-devtools::install_github("immunogenomics/presto")
 
 #global options ----
 i = 123
@@ -14,12 +12,10 @@ min_cells_per_cluster_condition <- 100
 species <-  "human"
 #for sample dataset condition_name is "condition", case_condition is "stim" and control_condition is "ctrl"
 condition_name <- "condition"
-case_condition = "stim"
-control_condition = "ctrl"
-k_parameter = 2
-min_meta_cells_parameter = 100
-
-
+case_condition <- "stim"
+control_condition <- "ctrl"
+k_parameter <- 2
+min_meta_cells_parameter <- 100
 
 create_project_dirs <- function(dataset_path) {
   dirs <- c(
@@ -27,8 +23,8 @@ create_project_dirs <- function(dataset_path) {
     pre_processing = file.path(dataset_path, "pre_processing"),
     co_input = file.path(dataset_path,'pre_processing',"h5ad_by_cluster"),
     data = file.path(dataset_path, "data"),
-    figures = file.path(dataset_path, "validity", "figures"),
-    importances = file.path(dataset_path, "validity", "importances")
+    figures = file.path(dataset_path, "figures"),
+    importances = file.path(dataset_path, "importances")
   )
 
   dir.create(dataset_path, recursive = TRUE, showWarnings = FALSE)
@@ -169,7 +165,6 @@ interaction_potentials_matrix_clusters_all_clusters <-
     cytosig_ligands,
     flag.normalize.non.log)
 
-#so the seed has to be set before randomForest for reproducibility, is this ok SEB?
 decipher_scores_by_regulon_and_cluster <- getRandomForestWeightsAllClusters(
   decipher_seurat,
   significant_regulons_by_cluster,
@@ -211,11 +206,7 @@ saveRDS(decipher_scores_by_regulon_and_cluster,file.path(paths['data'],paste0("R
 
 
 
-dataset_path <- file.path(paths['data'],"for_plotting")
-paths['figures'] <- file.path(dataset_path,"figures")
-paths['data'] <- file.path(dataset_path,"data")
-dir.create(paths['data'],recursive = TRUE)
-dir.create(paths['figures'],recursive=TRUE)
+
 saveRDS(decipher_scores_by_regulon_and_cluster,file.path(paths['data'],"decipher_scores_by_regulon_and_cluster.rds"))
 saveRDS(regulon_scores_by_cluster,file.path(paths['data'],"regulon_scores_by_cluster.rds"))
 saveRDS(interaction_potential_by_clusters,file.path(paths['data'],"interaction_potential_by_clusters.rds"))
