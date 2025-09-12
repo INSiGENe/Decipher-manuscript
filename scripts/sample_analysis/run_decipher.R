@@ -17,22 +17,6 @@ control_condition <- "ctrl"
 k_parameter <- 2
 min_meta_cells_parameter <- 100
 
-create_project_dirs <- function(dataset_path) {
-  dirs <- c(
-    dataset = dataset_path,
-    pre_processing = file.path(dataset_path, "pre_processing"),
-    co_input = file.path(dataset_path,'pre_processing',"h5ad_by_cluster"),
-    data = file.path(dataset_path, "data"),
-    figures = file.path(dataset_path, "figures"),
-    importances = file.path(dataset_path, "importances")
-  )
-
-  dir.create(dataset_path, recursive = TRUE, showWarnings = FALSE)
-  for (d in dirs) if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
-
-  invisible(dirs)   # returns the paths (named) invisibly
-}
-
 #Parameters: directories ----
 reference_filepath <- "reference_data"
 dataset_path <- "results/sample_analysis"
