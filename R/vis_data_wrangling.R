@@ -1258,7 +1258,6 @@ pull_top_regulons_cts_delta_matrix <- function(regulon_deltas_all_clusters,top_r
 #' # Assuming 'lr_marker_list' is pre-defined with the appropriate structure
 #' results <- getLigandReceptorDiffExprMarkersByCt(lr_marker_list)
 #'
-#' @importFrom yourPackageName addEntryToDF
 #' @export
 getLigandReceptorDiffExprMarkersByCt <- function(lr.marker.list){
   condition_lr_markers <- data.frame(
