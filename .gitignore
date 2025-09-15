@@ -10,3 +10,6 @@ R/all_functions.R
 reference_data/nichenet/
 results/
 Rplots.pdf
+tutorials/insigene_html/results
+tutorials/insigene_html/reference_data
+tutorials/insigene_html/insigene_files
