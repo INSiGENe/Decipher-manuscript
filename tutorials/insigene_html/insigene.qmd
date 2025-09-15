@@ -210,6 +210,7 @@ significant_regulon_markers_by_cluster <- getDifferentiallyExpressedTargetsForRe
   decipher_seurat,
   significant_regulons_by_cluster,
   regulon_grns_by_cluster,
+  flag.normalize.non.log,
   random.seed = selected_random_seed
 )
 ```
@@ -221,7 +222,8 @@ We calculate the interaction potential between cell types based on ligand-recept
 #| eval: true
 interaction_potential_by_clusters <- getInteractionPotentialsMatrixAllClusters(
   decipher_seurat,
-  L_set_relevant_features_all_clusters
+  L_set_relevant_features_all_clusters,
+  flag.normalize.non.log
 )
 
 ```
@@ -242,7 +244,8 @@ interaction_potentials_matrix_clusters_all_clusters <-
     decipher_seurat,
     L_set_relevant_features_all_clusters,
     filtered_interaction_potentials_matrix_all_clusters,
-    cytosig_ligands
+    cytosig_ligands,
+    flag.normalize.non.log
   )
 ```
 
@@ -256,7 +259,8 @@ decipher_scores_by_regulon_and_cluster <- getRandomForestWeightsAllClusters(
   significant_regulons_by_cluster,
   regulon_scores_by_cluster,
   interaction_potentials_matrix_clusters_all_clusters,
-  L_set_relevant_features_all_clusters
+  L_set_relevant_features_all_clusters,
+  flag.normalize.non.log
 )
 ```
 
