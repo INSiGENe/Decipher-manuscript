@@ -1,0 +1,54 @@
+/*-- scss:defaults --*/
+//theme:
+//  dark: [darkly, insigene-dark.scss]
+$theme: "darkly" !default;
+
+// Body
+$body-bg: #FAF9F6; //013D72;
+$body-color: #000d19;
+
+// text aligning and header color
+p {
+  text-align: justify;
+}
+
+// Change teh color of code fold and general fold/collapsible sections
+summary {
+  color: #003c71 !important;
+}
+
+#header {
+  position: fixed;
+  width: 100%;
+  height: 75px;
+  background-color: white;
+}
+
+// Links
+
+$link-color: #003c71;
+// $link-shade-percentage:                   20% !default;
+$link-hover-color:  #6EB5FF;
+
+
+//$nav-link-color: white,
+$nav-pills-link-active-bg: #003c71;//#003c71;
+
+
+// Your custom styles
+.nav-tabs {
+  .nav-link.active,
+  .nav-link.active:focus,
+  .nav-link.active:hover,
+  .nav-item.open & {
+    color: #6EB5FF !important;
+  }
+}
+
+// Remove border from tabset pills
+.panel-tabset {
+  > .nav-tabs,
+  > .tab-content {
+    border: none !important;
+  }
+}
