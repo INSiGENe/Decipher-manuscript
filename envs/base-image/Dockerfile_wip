@@ -65,6 +65,3 @@ RUN curl -fsSL -o /tmp/quarto.deb "https://quarto.org/download/latest/quarto-lin
  && apt-get update && apt-get -y -f install \
  && rm -f /tmp/quarto.deb \
  && rm -rf /var/lib/apt/lists/*
-
-# Now copy the rest of your project (SOURCE) after restore (so cache layer benefits)
-COPY . /usr/src/app
