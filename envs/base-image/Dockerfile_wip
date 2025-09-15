@@ -53,9 +53,6 @@ COPY renv.lock /usr/src/app/renv.lock
 RUN R -e "options(repos='https://cloud.r-project.org'); \
           renv::restore(prompt = FALSE)"
 
-# Now copy the rest of your project (SOURCE) after restore (so cache layer benefits)
-COPY . /usr/src/app
-
 # --- after your existing apt install & clean block ---
 # install gdebi or use dpkg fallback (we already have curl/wget from your earlier step)
 RUN apt-get update \
@@ -70,4 +67,7 @@ RUN curl -fsSL -o /tmp/quarto.deb "https://quarto.org/download/latest/quarto-lin
  && rm -rf /var/lib/apt/lists/*
 
  # install the R wrapper (optional but handy)
-RUN R -e "install.packages('quarto', repos='https://cloud.r-project.org')"
+RUN R -e "install.packages(c('quarto','knitr','rmarkdown'), repos='https://cloud.r-project.org')"
+
+# Now copy the rest of your project (SOURCE) after restore (so cache layer benefits)
+COPY . /usr/src/app

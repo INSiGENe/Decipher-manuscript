@@ -35,7 +35,7 @@ First, we restore the `renv` environment to ensure all required packages are loa
 
 ```{r}
 #| eval: false
-renv::restore()
+#renv::restore()
 library(devtools)
 load_all()
 
