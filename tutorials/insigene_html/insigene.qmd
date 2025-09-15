@@ -26,7 +26,8 @@ execute:
 ---
 
 ```{r}
-#| eval: false
+#| eval: true
+#| include: false
 #load libraries for this vignette
 renv::restore()
 library(knitr)
