@@ -38,6 +38,9 @@ First, we restore the `renv` environment to ensure all required packages are loa
 #renv::restore()
 library(devtools)
 load_all()
+library(knitr)
+library(quarto)
+library(rmarkdown)
 
 # Set a seed for reproducibility
 i <- 123
