@@ -66,8 +66,5 @@ RUN curl -fsSL -o /tmp/quarto.deb "https://quarto.org/download/latest/quarto-lin
  && rm -f /tmp/quarto.deb \
  && rm -rf /var/lib/apt/lists/*
 
- # install the R wrapper (optional but handy)
-RUN R -e "install.packages(c('quarto','knitr','rmarkdown'), repos='https://cloud.r-project.org')"
-
 # Now copy the rest of your project (SOURCE) after restore (so cache layer benefits)
 COPY . /usr/src/app
