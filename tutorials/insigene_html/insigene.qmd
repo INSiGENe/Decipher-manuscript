@@ -211,8 +211,7 @@ significant_regulon_markers_by_cluster <- getDifferentiallyExpressedTargetsForRe
   significant_regulons_by_cluster,
   regulon_grns_by_cluster,
   flag.normalize.non.log,
-  random.seed = selected_random_seed
-)
+  random.seed=selected_random_seed)
 ```
 
 ### Interaction Potential
@@ -297,13 +296,7 @@ The final step is to visualize the results. The `plotDecipherPrioritizedMap` fun
 
 ```{r}
 #| eval: true
-plotDecipherPrioritizedMap(
-  dataset_path,
-  top_n = 4,
-  dataset_name = "sample_1",
-  abs_decipher_plot_limit = 20,
-  width = 21,
-  height = 9
+#plotDecipherPrioritizedMap(dataset_path,top_n = 4,dataset_name = "sample_1",abs_decipher_plot_limit = 20,width = 21,height = 9
 )
 ```
 
