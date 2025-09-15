@@ -77,6 +77,9 @@ min_meta_cells_parameter <- 100
 reference_filepath <- "reference_data"
 dataset_path <- "results/sample_analysis"
 paths <- create_project_dirs("results/sample_analysis")
+
+flag.normalize.non.log <- FALSE
+
 ```
 
 # 2. Data Loading
@@ -191,7 +194,7 @@ regulon_grns_by_cluster <- getRegulonsAllClusters(dataset_path, decipher_seurat)
 
 We cap these regulons to ahve 40 targets per transcription factor, as otherwise we found they have too much overlap (and regulon scores become overly correlated)
 ```{r}
-capped_regulons_all_clusters <- capRegulonsAllClusters(regulon_grns_by_cluster, decipher_seurat)
+capped_regulons_all_clusters <- capRegulonsAllClusters(regulon_grns_by_cluster, decipher_seurat,flag.normalize.non.log)
 ```
 
 To calculate regulon scores we use the `pagoda2` algorithms, which basically embeds our regulons into reduced dimensions and from an inferred null model calculates deviations of each regulon from what was expected.
