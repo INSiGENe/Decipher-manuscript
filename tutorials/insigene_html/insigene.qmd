@@ -479,6 +479,19 @@ decipher_scores_by_regulon_and_cluster <- getRandomForestWeightsAllClusters(
   L_set_relevant_features_all_clusters,
   flag.normalize.non.log
 )
+
+lr_markers_by_cluster <- FindLRMarkersAllClusters(
+  decipher_seurat,
+  decipher_scores_by_regulon_and_cluster,
+  flag.normalize.non.log,
+  random.seed = selected_random_seed
+)
+
+de_markers_by_cluster <- FindMarkersAllClusters(
+  decipher_seurat,
+  flag.normalize.non.log,
+  random.seed= selected_random_seed
+)
 ```
 
 ## 6. Result Aggregation
