@@ -40,18 +40,22 @@ library(rmarkdown)
 This document provides a tutorial for running the Decipher analysis pipeline. It and walks through the main steps of the pipeline, from setting up the environment to generating the final prioritized map of cellular interactions.
 
 # 0. environment
-To run this analysis we use the follwing docker imags
-* `ebasto/decipherc2c:1.1.0.quarto`
-* `decipher-manuscript-celloracle@sha256:419f15c53249e4c09a0c361b8e9ab0857d46c1e797d0f3c40af35a1ce583c1b1`. 
-These image contain all the libraries Decipher and CellOracle are dependent on. Please pull them from dockerhub. We don't use CellOracle's default dockerhub image as it contains a bug that makes the analysis not reproducible.
+To run this analysis we use the following docker images
+
+* `ebasto/decipherc2c@sha256:9ec8bbb7eca692856e9fd7c50346c78eac6ae24da8bd2e87b1f36998465bd1b0`
+* `ebasto/decipher-manuscript-celloracle@sha256:419f15c53249e4c09a0c361b8e9ab0857d46c1e797d0f3c40af35a1ce583c1b1`. 
+
+These images contain all the libraries Decipher and CellOracle are dependent on. Please pull them from dockerhub. We don't use CellOracle's default dockerhub image as it contains a bug that makes the analysis not reproducible.
 
 In addition to the docker images, currently the `Decipher` package is available as a development package from `https://github.com/INSiGENe/Decipher`, specifically branch `v2`. Please clone this branch from the repository, and execute the docker containers within it as such:
 
 ``` 
 #| eval: false
 #| include: true
-docker run --rm -it -v "$(pwd):/home/project" -w /home/project ebasto/decipherc2c:1.1.0.quarto bash
-docker run -it -v "$(pwd):/workspace" -w /workspace ebast decipher-manuscript-celloracle@sha256:419f15c53249e4c09a0c361b8e9ab0857d46c1e797d0f3c40af35a1ce583c1b1
+#for Decipher
+docker run --rm -it -v "$(pwd):/home/project" -w /home/project ebasto/decipherc2c@sha256:9ec8bbb7eca692856e9fd7c50346c78eac6ae24da8bd2e87b1f36998465bd1b0 bash
+#for celloracle
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-celloracle@sha256:419f15c53249e4c09a0c361b8e9ab0857d46c1e797d0f3c40af35a1ce583c1b1
 ```
 
 This generates an interactive bash session, within it you can type `R` to start an R session for R-based steps or, in the case of CellOracle, execute a python script.
@@ -495,6 +499,28 @@ decipher_scores_by_cluster <- addListNameToDFElements(
 
 # Save the final results
 saveRDS(decipher_scores_by_cluster, file.path(paths['data'], paste0("Run_", i, "_decipher_scores_by_cluster.rds")))
+
+#save intermediary results - useful for visualizations and interrogating main results
+saveRDS(decipher_scores_by_regulon_and_cluster,file.path(paths['data'],paste0("Run_",i , "_decipher_scores_by_regulon_and_cluster.rds")))
+saveRDS(decipher_scores_by_regulon_and_cluster,file.path(paths['data'],"decipher_scores_by_regulon_and_cluster.rds"))
+saveRDS(regulon_scores_by_cluster,file.path(paths['data'],"regulon_scores_by_cluster.rds"))
+saveRDS(interaction_potential_by_clusters,file.path(paths['data'],"interaction_potential_by_clusters.rds"))
+saveRDS(regulon_deltas_by_cluster,file.path(paths['data'],"regulon_deltas_by_cluster.rds"))
+saveRDS(significant_regulons_by_cluster,file.path(paths['data'],"significant_regulons_by_cluster.rds"))
+saveRDS(significant_regulon_markers_by_cluster,file.path(paths['data'],"significant_regulon_markers_by_cluster.rds"))
+saveRDS(interaction_deltas_by_cluster,file.path(paths['data'],"interaction_deltas_by_cluster.rds"))
+saveRDS(regulon_grns_by_cluster,file.path(paths['data'],"regulon_grns_by_cluster.rds"))
+saveRDS(lr_markers_by_cluster,file.path(paths['data'],"lr_markers_by_cluster.rds"))
+saveRDS(de_markers_by_cluster,file.path(paths['data'],"de_markers_by_cluster.rds"))
+saveRDS(feature_statistics,file.path(paths['data'],"feature_statistics.rds"))
+saveRDS(decipher_seurat_lr,file.path(paths['data'],"decipher_seurat_lr.rds"))
+saveRDS(L.set,file.path(paths['data'],"L_set.rds"))
+saveRDS(decipher_scores_by_cluster,file.path(paths['data'],"decipher_scores_by_cluster.rds"))
+saveRDS(interaction_potentials_matrix_clusters_all_clusters,file.path(paths['data'],"interaction_potentials_matrix_clusters_all_clusters.rds"))
+saveRDS(expressed_receptors_all_clusters, file.path(paths['data'], "expressed_receptors_all_clusters.rds"))
+saveRDS(capped_regulons_all_clusters, file.path(paths['data'], "capped_regulons_all_clusters.rds"))
+saveRDS(L_set_relevant_features_all_clusters, file.path(paths['data'], "L_set_relevant_features_all_clusters.rds"))
+
 ```
 
 ## 7. Visualization
