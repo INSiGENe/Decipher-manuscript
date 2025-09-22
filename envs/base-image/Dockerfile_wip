@@ -34,24 +34,15 @@ RUN apt-get update && apt-get install -y -t testing --no-install-recommends --al
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Create a persistent renv cache dir
-ENV RENV_PATHS_CACHE=/renv/cache
-RUN mkdir -p ${RENV_PATHS_CACHE} && chmod -R 777 ${RENV_PATHS_CACHE}
+# Copy renv.lock and renv/ folder first for caching
+COPY renv.lock renv.lock
+COPY renv/ renv/
 
-# (Optional) Install renv so that it's already available in base R.
-# This step is not strictly required: renv can auto-install itself on the fly
-# if you prefer. But having it pre-installed often avoids potential bootstrapping errors.
-RUN R -e 'install.packages("renv", repos="https://cloud.r-project.org")'
+# Install renv
+RUN R -e "install.packages('renv')"
 
-# Install renv and BiocManager quickly (system-wide)
-RUN R -e "options(repos='https://cloud.r-project.org'); install.packages(c('renv','BiocManager'), dependencies=TRUE)"
-
-# --- COPY only the lockfile first to leverage Docker cache ---
-COPY renv.lock /usr/src/app/renv.lock
-
-# ENV RENV_PATHS_CACHE already set earlier
-RUN R -e "options(repos='https://cloud.r-project.org'); \
-          renv::restore(prompt = FALSE)"
+# Restore R environment
+RUN R -e "renv::restore(lockfile = 'renv.lock', prompt = FALSE)"
 
 # --- after your existing apt install & clean block ---
 # install gdebi or use dpkg fallback (we already have curl/wget from your earlier step)
@@ -66,5 +57,7 @@ RUN curl -fsSL -o /tmp/quarto.deb "https://quarto.org/download/latest/quarto-lin
  && rm -f /tmp/quarto.deb \
  && rm -rf /var/lib/apt/lists/*
 
-# Now copy the rest of your project (SOURCE) after restore (so cache layer benefits)
-COPY . /usr/src/app
+# Copy your R project files (including renv.lock)
+COPY . .
+
+
