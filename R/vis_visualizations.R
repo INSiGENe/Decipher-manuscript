@@ -16,7 +16,6 @@
 #' @importFrom graphics png dev.off
 #' @importFrom stats cor rank
 #' @importFrom utils file.path
-#' @importFrom base dir.exists dir.create
 #' @importFrom dplyr mutate arrange slice_head distinct inner_join bind_rows
 #' @importFrom ggplot2 ggplot geom_point labs theme_minimal theme aes
 #' @import ggplot2

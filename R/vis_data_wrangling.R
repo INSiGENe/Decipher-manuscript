@@ -20,7 +20,6 @@
 #' @export
 #'
 #' @importFrom stats mean sd
-#' @importFrom base sum colnames stop
 getNumberOfOutliers <- function(df) {
   # Checking if 'prioritization_score' column exists
   if(!"prioritization_score" %in% colnames(df)) {
@@ -68,7 +67,6 @@ getNumberOfOutliers <- function(df) {
 #' @importFrom stats min max
 #' @import dplyr
 #' @importFrom dplyr mutate
-#' @importFrom base any is.na ifelse
 scale_prioritization_score <- function(df, score_column) {
   # Check if any value in the specified score column is negative
   has_negatives <- any(df[[score_column]] < 0, na.rm = TRUE)
@@ -121,7 +119,6 @@ scale_prioritization_score <- function(df, score_column) {
 #' @export
 #'
 #' @importFrom dplyr bind_rows
-#' @importFrom base setdiff unique data.frame paste0
 fillGapsForCytosigComparison <- function(method_results,matching_genes_lset){
 
   # Vector of new ligands
@@ -512,7 +509,6 @@ prepareDataForCorrelationAnalysis <- function(df){
 #' @import progress
 #' @importFrom dplyr inner_join mutate
 #' @importFrom stats cor rank
-#' @importFrom base which list matrix names print paste sapply
 getInteractionCorrelationAndSearchSpaceBetweenMethods <- function(method_results_list){
 
   methods <- names(method_results_list)
@@ -743,7 +739,6 @@ summarizeZScores <- function(z_score_files,z_score_folder,mapping_table){
 #' }
 #'
 #' @importFrom dplyr select rename mutate split
-#' @importFrom base paste return
 prepareLianaForCytosigComparison <- function(liana_df){
   if (is.null(liana_df)) return(NULL)
 
@@ -782,7 +777,6 @@ prepareLianaForCytosigComparison <- function(liana_df){
 #' }
 #'
 #' @importFrom dplyr filter select rename mutate split
-#' @importFrom base paste return
 prepareConnectomeForCytosigComparison <- function(connectome_df){
   if (is.null(connectome_df)) return(NULL)
   connectome_df <-connectome_df %>%
@@ -821,7 +815,6 @@ prepareConnectomeForCytosigComparison <- function(connectome_df){
 #' }
 #'
 #' @importFrom dplyr filter rename mutate split
-#' @importFrom base paste return
 prepareNatmiForCytosigComparison <- function(natmi_df){
   if (is.null(natmi_df)) return(NULL)
   natmi_df <- natmi_df %>%
@@ -875,7 +868,6 @@ prepareNatmiForCytosigComparison <- function(natmi_df){
 #' @importFrom stats setNames
 #' @importFrom graphics png dev.off plot
 #' @importFrom utils file.path paste
-#' @importFrom base c list match names return
 getPredictionsResponsesForMethods <- function(results_to_compare, cytosig_significance,L.set,seurat_object_oi,output_figures_filepath){
   all_predictions_across_methods <- list()
   all_responses_across_methods <- list()

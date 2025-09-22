@@ -1,11 +1,11 @@
 ---
 title: "Decipher Analysis Tutorial"
 subtitle: "<i>An example analysis workflow using the Decipher R package</i>"
-author: "INSiGENe"
+author: "Edgar Basto"
 title-block-banner: Background.png
 format: 
   html:
-    code-fold: true
+    code-fold: false
     code-overflow: scroll
     code-tools: false
     toc: true
@@ -25,22 +25,243 @@ execute:
   message: false
 ---
 
-# Overview
-
-This document provides a tutorial for running the Decipher analysis pipeline. It is based on the `run_decipher.R` script and walks through the main steps, from setting up the environment to generating the final prioritized map of cellular interactions.
-
-# 1. Setup and Configuration
-
-First, we restore the `renv` environment to ensure all required packages are loaded with the correct versions. We then load the `Decipher` package itself and set a random seed for reproducibility.
-
 ```{r}
-#| eval: false
+#| eval: true
+#| include: false
+#load libraries for this vignette
 renv::restore()
-library(devtools)
-load_all()
 library(knitr)
 library(quarto)
 library(rmarkdown)
+```
+
+# Overview
+
+This document provides a tutorial for running the Decipher analysis pipeline. It and walks through the main steps of the pipeline, from setting up the environment to generating the final prioritized map of cellular interactions.
+
+# 0. environment
+To run this analysis we use the following docker images
+
+* `ebasto/decipherc2c@sha256:9ec8bbb7eca692856e9fd7c50346c78eac6ae24da8bd2e87b1f36998465bd1b0`
+* `ebasto/decipher-manuscript-celloracle@sha256:419f15c53249e4c09a0c361b8e9ab0857d46c1e797d0f3c40af35a1ce583c1b1`. 
+
+These images contain all the libraries Decipher and CellOracle are dependent on. Please pull them from dockerhub. We don't use CellOracle's default dockerhub image as it contains a bug that makes the analysis not reproducible.
+
+In addition to the docker images, currently the `Decipher` package is available as a development package from `https://github.com/INSiGENe/Decipher`, specifically branch `v2`. Please clone this branch from the repository, and execute the docker containers within it as such:
+
+``` 
+#| eval: false
+#| include: true
+#for Decipher
+docker run --rm -it -v "$(pwd):/home/project" -w /home/project ebasto/decipherc2c@sha256:9ec8bbb7eca692856e9fd7c50346c78eac6ae24da8bd2e87b1f36998465bd1b0 bash
+#for celloracle
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-celloracle@sha256:419f15c53249e4c09a0c361b8e9ab0857d46c1e797d0f3c40af35a1ce583c1b1
+```
+
+This generates an interactive bash session, within it you can type `R` to start an R session for R-based steps or, in the case of CellOracle, execute a python script.
+
+# 1. Pre-processing
+
+Here we include sample pre-processing steps for a dataset from `ExperimentHub` which illustrate how Seurat objects should be formatted for Decipher analysis.
+
+## set up the R sessions to have access to `Decipher` functions and be reproducible
+
+```{r}
+#| eval: false
+#| include: true
+renv::restore()
+library(devtools)
+load_all()
+
+#set up zellkonverter, generally this is easier to set up now rather than later
+zellkonverter_env <- zellkonverter:::zellkonverterAnnDataEnv("0.10.9")
+basilisk::basiliskStart(zellkonverter_env)
+
+#global options ----
+i = 123
+set.seed(i)
+selected_random_seed <- i
+```
+
+## Define parameters
+Here we define parameters for this sample analysis
+* min_cells_per_cluster_condition - a parameter to remove clusters with few cells
+* condition-specific parameters - parameters to tell Decipher what is the name of the condition column in the meta-data, as well as the case and control conditions.
+
+```{r}
+#| eval: false
+#| include: true
+min_cells_per_cluster_condition <- 100
+#for sample dataset condition_name is "condition", case_condition is "stim" and control_condition is "ctrl"
+condition_name <- "condition"
+case_condition = "stim"
+control_condition = "ctrl"
+```
+
+## Define paths
+We also need to point Decipher towards the paths where we want to store our resuts and intermediary outputs. 
+In our case, as we will download a dataset from ExperimentHub, these paths can be initially empty. However, you'll be bringing in an external seurat object, please place this object in `results/your_analysis_name/data`, where `your_analysis_name` is a placeholder variable for your actual analysis name. `reference_filepath` is always the same. 
+
+The `create_project_dirs` function will create other folders that are needed by `Decipher`.
+```{r}
+#| eval: false
+#| include: true
+reference_filepath <- "reference_data"
+dataset_path <- "results/sample_analysis"
+paths <- create_project_dirs("results/sample_analysis")
+```
+
+For this sample analysis, we generate a Seurat object from the ExperimentHub package using the following function
+```{r}
+#| eval: false
+#| include: true
+seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition,case_condition,control_condition)
+```
+
+Here's what that function looks like. Most of the function is specific to the format that ExperimentHub returns. But note that there are critical steps that your Seurat object should mimic in order for downstream analysis to work, these are:
+* setting the default assay to RNA
+* we suggest standard filtering and normalization (as per Seurat)
+* adding a 'condition' meta-data column with the condition labels
+* adding a 'cluster' meta-data column with the cell-type labels
+* running `cleanSymbols` on this 'cluster' column
+* optional - KeepClustersWithMtNCellsPerCondition - this removes clusters with few cells per cluster+condition, as they will be filtered out downstream anyway but not before use of unnecessary computational resources for steps like CellOracle's GRN inference.
+* running `mapConditionsInSeurat` which replaces the labels in the condition meta-data column with a simple 'case' and 'control' label.
+
+```{r}
+#| eval: false
+#| include: true
+generateSampleSeuratFromExperimentHub <- function(min_cells_per_cluster_condition,case_condition,control_condition){
+  # Load the ExperimentHub library and create an ExperimentHub object
+  eh <- ExperimentHub()
+  # Search for datasets related to "Kang" in the ExperimentHub
+  AnnotationHub::query(eh, "Kang")
+  # Retrieve the specific dataset with ID "EH2259"
+  sce <- eh[["EH2259"]]
+
+  # Filter out cells where the total counts across all genes are zero
+  sce <- sce[rowSums(counts(sce) > 0) > 0, ]
+
+  # Convert the SingleCellExperiment object to a Seurat object
+  # 'counts' specifies which assay data to use for the initial data of the Seurat object
+  kang.seurat <- Seurat::as.Seurat(sce, counts="counts", data = NULL)
+
+  # copy 'originalexp'  to the "RNA" slot
+  kang.seurat[["RNA"]] <- kang.seurat[["originalexp"]]
+
+  # Set the default assay to "RNA" for downstream analysis
+  SeuratObject::DefaultAssay(kang.seurat) <- "RNA"
+
+  # remove 'originalexp' assay
+  kang.seurat[["originalexp"]] <- NULL
+
+  #add some fields that are missing from the conversion
+  kang.seurat@meta.data$nCount_RNA <- kang.seurat@meta.data$nCount_originalexp
+  kang.seurat@meta.data$nFeature_RNA <- kang.seurat@meta.data$nFeature_originalexp
+  kang.seurat[["percent.mt"]] <- 0
+
+  #this seurat is already clustered, so we don't need to do much pre-processing except some filtering
+  kang.seurat <- kang.seurat[, which(kang.seurat$nFeature_RNA > 200 & kang.seurat$nFeature_RNA < 2500 & kang.seurat$percent.mt < 5), seed=NULL]
+
+  dim(kang.seurat) #expect 18890 rows (genes) by 28869 columns (cells)
+
+  #normalize the data
+  kang.seurat <- NormalizeData(kang.seurat, normalization.method = "LogNormalize", scale.factor = 10000)
+
+  #dataset specific meta data terms being formatted for Decipher analysis
+  kang.seurat$condition <- kang.seurat$stim
+  kang.seurat$orig.condition <- kang.seurat$condition
+  kang.seurat$cluster <- kang.seurat$cell
+  kang.seurat$original_cluster <- kang.seurat$cluster
+  kang.seurat$cell <- NULL
+  kang.seurat$cluster <- cleanSymbols(kang.seurat$cluster)
+  kang.seurat <- KeepClustersWithMtNCellsPerCondition(kang.seurat,N = min_cells_per_cluster_condition)
+  kang.seurat <- mapConditionsInSeurat(kang.seurat,"condition",case_condition,control_condition)
+
+  return(kang.seurat)
+}
+```
+
+We further filter this seurat object so that the sample analysis is faster to execute, but this is not recommended for an actual 
+dataset
+
+```{r}
+#| eval: false
+#| include: true
+# sampling so we can quickly go through the pipeline
+cells_to_keep <- seurat_oi[[]] %>%
+  tibble::rownames_to_column("cell_barcode") %>%
+  dplyr::group_by(condition, cluster) %>%
+  dplyr::filter(dplyr::n() >= 300) %>%
+  dplyr::slice_sample(n = 500, replace = FALSE) %>%
+  dplyr::ungroup() %>%
+  dplyr::pull(cell_barcode)
+
+seurat_oi <- subset(seurat_oi, cells = cells_to_keep)
+
+```
+
+We save this pre-processed Seurat object in the 'data' folder of our analysis folder
+
+```{r}
+#| eval: false
+#| include: true
+ #save outputs for subsequent analysis
+saveRDS(seurat_oi,file.path(paths["data"],"seurat_object_oi.rds"))
+```
+
+Lastly, we need to generate python-compatible objects for the `CellOracle` pipeline, these will be written to a 'CellOracle" folder within the analysis folder 
+
+```{r}
+#| eval: false
+#| include: true
+#in addition, we need to create python-compatible h5ad objects for the CO pipeline
+for(this_cluster in unique(seurat_oi$cluster)){
+  seurat_object_oi_this_cluster <- subset(seurat_oi,subset = cluster == this_cluster)
+  sce.object = Seurat::as.SingleCellExperiment(seurat_object_oi_this_cluster)
+  sce.object@assays@data[["logcounts"]] <- NULL
+  zellkonverter::writeH5AD(sce.object, file.path(paths["co_input"],paste(this_cluster,".h5ad",sep="")),X_name = "counts")
+}
+```
+
+
+# 2. CellOracle
+`Decipher` curently relies on GRNs inferred using `CellOracle`. To run this step of the pipeline we just need to 
+```{sh}
+#| eval: false
+#| include: true
+docker run -it -v "$(pwd):/workspace" -w /workspace ebasto/decipher-manuscript-celloracle@sha256:419f15c53249e4c09a0c361b8e9ab0857d46c1e797d0f3c40af35a1ce583c1b1
+
+#generic analysis command
+python3 scripts/sample_analysis/cell_oracle.py
+```
+
+Noting that this script also needs to be slightly modified in order to run for your dataset, this primarily involves changing the following parameters
+```{python}
+#| eval: false
+#| include: true
+data_folder ="results/sample_analysis"
+this_species = "human"
+```
+
+The data_folder parameter should point to the folder you set up earlier, i.e. `results/your_analysis_name`, and the species should naturally point to the species in your dataset.
+
+# 3. Decipher analysis
+## 1. Setup and Configuration
+
+Please run this within the decipherc2c docker container at the root of the Decipher repository
+```{sh}
+#| eval: false
+docker run --rm -it -v "$(pwd):/home/project" -w /home/project \
+  ebasto/decipherc2c@sha256:9ec8bbb7eca692856e9fd7c50346c78eac6ae24da8bd2e87b1f36998465bd1b0 bash
+```
+
+We load the `Decipher` package itself and set a random seed for reproducibility. The Decipher package consists of functions for intracellular scoring, intercellular scoring, integrated scoring as well as visualization.
+
+```{r}
+#| eval: true
+#run renv::restore() first, here it was done in the background to suppress outputs from the final markdown output
+library(devtools)
+load_all()
 
 # Set a seed for reproducibility
 i <- 123
@@ -48,10 +269,19 @@ set.seed(i)
 selected_random_seed <- i
 ```
 
-Next, we define key parameters for the analysis, such as the minimum number of cells required per cluster and the species of interest. We also specify the conditions for comparison (case vs. control) and parameters for the meta-cell analysis.
+The reason we store a random seed in a variable is because for some functions we need to explicitly pass this seed to ensure reproducibility.
+
+### Key analysis parameters
+
+We next define the following key parameters for the analysis:
+* the minimum number of cells required per cluster
+* the species of interest
+* the conditions for comparison (case vs. control)
+* parameters for the meta-cell analysis.
+* Here it's important to include the dataset path - in our case it's a folder within results called sample_analysis. The Decipher github repository also includes a reference_data directory which is needed to get the ligand-receptors we use in Decipher. 
 
 ```{r}
-#| eval: false
+#| eval: true
 # Parameters for the dataset
 min_cells_per_cluster_condition <- 100
 species <- "human"
@@ -65,40 +295,46 @@ min_meta_cells_parameter <- 100
 reference_filepath <- "reference_data"
 dataset_path <- "results/sample_analysis"
 paths <- create_project_dirs("results/sample_analysis")
+
+flag.normalize.non.log <- FALSE
+
 ```
 
-# 2. Data Loading
+## 2. Data Loading
 
-The analysis starts by loading a `Seurat` object, which contains the single-cell RNA sequencing data. For this tutorial, we use a sample dataset included with the package.
+The analysis starts by loading a `Seurat` object, which contains the single-cell RNA sequencing data. For this tutorial, we use the sample dataset we had pre-processed above. 
 
 ```{r}
-#| eval: false
+#| eval: true
 seurat_oi <- readRDS(file.path(paths["data"], "seurat_object_oi.rds"))
 ```
 
-We can inspect the `Seurat` object to get an idea of the data. Here are the first few rows of the metadata:
+We can inspect the `Seurat` object to get an idea of the data. Here are the first few rows of the metadata. Note that the condition and cluster columns are there from pre-processing and are necessary for `Decipher` to run smoothly.
 
 ```{r}
-#| eval: false
+#| eval: true
 # This is an example of how to view the data.
 # The actual `seurat_oi` object is loaded in the previous step.
 head(seurat_oi[[]])
 ```
 
-We also load essential reference data, including the ligand-receptor set and Cytosig ligands.
+We also load essential reference data, including the ligand-receptor set and Cytosig ligands. Ligand-receptor data was obtained from NATMI. These are automatically downloaded from the `Decipher` github repository.
 
 ```{r}
-#| eval: false
+#| eval: true
 L.set <- loadLSet(reference_filepath, species)
 cytosig_ligands <- loadCytosigLigands(reference_filepath, species)
 ```
 
-# 3. Quality Control (QC)
+## 3. Quality Control (QC)
 
 To ensure the quality of our data, we perform a quality control step. We calculate the number of cells per cluster per condition and filter out any clusters that don't meet our predefined threshold (`min_cells_per_cluster_condition`).
 
+Plots gets written to the figures folder. In general you want the median counts per cell-type to sit somewhere between 7000 and 10000.  
+
+
 ```{r}
-#| eval: false
+#| eval: true
 # Generate and plot QC data
 CpC_data <- generateQCDataByClusterAndCondition(seurat_oi, max(stringr::str_length(unique(seurat_oi$cluster))))
 plotQC_CpC(CpC_data, outputPath = paths['figures'])
@@ -111,12 +347,12 @@ seurat_oi <- seurat_oi[, which(seurat_oi$cluster %in% clusters_passing_CpC_filte
 plotQC_UpC(seuratObject = seurat_oi, outputPath = paths['figures'], id = "_sc")
 ```
 
-# 4. Meta-cell Creation
+## 4. Meta-cell Creation
 
-To enhance the signal and reduce noise in the data, Decipher groups individual cells into "meta-cells." This step aggregates transcriptionally similar cells, creating a more robust representation of the cellular states.
+To enhance the signal and reduce noise in the data, Decipher groups individual cells into "meta-cells." This step aggregates transcriptionally similar cells, creating a more robust representation of the cellular states. This process is executed by the `MetaCellModule` and further QC plots are produced afterwards. 
 
 ```{r}
-#| eval: false
+#| eval: true
 decipher_seurat <- metaCellModule(
   seurat_object = seurat_oi,
   min_meta_cells = min_meta_cells_parameter,
@@ -129,15 +365,15 @@ CpC_data_meta <- generateQCDataByClusterAndCondition(decipher_seurat, max(string
 plotQC_CpC(CpC_data_meta, outputPath = paths['figures'], id = "_meta")
 ```
 
-# 5. Core Decipher Analysis
+## 5. Core Decipher Analysis
 
 This is the main part of the pipeline where the cell-cell interaction analysis happens. The process involves several sequential steps:
 
 ### Data Pre-processing
-We subset the Seurat object to include only ligands and receptors and calculate feature statistics.
+We subset the Seurat object to include only ligands and receptors and calculate feature statistics (differential expression of ligands/receptors, etc.)
 
 ```{r}
-#| eval: false
+#| eval: true
 decipher_seurat_lr <- decipher_seurat[unique(c(L.set$ligand, L.set$receptor)), , seed = NULL]
 feature_statistics <- getFeatureStatistics(
   features = unique(c(L.set$ligand, L.set$receptor)),
@@ -146,10 +382,10 @@ feature_statistics <- getFeatureStatistics(
 ```
 
 ### Identifying Expressed Ligands and Receptors
-We identify which ligands and receptors are expressed in each cluster.
+We identify which ligands and receptors are expressed in each cluster. Here they have to be expressed in at least 10% of cells of either ocndition. 
 
 ```{r}
-#| eval: false
+#| eval: true
 expressed_ligands <- getFilteredLigands(
   decipher_seurat,
   L.set,
@@ -167,32 +403,51 @@ L_set_relevant_features_all_clusters <- getRelevantFeaturesForEachCluster(
 ```
 
 ### Regulon Analysis
-We identify regulons (a set of genes controlled by a transcription factor) and calculate their activity scores and changes between conditions.
+We load regulons (a set of genes controlled by a transcription factor) produced by CellOracle.
 
 ```{r}
-#| eval: false
+#| eval: true
 regulon_grns_by_cluster <- getRegulonsAllClusters(dataset_path, decipher_seurat)
-capped_regulons_all_clusters <- capRegulonsAllClusters(regulon_grns_by_cluster, decipher_seurat)
+```
+
+We cap these regulons to ahve 40 targets per transcription factor, as otherwise we found they have too much overlap (and regulon scores become overly correlated)
+```{r}
+capped_regulons_all_clusters <- capRegulonsAllClusters(regulon_grns_by_cluster, decipher_seurat,flag.normalize.non.log)
+```
+
+To calculate regulon scores we use the `pagoda2` algorithms, which basically embeds our regulons into reduced dimensions and from an inferred null model calculates deviations of each regulon from what was expected.
+```{r}
 regulon_scores_by_cluster <- getRegulonScoresAllClusters(capped_regulons_all_clusters, decipher_seurat)
+```
+
+From these regulon scores we identify regulons that are differentially activated between conditions. We also get some more feature statistics from the target genes of differentially activated regulons.
+```{r}
 regulon_deltas_by_cluster <- getRegulonDeltasAllClusters(regulon_scores_by_cluster, decipher_seurat)
 significant_regulons_by_cluster <- getSignificantRegulonsAllClusters(regulon_deltas_by_cluster)
 significant_regulon_markers_by_cluster <- getDifferentiallyExpressedTargetsForRegulonsAllClusters(
   decipher_seurat,
   significant_regulons_by_cluster,
   regulon_grns_by_cluster,
-  random.seed = selected_random_seed
-)
+  flag.normalize.non.log,
+  random.seed=selected_random_seed)
 ```
 
 ### Interaction Potential
 We calculate the interaction potential between cell types based on ligand-receptor expression.
 
 ```{r}
-#| eval: false
+#| eval: true
 interaction_potential_by_clusters <- getInteractionPotentialsMatrixAllClusters(
   decipher_seurat,
-  L_set_relevant_features_all_clusters
+  L_set_relevant_features_all_clusters,
+  flag.normalize.non.log
 )
+
+```
+
+From this potential we calculate interaction potential regulon_deltas_by_cluster, which are basically an implementation of Seurat's default differential expression test.
+
+```{r}
 interaction_deltas_by_cluster <- calculateInteractionDeltasAllClusters(
   interaction_potential_by_clusters,
   decipher_seurat_lr
@@ -206,30 +461,45 @@ interaction_potentials_matrix_clusters_all_clusters <-
     decipher_seurat,
     L_set_relevant_features_all_clusters,
     filtered_interaction_potentials_matrix_all_clusters,
-    cytosig_ligands
+    cytosig_ligands,
+    flag.normalize.non.log
   )
 ```
 
-### Random Forest Model
+### iSN model
 Finally, we use a random forest model to integrate the regulon and interaction potential data, yielding the Decipher scores.
 
 ```{r}
-#| eval: false
+#| eval: true
 decipher_scores_by_regulon_and_cluster <- getRandomForestWeightsAllClusters(
   decipher_seurat,
   significant_regulons_by_cluster,
   regulon_scores_by_cluster,
   interaction_potentials_matrix_clusters_all_clusters,
-  L_set_relevant_features_all_clusters
+  L_set_relevant_features_all_clusters,
+  flag.normalize.non.log
+)
+
+lr_markers_by_cluster <- FindLRMarkersAllClusters(
+  decipher_seurat,
+  decipher_scores_by_regulon_and_cluster,
+  flag.normalize.non.log,
+  random.seed = selected_random_seed
+)
+
+de_markers_by_cluster <- FindMarkersAllClusters(
+  decipher_seurat,
+  flag.normalize.non.log,
+  random.seed= selected_random_seed
 )
 ```
 
-# 6. Result Aggregation
+## 6. Result Aggregation
 
-The raw scores from the random forest model are processed and aggregated to get the final, interpretable Decipher scores for each cluster.
+The raw scores from the random forest model are processed and aggregated to get the final, interpretable Decipher scores for each cluster. These scores are saved in the 'data' folder of the analysis folder.
 
 ```{r}
-#| eval: false
+#| eval: true
 decipher_scores_by_regulon_and_cluster <- lapply(
   decipher_scores_by_regulon_and_cluster,
   FUN = "listOfDFsRenameColumn",
@@ -249,22 +519,37 @@ decipher_scores_by_cluster <- addListNameToDFElements(
 
 # Save the final results
 saveRDS(decipher_scores_by_cluster, file.path(paths['data'], paste0("Run_", i, "_decipher_scores_by_cluster.rds")))
+
+#save intermediary results - useful for visualizations and interrogating main results
+saveRDS(decipher_scores_by_regulon_and_cluster,file.path(paths['data'],paste0("Run_",i , "_decipher_scores_by_regulon_and_cluster.rds")))
+saveRDS(decipher_scores_by_regulon_and_cluster,file.path(paths['data'],"decipher_scores_by_regulon_and_cluster.rds"))
+saveRDS(regulon_scores_by_cluster,file.path(paths['data'],"regulon_scores_by_cluster.rds"))
+saveRDS(interaction_potential_by_clusters,file.path(paths['data'],"interaction_potential_by_clusters.rds"))
+saveRDS(regulon_deltas_by_cluster,file.path(paths['data'],"regulon_deltas_by_cluster.rds"))
+saveRDS(significant_regulons_by_cluster,file.path(paths['data'],"significant_regulons_by_cluster.rds"))
+saveRDS(significant_regulon_markers_by_cluster,file.path(paths['data'],"significant_regulon_markers_by_cluster.rds"))
+saveRDS(interaction_deltas_by_cluster,file.path(paths['data'],"interaction_deltas_by_cluster.rds"))
+saveRDS(regulon_grns_by_cluster,file.path(paths['data'],"regulon_grns_by_cluster.rds"))
+saveRDS(lr_markers_by_cluster,file.path(paths['data'],"lr_markers_by_cluster.rds"))
+saveRDS(de_markers_by_cluster,file.path(paths['data'],"de_markers_by_cluster.rds"))
+saveRDS(feature_statistics,file.path(paths['data'],"feature_statistics.rds"))
+saveRDS(decipher_seurat_lr,file.path(paths['data'],"decipher_seurat_lr.rds"))
+saveRDS(L.set,file.path(paths['data'],"L_set.rds"))
+saveRDS(decipher_scores_by_cluster,file.path(paths['data'],"decipher_scores_by_cluster.rds"))
+saveRDS(interaction_potentials_matrix_clusters_all_clusters,file.path(paths['data'],"interaction_potentials_matrix_clusters_all_clusters.rds"))
+saveRDS(expressed_receptors_all_clusters, file.path(paths['data'], "expressed_receptors_all_clusters.rds"))
+saveRDS(capped_regulons_all_clusters, file.path(paths['data'], "capped_regulons_all_clusters.rds"))
+saveRDS(L_set_relevant_features_all_clusters, file.path(paths['data'], "L_set_relevant_features_all_clusters.rds"))
+
 ```
 
-# 7. Visualization
+## 7. Visualization
 
 The final step is to visualize the results. The `plotDecipherPrioritizedMap` function generates a heatmap that displays the top prioritized interactions, providing a clear overview of the predicted cellular communication network.
 
 ```{r}
-#| eval: false
-plotDecipherPrioritizedMap(
-  dataset_path,
-  top_n = 4,
-  dataset_name = "sample_1",
-  abs_decipher_plot_limit = 20,
-  width = 21,
-  height = 9
-)
+#| eval: true
+#plotDecipherPrioritizedMap(dataset_path,top_n = 4,dataset_name = "sample_1",abs_decipher_plot_limit = 20,width = 21,height = 9)
 ```
 
 <p align="center">
@@ -277,7 +562,7 @@ plotDecipherPrioritizedMap(
 <summary>Show Details</summary>
 
 ```{r}
-#| eval: false
+#| eval: true
 sessionInfo()
 ```
 

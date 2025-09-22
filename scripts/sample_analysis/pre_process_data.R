@@ -13,13 +13,10 @@ selected_random_seed <- i
 
 #Parameters: dataset ----
 min_cells_per_cluster_condition <- 100
-species <-  "human"
 #for sample dataset condition_name is "condition", case_condition is "stim" and control_condition is "ctrl"
 condition_name <- "condition"
 case_condition = "stim"
 control_condition = "ctrl"
-k_parameter = 10
-min_meta_cells_parameter = 100
 
 
 #Parameters: directories ----
@@ -28,15 +25,12 @@ dataset_path <- "results/sample_analysis"
 paths <- create_project_dirs("results/sample_analysis")
 #not sure what this is about: dir.create(file.path(paths['pre_processing'],"validity/h5ad_by_cluster"))
 
-#Parameters: analysis ----
-flag.normalize.non.log <- FALSE
-
 # #create sample dataset ----
 # #including seurat object and h5ad objects
-#will ask you to dset up a cache, say yes
+#will ask you to set up a cache, say yes
 seurat_oi <- generateSampleSeuratFromExperimentHub(min_cells_per_cluster_condition,case_condition,control_condition)
 
-# sampling so we can quickly go through the pipeline :) 
+# sampling so we can quickly go through the pipeline 
 cells_to_keep <- seurat_oi[[]] %>%
   tibble::rownames_to_column("cell_barcode") %>%
   dplyr::group_by(condition, cluster) %>%
