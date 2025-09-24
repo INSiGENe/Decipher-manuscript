@@ -1686,3 +1686,421 @@ plot_tf_tg_network <- function(data, regulons) {
 
   vertex_attrs <- set_vertex_attributes(g, log2fc_colors, regulons)
 }
+
+
+
+
+#' Generate and Save a Volcano Plot of Differential TF Activity
+#'
+#' @description
+#' This function performs a differential analysis of transcription factor (TF)
+#' activity between "case" and "control" groups for a specific cell cluster.
+#' It generates a volcano plot to visualize the results, saves the plot as a PNG,
+#' and saves the underlying data as a CSV file.
+#'
+#' @details
+#' The function reads pre-calculated regulon scores and delta values, performs a
+#' t-test for each TF regulon, and then uses ggplot2 to create the volcano plot.
+#' It assumes the presence of a helper function `do_t_test_by_feature_by_grouping_factor()`
+#' in the environment.
+#'
+#' @param output_data_filepath A string. The file path to the directory
+#'   containing the input RDS files (`decipher_seurat_lr.rds`,
+#'   `regulon_deltas_by_cluster.rds`, etc.).
+#' @param selected_cluster A string. The name of the cell cluster to analyze
+#'   (e.g., "CD14+ Monocytes"). This name must exist as a key in the lists
+#'   within the loaded RDS files.
+#' @param figures_folder A string. The path to the directory where the output
+#'   plot and CSV file will be saved.
+#' @param p_threshold A numeric value. The p-value cutoff for determining
+#'   statistical significance. Defaults to `0.01`.
+#' @param fc_threshold A numeric value. The absolute delta pagoda score
+#'   (fold change) cutoff for determining biological significance.
+#'   Defaults to `2.883`.
+#' @param output_filename A string. The base filename for the saved volcano
+#'   plot PNG image and csv.
+#'
+#' @return A ggplot object representing the generated volcano plot.
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#'   # Assuming your data and figures folders are set up
+#'   volcano_plot_object <- differentialTFActivityVolcanoPlotByCluster(
+#'     output_data_filepath = "results/covid_data",
+#'     selected_cluster = "CD14_plus_BDCA1_plus_cells",
+#'     figures_folder = "results/figures",
+#'     p_threshold = 0.05,
+#'     fc_threshold = 2.0
+#'   )
+#'   # You can then print or further modify the returned plot object
+#'   print(volcano_plot_object)
+#' }
+differentialTFActivityVolcanoPlotByCluster <- function(
+  output_data_filepath,
+  selected_cluster,
+  figures_folder,
+  p_threshold = 0.01,
+  fc_threhsold = 2.883,
+  output_filename = "diff_regulong_act_volcano_plot"){
+  
+  #load data
+  decipher_seurat_lr <- readRDS(file.path(output_data_filepath,"decipher_seurat_lr.rds"))
+  regulon_deltas_by_cluster <- readRDS(file.path(output_data_filepath,"regulon_deltas_by_cluster.rds"))
+  regulons_scores_by_clusters <- readRDS(file.path(output_data_filepath,"regulon_scores_by_cluster.rds"))
+
+  #data preparation
+  selected_regulons_scores_by_cluster <- regulons_scores_by_clusters[[selected_cluster]]
+  condition_match <- match(colnames(selected_regulons_scores_by_cluster),names(decipher_seurat_lr$condition))
+  group_vector <- decipher_seurat_lr$condition[condition_match]
+
+  regulon_deltas_selected_cluster <- regulon_deltas_by_cluster[[selected_cluster]] %>%
+  filter(class == "real")
+
+  group_vector[group_vector == "control"] <- 0
+  group_vector[group_vector == "case"] <- 1
+  group_factor <- factor(c(group_vector), levels = c(0, 1), labels = c("control", "case"))
+
+  diff_regulon_scores_p_values <- do_t_test_by_feature_by_grouping_factor(selected_regulons_scores_by_cluster,group_factor)
+
+  regulon_deltas_selected_cluster$p_value <- diff_regulon_scores_p_values[regulon_deltas_selected_cluster$name]
+  regulon_deltas_selected_cluster$log_10 <-  -1*log(regulon_deltas_selected_cluster$p_value,base=10)
+
+  ##visualization parameters ----
+  abs_max_regulon_delta <- max(abs(regulon_deltas_selected_cluster$deltaPagoda))
+
+  ##visualization ----
+  p <- ggplot(regulon_deltas_selected_cluster, aes(x = deltaPagoda, y = log_10)) +
+    geom_vline(xintercept = 0, linetype = "dashed", colour = "grey") +
+    geom_hline(yintercept = -log10(p_threshold), linetype = "dashed", colour = "grey") +
+    geom_vline(xintercept = fc_threhsold, linetype = "dashed", colour = "grey") +
+    geom_vline(xintercept = -fc_threhsold, linetype = "dashed", colour = "grey") +
+    geom_point(shape = 16, alpha = 0.5) +
+    scale_colour_manual(values = c("0" = "#808080", "1" = "#ff8080", "2" = "#8080ff", "3" = "#ff80ff")) +
+    scale_x_continuous(limits = c(-1*6,abs_max_regulon_delta), breaks = seq(-6,6,2)) +
+    scale_y_continuous(limits = c(0,300)) +
+    xlab("delta TF activity") +
+    ylab("-log10(P)") +
+    theme_classic(9) +
+    theme(legend.position = "none",
+          axis.title.x= element_text(size = 20),
+          axis.title.y= element_text(size = 20))
+
+  p <- p + geom_text(data = subset(regulon_deltas_selected_cluster, log_10 > -log(p_threshold,base=10) & abs(deltaPagoda) > fc_threhsold), aes(label = name),
+                    vjust = "inward", hjust = "inward", check_overlap = TRUE,size=4)
+
+  output_plot_filename <- paste(output_filename,".png")
+  ggsave(file.path(figures_folder,output_plot_filename), plot = p, width = 4, height = 7, dpi = 300)
+
+  output_data_filename <- paste(output_filename,".csv")
+  write.csv(
+    regulon_deltas_selected_cluster,
+    file = file.path(figures_folder, output_data_filename),
+    row.names = TRUE
+  )
+
+  return(p)
+}
+
+#' Plot Ligand-Receptor and Transcription Factor Interaction Heatmap
+#'
+#' @description
+#' This function analyzes decipher scores to identify and visualize the relationships
+#' between top ligand-receptor (LR) interactions and significantly altered
+#' transcription factor (TF) regulons for a specific cell cluster.
+#'
+#' It generates a heatmap of the LR-TF decipher scores and saves it as a PNG file,
+#' along with a CSV file of the underlying data matrix.
+#'
+#' @param output_data_filepath A character string specifying the path to the directory
+#'   containing the required input RDS files (e.g., "regulon_deltas_by_cluster.rds").
+#' @param selected_cluster A character string with the name of the cell cluster to analyze
+#'   (e.g., "Tumour_Cells").
+#' @param figures_folder A character string specifying the path to the folder where
+#'   the output heatmap and CSV file will be saved.
+#' @param p_threshold A numeric value for the p-value threshold used to filter for
+#'   significant regulons. Defaults to `0.01`.
+#' @param output_name A character string for the base name of the output PNG and CSV
+#'   files (without file extension). Defaults to `"lr_tf_heatmap"`.
+#' @param n_interactions A numeric value for the number of top LR interactions (ranked by
+#'   absolute decipher score) to include in the heatmap. Defaults to `10`.
+#' @param min_abs_decipher_score A numeric value for the minimum absolute decipher score
+#'   for filtering interactions. Defaults to `0.4`.
+#' @param min_delta_pagoda A numeric value for the minimum absolute `deltaPagoda` score
+#'   used to filter for significant regulons. Defaults to `2`.
+#'
+#' @return The function does not return any R object. It saves two files to the
+#'   `figures_folder`:
+#'   \itemize{
+#'     \item A PNG file containing the LR-TF heatmap.
+#'     \item A CSV file containing the matrix of decipher scores used to generate the heatmap.
+#'   }
+#'
+#' @importFrom dplyr filter mutate rename select arrange distinct slice_head ungroup left_join bind_rows if_else pull
+#' @importFrom reshape2 acast
+#' @importFrom gplots heatmap.2
+#' @importFrom grDevices png dev.off
+#' @importFrom utils write.csv
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # This is a hypothetical example, as it requires specific input files.
+#' plotLRTFHeatmap(
+#'   output_data_filepath = "path/to/your/data_output",
+#'   selected_cluster = "My_Cell_Cluster",
+#'   figures_folder = "path/to/your/figures",
+#'   p_threshold = 0.05,
+#'   n_interactions = 15
+#' )
+plotLRTFHeatmap <- function(
+  output_data_filepath,
+  selected_cluster,
+  figures_folder,
+  p_threshold = 0.01,
+  output_name = "lr_tf_heatmap",
+  n_interactions = 10,
+  min_abs_decipher_score = 0.4,
+  min_delta_pagoda = 2
+){
+  regulon_deltas_by_cluster <- readRDS(file.path(output_data_filepath,"regulon_deltas_by_cluster.rds"))
+  regulons_scores_by_clusters <- readRDS(file.path(output_data_filepath,"regulon_scores_by_cluster.rds"))
+  decipher_seurat_lr <- readRDS(file.path(output_data_filepath,"decipher_seurat_lr.rds"))
+  decipher_scores_by_cluster <- readRDS(file.path(output_data_filepath,"decipher_scores_by_cluster.rds"))
+  decipher_scores_by_regulon_and_cluster <- readRDS(file.path(output_data_filepath,"decipher_scores_by_regulon_and_cluster.rds"))
+
+  ##data wrangling ----
+  regulon_scores_selected_cluster <- regulons_scores_by_clusters[[selected_cluster]]
+  condition_match <- match(colnames(regulon_scores_selected_cluster),names(decipher_seurat_lr$condition))
+  group_vector <- decipher_seurat_lr$condition[condition_match]
+
+  regulon_deltas_selected_cluster <- regulon_deltas_by_cluster[[selected_cluster]] %>%
+    filter(class == "real")
+
+  group_vector[group_vector == "control"] <- 0
+  group_vector[group_vector == "case"] <- 1
+  group_factor <- factor(c(group_vector), levels = c(0, 1), labels = c("control", "case"))
+
+  diff_regulon_scores_p_values <- do_t_test_by_feature_by_grouping_factor(regulon_scores_selected_cluster,group_factor)
+
+  regulon_deltas_selected_cluster$p_value <- diff_regulon_scores_p_values[regulon_deltas_selected_cluster$name]
+  regulon_deltas_selected_cluster$log_10 <-  -1*log(regulon_deltas_selected_cluster$p_value,base=10)
+
+  regulon_signature <- regulon_deltas_selected_cluster %>%
+    filter(log_10 > -log(p_threshold,base=10) & abs(deltaPagoda) > min_delta_pagoda) %>%
+    pull(name)
+
+  decipher_scores_by_cluster_bound <- bind_rows(decipher_scores_by_cluster)
+  decipher_scores_by_cluster_bound_filtered <- decipher_scores_by_cluster_bound %>%
+    mutate(decipher_score = sign(decipher_score)*log10(abs(decipher_score)+1)) %>%
+    filter(abs(decipher_score) > min_abs_decipher_score)
+
+  decipher_scores_by_cluster_bound_clean <- decipher_scores_by_cluster_bound %>%
+    mutate(interaction = paste(ligand, receptor, sep = "-")) %>%
+    rename(receiver=receiver_cluster,sender=sender_cluster,prioritization_score=decipher_score) %>%
+    select(interaction,ligand,receptor,receiver,prioritization_score) %>%
+    arrange(prioritization_score)
+
+
+  decipher_top_interactions_cluster_selected_cluster <- decipher_scores_by_cluster_bound_clean %>%
+    #filter(receiver %in% "Tumour_Cells") %>%
+    mutate(decipher_score_sign=if_else(prioritization_score >=0,"positive","negative")) %>%
+    #group_by(decipher_score_sign) %>%
+    arrange(desc(abs(prioritization_score))) %>%
+    select(interaction) %>%
+    distinct() %>%
+    slice_head(n = n_interactions) %>%
+    ungroup() %>%
+    left_join(decipher_scores_by_cluster_bound)
+
+  top_interactions <- decipher_top_interactions_cluster_selected_cluster %>%
+    select(interaction) %>%
+    distinct() %>%
+    unlist(use.names=FALSE)
+
+  to_plot <- decipher_scores_by_regulon_and_cluster[[selected_cluster]] %>%
+    filter(regulon %in% regulon_signature,
+          interaction %in% top_interactions)
+
+
+  this_matrix <-reshape2::acast(to_plot,interaction~regulon,value.var = "decipher_score",fill = 0)
+
+  ##visualization ----
+  file_name <- paste(output_name,".png",sep="")
+  png(file.path(figures_folder,file_name),width = 15, height = 9, units = "cm",res=600)
+  heatmap.2(
+    this_matrix,
+    trace="none",
+    col = "bluered",
+    breaks = 100,
+    cexRow = 0.7,
+    cexCol=0.5,
+    scale = "none",
+    key.title = "LR-TF Decipher score",Rowv = FALSE,
+    dendrogram = "none",
+    margins = c(6,6),
+    key = FALSE,
+    keysize = 0.3,
+    Colv=TRUE)
+  dev.off()
+  file_name <- paste(output_name,".csv",sep="")
+  write.csv(this_matrix,file.path(figures_folder,file_name),row.names=TRUE)
+
+}
+
+# Execute plot generation
+#generated_plots <- generate_sorted_plots(selected_receiver_cells, regulon_deltas_list, conditions, top_n_regulons, absolute_max)
+
+# Create combined plots with titles (one combined plot per cell type)
+#celltype_combined_plots <- create_combined_plots_per_celltype(generated_plots, selected_receiver_cells)
+
+# Function to save combined plots in groups
+#save_grouped_plots(
+#    combined_plots = celltype_combined_plots,
+#    clusters_per_group = clusters_per_group_in_output,
+#    output_dir_base = ".", # Use the base path
+#    output_folder_name = figures_folder
+#)
+
+#' Generate a Heatmap of Top Transcription Factor Activity
+#'
+#' @description
+#' This function creates a heatmap comparing the `deltaPagoda` scores of
+#' transcription factors (TFs) between two conditions ('mild' and 'severe')
+#' for a specific cell type. It identifies the top N TFs based on the absolute
+#' `deltaPagoda` score in one of the conditions and displays their scores
+#' across both conditions.
+#'
+#' @param cell_type A character string specifying the name of the cell type to analyze
+#'   (e.g., `"CD14_Mono"`).
+#' @param sort_by A character string indicating the condition (`"mild"` or `"severe"`)
+#'   to use for ranking and selecting the top TFs. Defaults to `"mild"`.
+#' @param top_n A numeric value for the number of top TFs to display in the
+#'   heatmap. Defaults to `20`.
+#' @param deltas_list A nested list containing the `deltaPagoda` scores. The
+#'   expected structure is `list(mild = list(cell_type = df), severe = list(cell_type = df))`,
+#'   where `df` is a data frame with 'name' and 'deltaPagoda' columns.
+#' @param global_max A numeric value specifying the absolute maximum for the color
+#'   scale limits (e.g., `c(-global_max, global_max)`). This ensures a consistent
+#'   color scale across multiple plots.
+#'
+#' @return A `ggplot` object representing the heatmap, which can be further
+#'   customized or printed.
+#'
+#' @importFrom tibble enframe
+#' @importFrom dplyr full_join filter arrange slice_head pull mutate
+#' @importFrom tidyr pivot_longer
+#' @importFrom ggplot2 ggplot aes geom_tile scale_fill_gradient2 labs theme_minimal theme element_text element_blank
+#' @importFrom rlang .data
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # 1. Create mock data in the expected format
+#' mock_deltas <- list(
+#'   mild = list(
+#'     CD14_Mono = data.frame(
+#'       name = paste0("TF", 1:30),
+#'       deltaPagoda = rnorm(30, 0, 1.5)
+#'     )
+#'   ),
+#'   severe = list(
+#'     CD14_Mono = data.frame(
+#'       name = paste0("TF", 1:30),
+#'       deltaPagoda = rnorm(30, 1, 2.5)
+#'     )
+#'   )
+#' )
+#'
+#' # 2. Generate the plot, sorting by the 'severe' condition
+#' p <- single_TF_heatmap(
+#'   cell_type = "CD14_Mono",
+#'   sort_by = "severe",
+#'   top_n = 15,
+#'   deltas_list = mock_deltas,
+#'   global_max = 6
+#' )
+#'
+#' # 3. Print the plot
+#' print(p)
+#' }
+plotConditionSortedClusterSpecificTFHeatmaps <- function(cell_type,
+                              sort_by    = c("mild","severe"),
+                              top_n      = 20,
+                              deltas_list,
+                              global_max) {
+  sort_by   <- match.arg(sort_by)
+  sort_cond <- if (sort_by == "mild") "Mild" else "Severe"
+
+  # helper: extract a named vector from either a numeric vector or your 3-col df
+  vec_from <- function(x) {
+    if (is.data.frame(x)) {
+      if (all(c("deltaPagoda","name") %in% names(x))) {
+        v <- x$deltaPagoda
+        names(v) <- x$name
+        return(v)
+      } else {
+        stop("Data.frame must have columns 'deltaPagoda' and 'name'.")
+      }
+    } else if (is.numeric(x) && !is.null(names(x))) {
+      return(x)
+    } else {
+      stop("Each element must be a named numeric vector or a data.frame with 'deltaPagoda'+'name'.")
+    }
+  }
+
+  # pull out moderate & severe vectors
+  mod_vec <- vec_from(deltas_list$mild[[cell_type]])
+  sev_vec <- vec_from(deltas_list$severe  [[cell_type]])
+
+  # turn into tibbles
+  mod_df <- enframe(mod_vec, name="TF", value="Mild")
+  sev_df <- enframe(sev_vec, name="TF", value="Severe")
+
+  # join & pivot
+  df_long <- full_join(mod_df, sev_df, by="TF") %>%
+    pivot_longer(c(Mild,Severe),
+                 names_to="Condition",
+                 values_to="Delta")
+
+  # pick top N by |Delta| in sort_cond
+  top_tfs <- df_long %>%
+    filter(Condition == sort_cond, !is.na(Delta)) %>%
+    arrange(desc(abs(Delta))) %>%
+    slice_head(n = top_n) %>%
+    arrange(Delta) %>%
+    pull(TF)
+
+  df_top <- df_long %>%
+    filter(TF %in% top_tfs) %>%
+    mutate(
+      TF        = factor(TF, levels = top_tfs),
+      Condition = factor(Condition, levels = c("Mild","Severe"))
+    )
+
+  # symmetric color limits
+  lim <- max(abs(df_top$Delta), na.rm = TRUE)
+
+  # plot
+  ggplot(df_top, aes(TF, Condition, fill = Delta)) +
+    geom_tile(color = "white") +
+    scale_fill_gradient2(
+      low      = "blue",
+      mid      = "white",
+      high     = "red",
+      midpoint = 0,
+      limits   = c(-global_max, global_max),
+      na.value = "grey80"
+    ) +
+    labs(title = paste0(cell_type, " (sorted by ",sort_by,")"), x = "TF", y = NULL) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title       = element_text(hjust = 0.5),
+      axis.text.x      = element_text(angle = 45, hjust = 1),
+      panel.grid       = element_blank(),
+      legend.position = "bottom"
+    )
+}
