@@ -1733,6 +1733,75 @@ find_absolute_max <- function(deltas_list_of_lists) {
   return(ifelse(is.finite(max_val), max_val, 1))
 }
 
+#' Find absolute maximum |\code{deltaPagoda}| across clusters
+#'
+#' Scan a named list of per-cluster delta values and return the largest absolute
+#' value found. Each element of \code{deltas_by_cluster} may be either
+#' 1) a \code{data.frame} containing a numeric column called \code{deltaPagoda}
+#'    (and optionally a \code{name} column), or
+#' 2) a numeric vector (optionally named).
+#'
+#' NA values are ignored. If no finite numeric values are found the function
+#' returns the \code{default} provided.
+#'
+#' @param deltas_by_cluster A named \code{list}. Each element is either a
+#'   \code{data.frame} with a \code{deltaPagoda} column or a numeric vector.
+#' @param default Numeric scalar. Value to return when no finite numeric values
+#'   are present in \code{deltas_by_cluster}. Defaults to \code{1}.
+#'
+#' @return A single numeric scalar giving the maximum absolute
+#'   \code{deltaPagoda} value found across all clusters (>= 0). If nothing
+#'   valid is found the function returns \code{default}.
+#'
+#' @examples
+#' \dontrun{
+#' my_deltas_list <- list(
+#'   CM_CD8  = data.frame(name = c("TF1","TF2"), deltaPagoda = c(0.5, -1.2)),
+#'   EM_CD8  = c(TF1 = 0.3, TF2 = -0.8),
+#'   GZMK_CD8 = data.frame(name = character(0), deltaPagoda = numeric(0))
+#' )
+#'
+#' find_absolute_max_simple(my_deltas_list)
+#' # -> 1.2
+#'
+#' # returns `default` when no valid numbers are present
+#' find_absolute_max_simple(list(empty = data.frame()), default = NA_real_)
+#' }
+#'
+#' @seealso \code{\link[base]{max}}, \code{\link[base]{abs}}
+#' @export
+find_absolute_max_simple <- function(deltas_by_cluster, default = 1) {
+  # deltas_by_cluster: named list, each element either
+  #   - data.frame with a column "deltaPagoda", or
+  #   - numeric vector (optionally named)
+  # default: value to return when no finite numbers are found
+  
+  if (is.null(deltas_by_cluster) || length(deltas_by_cluster) == 0) return(default)
+  if (!is.list(deltas_by_cluster)) stop("deltas_by_cluster must be a list.")
+  
+  max_val <- -Inf
+  
+  for (elem in deltas_by_cluster) {
+    if (is.null(elem)) next
+    
+    # get numeric values depending on element type
+    if (is.data.frame(elem) && "deltaPagoda" %in% colnames(elem)) {
+      vals <- elem$deltaPagoda
+    } else if (is.numeric(elem)) {
+      vals <- elem
+    } else {
+      # skip unsupported element types
+      next
+    }
+    
+    # compute absolute max for this element (safely handle all-NA)
+    if (length(vals) == 0) next
+    cur <- suppressWarnings(max(abs(vals), na.rm = TRUE))
+    if (is.finite(cur)) max_val <- max(max_val, cur)
+  }
+  
+  if (is.finite(max_val)) return(max_val) else return(default)
+}
 
 
 #' Convert regulon deltas into long format
@@ -2289,4 +2358,423 @@ extract_regulon_data <- function(regulons, capped_regulons_all_clusters, signifi
   }
 
   data
+}
+
+
+#' Assert cluster exists in required objects
+#'
+#' Check that `cluster_name` is present in three named lists used by the
+#' pipeline; stop() with a clear message if any check fails.
+#'
+#' @param cluster_name Character scalar; cluster key to check.
+#' @param decipher_scores Named list expected to contain `cluster_name`.
+#' @param decipher_scores_by_regulon_and_cluster Named list expected to contain `cluster_name`.
+#' @param regulon_deltas_by_cluster Named list expected to contain `cluster_name`.
+#' @return Invisibly \code{NULL} if all checks pass; otherwise throws an error.
+#' @examples
+#' \dontrun{
+#' check_cluster_exists("CM_CD8", decipher_scores, decipher_scores_by_regulon_and_cluster, regulon_deltas_by_cluster)
+#' }
+#' @export
+check_cluster_exists <- function(cluster_name, decipher_scores, decipher_scores_by_regulon_and_cluster, regulon_deltas_by_cluster) {
+  if (!cluster_name %in% names(regulon_deltas_by_cluster)) {
+    stop(paste("Cluster", cluster_name, "not found in regulon_deltas_by_cluster"))
+  }
+  if (!cluster_name %in% names(decipher_scores_by_regulon_and_cluster)) {
+    stop(paste("Cluster", cluster_name, "not found in decipher_scores_by_regulon_and_cluster"))
+  }
+  if (!cluster_name %in% names(decipher_scores)) {
+    stop(paste("Cluster", cluster_name, "not found in decipher_scores"))
+  }
+}
+
+
+#' Get top regulons for a cluster
+#'
+#' Select the top `n` regulons for `cluster_name` from `regulon_deltas_by_cluster`
+#' by filtering `class == "real"` and ordering by descending `deltaPagoda`.
+#'
+#' @param cluster_name Character scalar. Cluster key present in `regulon_deltas_by_cluster`.
+#' @param regulon_deltas_by_cluster Named list of data.frames (per-cluster), each containing at least `name`, `class`, and `deltaPagoda`.
+#' @param n Integer (default 10). Number of top regulons to return.
+#' @return A named list with two elements:
+#' * `top_regulons_df`: data.frame of the selected top `n` regulons (rows preserved, ordered by `deltaPagoda`),
+#' * `top_regulons`: character vector of regulon names (from `top_regulons_df$name`).
+#'
+#' @export
+get_top_regulons <- function(cluster_name, regulon_deltas_by_cluster, n = 10) {
+  this_regulon_deltas <- regulon_deltas_by_cluster[[cluster_name]]
+  top_regulons_df <- this_regulon_deltas %>%
+    filter(class == "real") %>%
+    arrange(desc(deltaPagoda)) %>%
+    head(n)
+  top_regulons <- top_regulons_df$name
+  list(top_regulons_df = top_regulons_df, top_regulons = top_regulons)
+}
+
+#' Select top interactions for a cluster and regulons
+#'
+#' From `decipher_scores` and `decipher_scores_by_regulon_and_cluster` select a
+#' shortlist of interactions to inspect for a given `cluster_name`. If
+#' `top_interactions` is not provided the function first picks the top 20
+#' interactions by `decipher_score` from `decipher_scores[[cluster_name]]`.
+#' Then it filters `decipher_scores_by_regulon_and_cluster[[cluster_name]]` to
+#' rows matching `top_regulons` and the shortlisted interactions, and returns
+#' the top (by `imp.perm`) interactions per regulon (up to 5 per regulon).
+#'
+#' @param cluster_name Character scalar. Cluster key present in the provided score objects.
+#' @param decipher_scores Named list of data.frames; each element (per-cluster)
+#'   must contain at least `interaction` and `decipher_score`.
+#' @param decipher_scores_by_regulon_and_cluster Named list of data.frames;
+#'   each element (per-cluster) must contain at least `regulon`, `interaction`,
+#'   and `imp.perm`.
+#' @param top_regulons Character vector of regulon names to retain when picking interactions.
+#' @param top_interactions Optional character vector. If provided these interactions
+#'   are used instead of auto-selecting the top 20 by `decipher_score`.
+#'
+#' @return A data.frame (tibble) filtered to the selected `regulon` × `interaction`
+#'   rows, containing the top interactions per regulon ordered by `imp.perm`.
+#'
+#' @seealso \code{\link[dplyr]{slice_max}}, \code{\link[dplyr]{arrange}}
+#' @keywords utilities
+#' @export
+#' @importFrom dplyr arrange slice_head pull filter group_by slice_max ungroup desc
+get_top_interactions <- function(cluster_name, decipher_scores, decipher_scores_by_regulon_and_cluster, top_regulons,top_interactions = NULL) {
+  this_decipher_scores_by_regulon <- decipher_scores_by_regulon_and_cluster[[cluster_name]]
+  this_decipher_scores <- decipher_scores[[cluster_name]]
+  if(is.null(top_interactions)){
+      top_20_interactions <- this_decipher_scores %>%
+      arrange(desc(decipher_score)) %>%
+      slice_head(n = 20) %>%
+      pull(interaction)
+  } else {
+    top_20_interactions <- top_interactions
+  }
+
+  top_interactions <- this_decipher_scores_by_regulon %>%
+    filter(regulon %in% top_regulons) %>%
+    filter(interaction %in% top_20_interactions) %>%
+    group_by(regulon) %>%
+    slice_max(order_by = imp.perm, n = 5, with_ties = FALSE) %>%
+    ungroup() %>%
+    drop_na(interaction)
+  top_interactions
+}
+
+#' Build sender→ligand edges from feature statistics
+#'
+#' Compute per-ligand top sender clusters and edge weights for sender→ligand edges.
+#' Normalises counts per cell, selects top-3 sender clusters (by fractional
+#' normalized counts) for each ligand present in `top_interactions`, scales
+#' weights by `global_sender_ligand_max`, formats sender names for plotting,
+#' and returns both the intermediate `sender_ligand` table and a ready-to-plot
+#' `edges_sender_ligand` table.
+#'
+#' @param top_interactions A data.frame/tibble containing at least a column
+#'   `ligand` (character) listing ligands of interest.
+#' @param feature_statistics A data.frame/tibble with per-feature statistics;
+#'   must include columns `sum.counts`, `n.cell`, `condition`, `cluster`, and `feature`.
+#' @param sender_cts Character vector of cluster names to consider as potential
+#'   senders (matched against `feature_statistics$cluster`).
+#' @param global_sender_ligand_max Numeric scalar used to scale weights; weights
+#'   are computed as `5 * (total_counts / global_sender_ligand_max)`.
+#'
+#' @return A named list with two elements:
+#' * `sender_ligand`: tibble of selected ligands × sender clusters with `total_counts` and `weight`,
+#' * `edges_sender_ligand`: tibble with columns `from`, `to`, `weight`, `edge_type`, `colour`
+#'   suitable for downstream graph construction/plotting.
+#'
+#' @details
+#' - Operates only on rows where `condition == 'case'`.
+#' - Relies on helper functions `formatCellTypeNamesForPlotting()` and
+#'   `get_first_and_last_three()` to normalise sender cluster labels for plotting.
+#' - No files are written; function is pure and returns data structures.
+#'
+#' @seealso formatCellTypeNamesForPlotting, get_first_and_last_three
+#' @keywords utilities graph edges ligand sender
+#' @export
+#' @importFrom dplyr mutate group_by slice_max ungroup select
+build_sender_ligand_edges <- function(top_interactions, feature_statistics, sender_cts,global_sender_ligand_max) {
+  normalized_fs <- feature_statistics %>%
+    mutate(normalized.counts = sum.counts / n.cell) %>%
+    group_by(condition, feature) %>%
+    mutate(total.normalized.counts = sum(normalized.counts)) %>%
+    ungroup() %>%
+    mutate(frac.normalized.counts = normalized.counts / total.normalized.counts)
+  
+  sender_ligand <- normalized_fs %>%
+    filter(condition == 'case', cluster %in% sender_cts, feature %in% top_interactions$ligand) %>%
+    group_by(feature) %>%
+    slice_max(order_by = frac.normalized.counts, n = 3, with_ties = FALSE) %>%
+    ungroup() %>%
+    mutate(total_counts = frac.normalized.counts) %>%
+    select(ligand = feature, sender_cluster = cluster, total_counts) %>%
+    #mutate(weight = rescale(total_counts, to = c(1, 5)))
+    mutate(weight = 5 * (total_counts / global_sender_ligand_max))
+
+  # Format sender cell type names
+  sender_ligand$sender_cluster <- formatCellTypeNamesForPlotting(sender_ligand$sender_cluster)
+  sender_ligand$sender_cluster <- sapply(sender_ligand$sender_cluster, get_first_and_last_three)
+  
+  # Build edge table
+  edges_sender_ligand <- sender_ligand %>%
+    select(from = sender_cluster, to = ligand, weight) %>%
+    mutate(edge_type = "Sender_Ligand", colour = weight)
+  
+  list(sender_ligand = sender_ligand, edges_sender_ligand = edges_sender_ligand)
+}
+
+#' Build ligand→receptor edges with scaled weights
+#'
+#' Create a table of ligand→receptor edges from `this_decipher_scores` restricted
+#' to ligands present in `sender_ligand$ligand` and receptors present in
+#' `top_interactions$receptor`. The function attaches an `edge_type` column,
+#' a `colour` copy of the raw score, and scales `weight` to the range used for
+#' plotting by dividing the absolute decipher score by `global_decipher_score_max`
+#' and multiplying by 5.
+#'
+#' @param this_decipher_scores Data.frame/tibble containing at least columns
+#'   `ligand`, `receptor`, and `decipher_score` (per-cluster decipher results).
+#' @param sender_ligand Data.frame/tibble containing a `ligand` column (as produced
+#'   by \code{build_sender_ligand_edges}).
+#' @param top_interactions Data.frame/tibble containing a `receptor` column (selected interactions).
+#' @param global_decipher_score_max Numeric scalar used to scale edge weights; must be > 0.
+#'
+#' @return A tibble with columns: `from` (ligand), `to` (receptor), `weight` (scaled),
+#'   `edge_type` (always `"Ligand_Receptor"`), and `colour` (raw decipher_score).
+#'
+#' @details
+#' - Only rows where ligand ∈ `sender_ligand$ligand` and receptor ∈ `top_interactions$receptor`
+#'   are retained.
+#' - `weight` is computed as `5 * abs(decipher_score) / global_decipher_score_max`.
+#'   Ensure `global_decipher_score_max` is positive to avoid division by zero.
+#'
+#' @seealso build_sender_ligand_edges, get_top_interactions
+#' @keywords edges ligand receptor network
+#' @export
+#' @importFrom dplyr filter select rename mutate
+build_ligand_receptor_edges <- function(this_decipher_scores, sender_ligand, top_interactions,global_decipher_score_max) {
+  ligand_receptor_edges <- this_decipher_scores %>%
+    filter(ligand %in% sender_ligand$ligand, receptor %in% top_interactions$receptor) %>%
+    select(ligand, receptor, decipher_score) %>%
+    rename(from = ligand, to = receptor, weight = decipher_score) %>%
+    mutate(edge_type = "Ligand_Receptor", colour = weight) %>%
+    mutate(weight = 5 * abs(weight) / global_decipher_score_max)
+    #mutate(weight = rescale(abs(weight), to = c(1, 5)))
+  ligand_receptor_edges
+}
+
+#' Build receptor → TF edges with scaled weights and signed colours
+#'
+#' Create a table of receptor→transcription-factor edges from a `top_interactions`
+#' table. Keeps unique receptor→regulon rows and computes:
+#' * `weight` (scaled from `imp.perm` using `global_receptor_tf_col_max`),
+#' * `colour` (signed by `spearman.cor`: `imp.perm * sign(spearman.cor)`),
+#' * `edge_type` (`"Receptor_TF"`).
+#'
+#' @param top_interactions Data.frame / tibble containing at minimum the columns
+#'   `receptor`, `regulon`, `imp.perm` and `spearman.cor`.
+#' @param global_receptor_tf_col_max Numeric scalar > 0 used to scale `weight`.
+#'   The function computes `weight = 7.5 * imp.perm / global_receptor_tf_col_max`.
+#'
+#' @return A tibble with receptor→TF edges containing columns:
+#' * `from` (receptor), `to` (regulon), `imp.perm`, `spearman.cor`,
+#' * `weight` (scaled), `edge_type` (`"Receptor_TF"`), and `colour` (signed value).
+#'
+#' @details
+#' - Duplicate receptor→regulon rows are removed via `distinct()`.
+#' - `colour` preserves directionality by multiplying `imp.perm` with the
+#'   sign of `spearman.cor` (positive/negative).
+#' - `weight` is scaled by the provided `global_receptor_tf_col_max`. Ensure
+#'   this argument is > 0 to avoid division-by-zero or nonsensical scaling.
+#'
+#' @examples
+#' \dontrun{
+#' build_receptor_tf_edges(top_interactions_df, global_receptor_tf_col_max = 2.5)
+#' }
+#' @seealso build_ligand_receptor_edges, build_sender_ligand_edges
+#' @keywords network edges receptor TF
+#' @export
+#' @importFrom dplyr select distinct mutate rename
+build_receptor_tf_edges <- function(top_interactions,global_receptor_tf_col_max) {
+  receptor_tf_edges <- top_interactions %>%
+    select(receptor, regulon, imp.perm, spearman.cor) %>%
+    distinct() %>%
+    mutate(weight = imp.perm,
+           edge_type = "Receptor_TF",
+           colour = imp.perm * sign(spearman.cor)) %>%
+    rename(from = receptor, to = regulon) %>%
+    #mutate(weight = rescale(weight, to = c(1, 5)))
+    #mutate(weight = 5 * imp.perm / max(imp.perm, na.rm = TRUE),
+    mutate(weight = 7.5 * imp.perm / global_receptor_tf_col_max,
+       colour = imp.perm * sign(spearman.cor))  # scale colour later
+  receptor_tf_edges
+}
+
+#'
+#' Assemble a unified edges table and a nodes table (with layer and plotting
+#' colour) from precomputed edge blocks and interaction/regulon metadata.
+#' The returned `all_edges` is suitable for graph construction; `nodes` contains
+#' `name`, `layer`, optional `deltaPagoda` (for TFs) and a plotting `color`.
+#'
+#' @param edges_sender_ligand Tibble/data.frame of sender→ligand edges with columns `from`, `to`, `weight`, `edge_type`, `colour`.
+#' @param ligand_receptor_edges Tibble/data.frame of ligand→receptor edges (same columns as above).
+#' @param receptor_tf_edges Tibble/data.frame of receptor→TF edges (same columns as above).
+#' @param top_interactions Tibble/data.frame containing at least columns `receptor` and `regulon`.
+#' @param sender_ligand Tibble/data.frame containing at least columns `sender_cluster` and `ligand`.
+#' @param top_regulons_df Tibble/data.frame of top regulons with columns `name` and `deltaPagoda`.
+#' @param global_deltaPagoda_max Numeric scalar (> 0) used to scale TF node colours; if non-positive or NA a fallback is used.
+#'
+#' @return A named list with elements:
+#' * `all_edges`: combined tibble of all edges (from the three inputs),
+#' * `nodes`: tibble of nodes with columns `name`, `layer`, optional `deltaPagoda` and `color`.
+#'
+#' @details
+#' - Node `layer` is assigned in the order: Sender Cell Type → Ligand → Receptor → TF.
+#' - TF node colours are computed by mapping `deltaPagoda` onto a two-colour ramp
+#'   (`white` → `tomato`) using `scales::col_numeric`. If `global_deltaPagoda_max`
+#'   is not a positive number the colour mapping falls back to a simple `tomato` for TFs.
+#'
+#' @keywords graph network plotting
+#' @export
+#' @importFrom dplyr bind_rows left_join distinct mutate case_when select
+#' @importFrom tibble tibble
+#' @importFrom scales col_numeric
+build_graph_components <- function(edges_sender_ligand, ligand_receptor_edges, receptor_tf_edges, top_interactions, sender_ligand, top_regulons_df,global_deltaPagoda_max) {
+  
+  all_edges <- bind_rows(
+    edges_sender_ligand %>% select(from, to, weight, edge_type, colour),
+    ligand_receptor_edges %>% select(from, to, weight, edge_type, colour),
+    receptor_tf_edges %>% select(from, to, weight, edge_type, colour)
+  )
+  
+  # Nodes from different sources
+  nodes_sender <- sender_ligand$sender_cluster
+  nodes_ligand <- sender_ligand$ligand
+  nodes_receptor <- top_interactions$receptor
+  nodes_tf <- top_interactions$regulon
+  
+  nodes <- data.frame(
+    name = unique(c(nodes_sender, nodes_ligand, nodes_receptor, nodes_tf)),
+    stringsAsFactors = FALSE
+  ) %>%
+    mutate(layer = case_when(
+      name %in% nodes_sender ~ "Sender Cell Type",
+      name %in% nodes_ligand ~ "Ligand",
+      name %in% nodes_receptor ~ "Receptor",
+      name %in% nodes_tf ~ "TF",
+      TRUE ~ "Other"
+    ))
+  
+  # Merge deltaPagoda information for TF nodes if available
+  nodes <- nodes %>%
+    left_join(top_regulons_df %>% select(name, deltaPagoda), by = "name") %>%
+    mutate(color = case_when(
+      layer == "TF" ~ col_numeric(palette = c("white", "tomato"),
+                                   #domain = c(0, max(top_regulons_df$deltaPagoda, na.rm = TRUE)))(deltaPagoda),
+                                   domain = c(0, global_deltaPagoda_max))(deltaPagoda),
+      layer == "Sender Cell Type" ~ "cadetblue1",
+      layer == "Ligand" ~ "darkolivegreen2",
+      layer == "Receptor" ~ "darkorange",
+      TRUE ~ "grey"
+    ))
+  
+  list(all_edges = all_edges, nodes = nodes)
+}
+
+#' Create igraph object from nodes and edges
+#'
+#' Construct a directed `igraph` from an edges table and a nodes table, and
+#' attach plotting attributes (vertex `color` and `size`) to the graph.
+#'
+#' @param all_edges Data.frame or tibble with edge columns `from`, `to`, and
+#'   (optionally) `weight`, `edge_type`, `colour`. Will be passed to
+#'   `igraph::graph_from_data_frame()`.
+#' @param nodes Data.frame or tibble with at least `name` and `color` columns.
+#'   `name` must match vertex names used in `all_edges`.
+#'
+#' @return An `igraph` directed graph with vertex attributes:
+#' * `color` taken from `nodes$color` (matched by name),
+#' * `size` set to 15 for all vertices.
+#'
+#' @examples
+#' \dontrun{
+#' nodes <- data.frame(name = c("A","B"), color = c("red","blue"), stringsAsFactors = FALSE)
+#' edges <- data.frame(from = "A", to = "B", weight = 1)
+#' g <- create_graph(edges, nodes)
+#' }
+#'
+#' @seealso \code{\link[igraph]{graph_from_data_frame}}, \code{\link[igraph]{V}}
+#' @keywords graph igraph network
+#' @export
+#' @importFrom igraph graph_from_data_frame V
+create_graph <- function(all_edges, nodes) {
+  g <- graph_from_data_frame(d = all_edges, vertices = nodes, directed = TRUE)
+  V(g)$color <- nodes$color[match(V(g)$name, nodes$name)]
+  V(g)$size <- 15
+  g
+}
+
+#' Assign edge colours and widths on an igraph from an edges table
+#'
+#' Compute plotting colours for different edge types and attach `color` and
+#' `width` attributes to the edges of an `igraph` object. Colour rules:
+#' * `Ligand_Receptor`: discrete — positive => `"tomato"`, negative => `"blue"`, zero/NA => `"white"`.
+#' * `Receptor_TF`: continuous diverging gradient (`blue` → `white` → `tomato`) scaled by `global_receptor_tf_col_max`.
+#' * other types (e.g. `Sender_Ligand`): continuous light (`white` → `grey`) gradient scaled to observed values.
+#'
+#' The function is robust to missing edge-types and safely falls back to neutral
+#' colours when needed.
+#'
+#' @param g An `igraph` graph created from `all_edges` (e.g. via `graph_from_data_frame()`).
+#' @param all_edges Data.frame/tibble of edges used to build `g`. Must contain at least columns `edge_type`, `colour`, and `weight` in the same row-order used to build `g`.
+#' @param global_receptor_tf_col_max Numeric scalar (>0). Domain for the Receptor→TF colour mapping; larger values compress the colour range.
+#'
+#' @return The same `igraph` object `g`, with edge attributes:
+#' * `color`: assigned plotting colour,
+#' * `width`: absolute edge weight (`abs(weight)`).
+#'
+#' @examples
+#' \dontrun{
+#' g2 <- assign_edge_colors(g, all_edges, global_receptor_tf_col_max = 2.5)
+#' plot(g2, edge.color = E(g2)$color, edge.width = E(g2)$width)
+#' }
+#' @keywords plotting edges igraph
+#' @export
+#' @importFrom scales col_numeric
+assign_edge_colors <- function(g, all_edges,global_receptor_tf_col_max) {
+  # For Receptor_TF edges: define a gradient
+  edges_rt <- all_edges %>% filter(edge_type == "Receptor_TF")
+  max_val <- max(abs(edges_rt$colour), na.rm = TRUE)
+  max_value <- max_val + 0.1 * max_val
+  gradient_func <- col_numeric(palette = c("blue", "white", "tomato"),
+                               domain = c(-max_value, max_value))
+  gradient_func <- col_numeric(palette = c("blue", "white", "tomato"),
+                             domain = c(-global_receptor_tf_col_max, global_receptor_tf_col_max))
+
+  
+  # For Sender_Ligand edges:
+  edges_sl <- all_edges %>% filter(edge_type == "Sender_Ligand")
+  max_val_sl <- max(abs(edges_sl$colour), na.rm = TRUE)
+  max_value_sl <- max_val_sl + 0.1 * max_val_sl
+  gradient_func_sl <- col_numeric(palette = c("white", "grey"),
+                                  domain = c(0, max_value_sl))
+  
+  # Assign colors based on edge type
+  all_edges <- all_edges %>%
+    mutate(
+      edge_color = case_when(
+        edge_type == "Ligand_Receptor" ~ case_when(
+          colour > 0 ~ "tomato",
+          colour < 0 ~ "blue",
+          TRUE ~ "white"
+        ),
+        edge_type == "Receptor_TF" ~ gradient_func(colour),
+        TRUE ~ gradient_func_sl(colour)
+      )
+    )
+  
+  E(g)$color <- all_edges$edge_color
+  E(g)$width <- abs(all_edges$weight)
+  g
 }

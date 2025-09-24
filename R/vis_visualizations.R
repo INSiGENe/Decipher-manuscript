@@ -1950,157 +1950,511 @@ plotLRTFHeatmap <- function(
 
 }
 
-# Execute plot generation
-#generated_plots <- generate_sorted_plots(selected_receiver_cells, regulon_deltas_list, conditions, top_n_regulons, absolute_max)
-
-# Create combined plots with titles (one combined plot per cell type)
-#celltype_combined_plots <- create_combined_plots_per_celltype(generated_plots, selected_receiver_cells)
-
-# Function to save combined plots in groups
-#save_grouped_plots(
-#    combined_plots = celltype_combined_plots,
-#    clusters_per_group = clusters_per_group_in_output,
-#    output_dir_base = ".", # Use the base path
-#    output_folder_name = figures_folder
-#)
-
-#' Generate a Heatmap of Top Transcription Factor Activity
+#' Plot cluster-sorted TF heatmap
 #'
-#' @description
-#' This function creates a heatmap comparing the `deltaPagoda` scores of
-#' transcription factors (TFs) between two conditions ('mild' and 'severe')
-#' for a specific cell type. It identifies the top N TFs based on the absolute
-#' `deltaPagoda` score in one of the conditions and displays their scores
-#' across both conditions.
+#' Select the top `top_n` transcription factors (TFs) by absolute `deltaPagoda`
+#' in a `selected_cluster`, then plot a heatmap of those TFs across *all*
+#' clusters in `deltas_by_cluster`. The TF ordering is taken from the selected
+#' cluster and applied to every cluster.
 #'
-#' @param cell_type A character string specifying the name of the cell type to analyze
-#'   (e.g., `"CD14_Mono"`).
-#' @param sort_by A character string indicating the condition (`"mild"` or `"severe"`)
-#'   to use for ranking and selecting the top TFs. Defaults to `"mild"`.
-#' @param top_n A numeric value for the number of top TFs to display in the
-#'   heatmap. Defaults to `20`.
-#' @param deltas_list A nested list containing the `deltaPagoda` scores. The
-#'   expected structure is `list(mild = list(cell_type = df), severe = list(cell_type = df))`,
-#'   where `df` is a data frame with 'name' and 'deltaPagoda' columns.
-#' @param global_max A numeric value specifying the absolute maximum for the color
-#'   scale limits (e.g., `c(-global_max, global_max)`). This ensures a consistent
-#'   color scale across multiple plots.
+#' Each element of `deltas_by_cluster` must be a named list element (cluster name)
+#' whose value is either:
+#' * a `data.frame` with columns `name` and `deltaPagoda`, or
+#' * a named numeric vector (names = TF names, values = deltas).
 #'
-#' @return A `ggplot` object representing the heatmap, which can be further
-#'   customized or printed.
+#' NA values are allowed and shown as `grey80` in the plot. If `global_max` is
+#' provided it fixes the symmetric color scale to `[-global_max, +global_max]`.
 #'
-#' @importFrom tibble enframe
-#' @importFrom dplyr full_join filter arrange slice_head pull mutate
-#' @importFrom tidyr pivot_longer
-#' @importFrom ggplot2 ggplot aes geom_tile scale_fill_gradient2 labs theme_minimal theme element_text element_blank
-#' @importFrom rlang .data
+#' @param selected_cluster Character scalar. Name of the cluster to use for
+#'   selecting and ordering the top TFs.
+#' @param top_n Integer. Number of top TFs (by absolute delta in
+#'   `selected_cluster`) to select. Default 20.
+#' @param deltas_by_cluster Named list. Each element is a cluster (see details).
+#' @param global_max Numeric scalar or `NULL`. If numeric, forces symmetric
+#'   color limits to `c(-global_max, global_max)`. If `NULL` (default) limits
+#'   are taken from the data.
+#' @param cluster_order Optional character vector specifying desired cluster row
+#'   order. Names not present in `deltas_by_cluster` are warned and ignored; any
+#'   remaining clusters are appended after the provided ordering.
 #'
-#' @export
+#' @return A `ggplot2` object (tile heatmap) with TFs on the x-axis and Clusters
+#'   on the y-axis.
 #'
 #' @examples
 #' \dontrun{
-#' # 1. Create mock data in the expected format
-#' mock_deltas <- list(
-#'   mild = list(
-#'     CD14_Mono = data.frame(
-#'       name = paste0("TF", 1:30),
-#'       deltaPagoda = rnorm(30, 0, 1.5)
-#'     )
-#'   ),
-#'   severe = list(
-#'     CD14_Mono = data.frame(
-#'       name = paste0("TF", 1:30),
-#'       deltaPagoda = rnorm(30, 1, 2.5)
-#'     )
-#'   )
+#' my_deltas_list <- list(
+#'   CM_CD8  = data.frame(name = c("TF1","TF2","TF3"), deltaPagoda = c(0.5, -1.2, 0.2)),
+#'   EM_CD8  = c(TF1 = 0.3, TF2 = -0.8, TF3 = 0.1),
+#'   GZMK_CD8 = data.frame(name = c("TF1","TF2"), deltaPagoda = c(0.2, NA))
 #' )
 #'
-#' # 2. Generate the plot, sorting by the 'severe' condition
-#' p <- single_TF_heatmap(
-#'   cell_type = "CD14_Mono",
-#'   sort_by = "severe",
-#'   top_n = 15,
-#'   deltas_list = mock_deltas,
-#'   global_max = 6
+#' p <- plotClusterSortedTFHeatmap(
+#'   selected_cluster = "CM_CD8",
+#'   top_n = 10,
+#'   deltas_by_cluster = my_deltas_list,
+#'   global_max = 1.5
 #' )
-#'
-#' # 3. Print the plot
 #' print(p)
 #' }
-plotConditionSortedClusterSpecificTFHeatmaps <- function(cell_type,
-                              sort_by    = c("mild","severe"),
-                              top_n      = 20,
-                              deltas_list,
-                              global_max) {
-  sort_by   <- match.arg(sort_by)
-  sort_cond <- if (sort_by == "mild") "Mild" else "Severe"
-
-  # helper: extract a named vector from either a numeric vector or your 3-col df
+#'
+#' @seealso \code{\link[ggplot2]{geom_tile}}, \code{\link[tibble]{enframe}}
+#' @keywords visualization heatmap TF
+#' @export
+#' @importFrom tibble enframe
+#' @importFrom dplyr bind_rows filter arrange desc slice_head pull mutate
+#' @importFrom ggplot2 ggplot aes geom_tile scale_fill_gradient2 labs theme_minimal theme element_text
+plotClusterSortedTFHeatmap <- function(
+  selected_cluster,
+  top_n = 20,
+  deltas_by_cluster,
+  global_max = NULL,
+  cluster_order = NULL   # optional character vector giving desired cluster row order
+) {
+  # helper: coerce element to named numeric vector
   vec_from <- function(x) {
     if (is.data.frame(x)) {
       if (all(c("deltaPagoda","name") %in% names(x))) {
-        v <- x$deltaPagoda
-        names(v) <- x$name
-        return(v)
-      } else {
-        stop("Data.frame must have columns 'deltaPagoda' and 'name'.")
-      }
+        v <- x$deltaPagoda; names(v) <- x$name; return(v)
+      } else stop("Data.frame must have columns 'deltaPagoda' and 'name'.")
     } else if (is.numeric(x) && !is.null(names(x))) {
       return(x)
-    } else {
-      stop("Each element must be a named numeric vector or a data.frame with 'deltaPagoda'+'name'.")
+    } else stop("Each element must be a named numeric vector or a data.frame with 'deltaPagoda'+'name'.")
+  }
+
+  if (!is.list(deltas_by_cluster) || length(deltas_by_cluster) == 0) stop("deltas_by_cluster must be a non-empty named list of clusters.")
+  if (is.null(names(deltas_by_cluster)) || any(names(deltas_by_cluster) == "")) stop("deltas_by_cluster must be a named list (cluster names).")
+  if (!selected_cluster %in% names(deltas_by_cluster)) stop("selected_cluster not found in deltas_by_cluster.")
+
+  # build long table: TF, Delta, Cluster
+  cluster_names <- names(deltas_by_cluster)
+  rows <- lapply(cluster_names, function(cl) {
+    v <- tryCatch(vec_from(deltas_by_cluster[[cl]]), error = function(e) {
+      warning("Skipping cluster ", cl, ": ", e$message); return(NULL)
+    })
+    if (is.null(v)) return(tibble::tibble(TF = character(), Delta = numeric(), Cluster = character()))
+    tibble::enframe(v, name = "TF", value = "Delta") %>% dplyr::mutate(Cluster = cl)
+  })
+  df_long <- dplyr::bind_rows(rows)
+
+  # pick top TFs by |Delta| in selected cluster
+  top_tfs <- df_long %>%
+    dplyr::filter(Cluster == selected_cluster, !is.na(Delta)) %>%
+    dplyr::arrange(dplyr::desc(abs(Delta))) %>%
+    dplyr::slice_head(n = top_n) %>%
+    dplyr::arrange(Delta) %>%    # order so negatives are left, positives right
+    dplyr::pull(TF)
+
+  if (length(top_tfs) == 0) stop("No TFs found for selected cluster (or all NAs).")
+
+  # subset & set factor levels: TFs by top_tfs; clusters by cluster_order or as present
+  if (!is.null(cluster_order)) {
+    missing <- setdiff(cluster_order, cluster_names)
+    if (length(missing)) warning("cluster_order contains names not in deltas_by_cluster: ", paste(missing, collapse=", "))
+    cluster_levels <- intersect(cluster_order, cluster_names)
+    cluster_levels <- c(cluster_levels, setdiff(cluster_names, cluster_levels)) # keep rest after
+  } else {
+    cluster_levels <- cluster_names
+  }
+
+  df_top <- df_long %>%
+    dplyr::filter(TF %in% top_tfs) %>%
+    dplyr::mutate(
+      TF = factor(TF, levels = top_tfs),
+      Cluster = factor(Cluster, levels = cluster_levels)
+    )
+
+  # color limits
+  if (!is.null(global_max) && is.numeric(global_max) && length(global_max) == 1) {
+    limits <- c(-abs(global_max), abs(global_max))
+  } else {
+    lim <- max(abs(df_top$Delta), na.rm = TRUE)
+    if (!is.finite(lim) || lim == 0) lim <- 1
+    limits <- c(-lim, lim)
+  }
+
+  # plot
+  p <- ggplot2::ggplot(df_top, ggplot2::aes(x = TF, y = Cluster, fill = Delta)) +
+    ggplot2::geom_tile(color = "white") +
+    ggplot2::scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0,
+                                  limits = limits, na.value = "grey80") +
+    ggplot2::labs(title = paste0(selected_cluster, " top ", length(top_tfs), " TFs (sorted by ", selected_cluster, ")"),
+                  x = "TF", y = NULL) +
+    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5),
+                   axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+                   panel.grid = element_blank(),
+                   legend.position = "bottom")
+
+  return(p)
+}
+
+#' Plot PubMed-prioritized TF→TG heatmaps per cluster
+#'
+#' For each cluster in `selected_clusters`, this function:
+#' * reads precomputed objects from `output_data_filepath` (`capped_regulons_all_clusters.rds`,
+#'   `regulon_deltas_by_cluster.rds`, `significant_regulon_markers_by_cluster.rds`),
+#' * selects the top regulons (class == "real", ordered by `deltaPagoda`),
+#' * extracts regulon data via `extract_regulon_data()` and (optionally) calls
+#'   `plot_tf_tg_network()` for a network visualization,
+#' * builds a binary TF → TG matrix, filters target genes with >1 incoming TF,
+#' * queries PubMed counts via `get_n_pubmed_articles_per_gene()` and selects
+#'   the top `n_pubmed` genes,
+#' * marks those top genes in the matrix (1 → 1.2), clusters rows/columns,
+#'   plots a heatmap and saves a PNG named `<cluster>_tgs_heatmap_pubmed.png`
+#'   into `figures_folder`.
+#'
+#' **Important:** this function calls external helper functions that must be
+#' available in the environment:
+#' `extract_regulon_data`, `plot_tf_tg_network`, and
+#' `get_n_pubmed_articles_per_gene`. It also expects a variable
+#' `figures_folder` to be defined (or defined in the calling environment).
+#'
+#' @param output_data_filepath Character scalar. Path to a directory containing
+#'   the RDS files:
+#'   - `capped_regulons_all_clusters.rds`
+#'   - `regulon_deltas_by_cluster.rds`
+#'   - `significant_regulon_markers_by_cluster.rds`
+#' @param selected_clusters Character vector. Names of clusters to process (these
+#'   must be keys in the `regulon_deltas_by_cluster` object).
+#' @param n_pubmed Integer (default 40). Number of top genes by PubMed mention
+#'   frequency to keep for the heatmap.
+#'
+#' @return Invisibly returns \code{NULL}. Primary purpose is side-effects:
+#'   saving PNG heatmaps to the \code{figures_folder} path and printing messages.
+#'
+#' @details
+#' - NA values in PubMed counts or missing edges may lead to clusters being
+#'   skipped with a warning.
+#' - The function uses \code{reshape2::melt()} in the body; if you prefer the
+#'   tidyverse variant, replace \code{reshape2::melt()} by
+#'   \code{tidyr::pivot_longer()}.
+#' - The plot color scale uses a three-color gradient (white → black → red)
+#'   and the values are slightly bumped (1 -> 1.2) to emphasize top genes.
+#'
+#' @examples
+#' \dontrun{
+#' # define the folder where figures should be written (must exist)
+#' figures_folder <- "figures"
+#'
+#' # run the function (requires helper functions to be defined)
+#' plot_pubmed_tg_heatmaps(
+#'   output_data_filepath = "results/2025-09-25",
+#'   selected_clusters = c("CM_CD8", "EM_CD8"),
+#'   n_pubmed = 40
+#' )
+#' }
+#'
+#' @seealso \code{\link[stats]{hclust}}, \code{\link[ggplot2]{geom_tile}},
+#'   \code{\link[tidyr]{pivot_wider}}
+#' @keywords visualization heatmap pubmed transcription-factors
+#' @export
+plot_pubmed_tg_heatmaps <- function(
+  output_data_filepath,
+  selected_clusters,
+  n_pubmed = 40
+){
+  capped_regulons_all_clusters <- readRDS(file.path(output_data_filepath,"capped_regulons_all_clusters.rds"))
+  regulon_deltas_by_cluster <- readRDS(file.path(output_data_filepath,"regulon_deltas_by_cluster.rds"))
+  significant_regulon_markers_by_cluster <- readRDS(file.path(output_data_filepath,"significant_regulon_markers_by_cluster.rds"))
+  for(selected_ct in selected_clusters){
+    # Run the refactored code
+    regulons <- regulon_deltas_by_cluster[[selected_ct]] %>%
+      filter(class == "real") %>%
+      arrange(desc(deltaPagoda)) %>%
+      dplyr::slice_head(n=10) %>%
+      pull(name)
+    data <- extract_regulon_data(regulons, capped_regulons_all_clusters, significant_regulon_markers_by_cluster, selected_ct)
+    #plot_tf_tg_network(data, regulons)
+
+    # Create a binary matrix
+    binary_matrix <- data$edges %>%
+      mutate(value = 1) %>%  # Assign 1 for each edge
+      tidyr::pivot_wider(names_from = to, values_from = value, values_fill = 0) %>%
+      tibble::column_to_rownames("from")
+
+    # Filter columns where more than one 'from' talks to a 'to'
+    binary_matrix <- binary_matrix[, colSums(binary_matrix) > 1]
+
+    #see frequency of genes mentioned in pubmed
+    # Define genes
+    genes <- colnames(binary_matrix)  # Replace with your genes of interest
+
+    # # Apply the function to each gene and store the results in a data frame
+    PubMed_Count = sapply(genes, get_n_pubmed_articles_per_gene)
+
+    gene_counts <- data.frame(
+      Gene = genes,
+      PubMed_Count = PubMed_Count
+    )
+
+    top_genes <- gene_counts %>%
+      filter(Gene %in% genes) %>%
+      arrange(desc(PubMed_Count)) %>%
+      top_n(n = n_pubmed, wt = PubMed_Count) %>%
+      pull(Gene)
+
+    binary_matrix <- binary_matrix[,top_genes]
+
+    # Convert binary_matrix to matrix format
+    binary_matrix_mat <- as.matrix(binary_matrix)
+    # Define the color palette with custom logic for red and white
+    for(i in 1:nrow(binary_matrix_mat)){
+      for(j in 1:ncol(binary_matrix_mat)){
+        if(binary_matrix_mat[i,j] == 1 & colnames(binary_matrix_mat)[j] %in% top_genes)
+          binary_matrix_mat[i,j] <- 1.2
+      }
+    }
+    my_palette <- c("white", "black", "red")
+
+    # Perform hierarchical clustering on rows and columns
+    row_dendrogram <- hclust(dist(binary_matrix_mat))   # Hierarchical clustering on rows
+    col_dendrogram <- hclust(dist(t(binary_matrix_mat))) # Hierarchical clustering on columns
+
+    # Order the matrix based on clustering
+    binary_matrix_ordered <- binary_matrix_mat[row_dendrogram$order, col_dendrogram$order]
+
+    # Convert the ordered matrix to a data frame for ggplot2
+    binary_matrix_df <- as.data.frame(binary_matrix_ordered)
+    binary_matrix_df$row <- factor(rownames(binary_matrix_ordered), levels = rownames(binary_matrix_ordered)) # Set ordered row levels
+
+    # Melt the data for ggplot2
+    binary_matrix_melted <- reshape2::melt(binary_matrix_df, id.vars = "row")
+
+    # Create the heatmap plot
+    p <- ggplot(binary_matrix_melted, aes(x = variable, y = row, fill = value)) +
+      geom_tile(color = "white") +
+      scale_fill_gradientn(colors = my_palette,
+                          breaks = c(-0.1, 0.9, 1.1, 1.2),
+                          limits = c(-0.1, 1.2),
+                          guide = "none") +
+      labs(title = NULL) +
+      theme_minimal() +
+      theme(
+        #plot.title = element_text(size = 8, hjust = 0.5),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 8),
+        # Conditionally set y-axis labels
+        axis.text.y = element_text(size = 8),
+        axis.title = element_blank(),
+        plot.margin = unit(c(1, 1, 1, 1), "lines")
+      ) +
+      scale_y_discrete(position = "right") #do this for severe and comment out for moderate
+      #scale_y_discrete(labels = function(x) ifelse(x %in% top_genes, x, ""))  # Conditional row labels
+    filename <- paste0(selected_ct,"_tgs_heatmap_pubmed.png")
+    ggsave(file.path(figures_folder,filename),p,width = 12,height = 5.5,units="cm")
+  }
+}
+
+#' Plot a layered network graph and save to PNG
+#'
+#' Render an `igraph` object with a simple deterministic layered layout
+#' (Sender Cell Type → Ligand → Receptor → TF). Nodes within each layer are
+#' evenly spaced horizontally; layers are stacked vertically. The function
+#' writes a PNG to `output_file`.
+#'
+#' @param g An `igraph` object. Must have a vertex attribute `layer` (one of
+#'   `"Sender Cell Type"`, `"Ligand"`, `"Receptor"`, `"TF"`) and vertex
+#'   attributes used for plotting (e.g. `color`, `size`).
+#' @param output_file Character scalar. Path to the output PNG file to write.
+#' @param cluster_name Character scalar. Cluster name used for the plot title.
+#' @param condition_label Character scalar. Additional label used in the title
+#'   (e.g. `"case"` or `"control"`).
+#'
+#' @details
+#' - The layout is deterministic and simple: nodes are placed in one of four
+#'   horizontal bands according to `V(g)$layer`. Within each band nodes are
+#'   evenly spaced left→right. If a vertex's `layer` is not one of the four
+#'   expected values it will be omitted from the layout (left as `NA`).
+#' - The function uses base `png()` and `plot.igraph()` and writes the file at
+#'   high resolution (400 DPI). Existing files with the same name will be
+#'   overwritten.
+#'
+#' @return Invisibly returns \code{NULL}. Primary effect is the written PNG file.
+#'
+#' @examples
+#' \dontrun{
+#' g <- create_graph(all_edges, nodes)
+#' plot_graph(g, "figs/CM_CD8_case_network.png", "CM_CD8", "case")
+#' }
+#'
+#' @keywords plotting network igraph
+#' @export
+#' @importFrom igraph V
+plot_graph <- function(g, output_file, cluster_name, condition_label) {
+  #layout <- layout_with_sugiyama(g)$layout
+  #layout <- layout_as_tree(g, root = V(g)[V(g)$layer == "Sender Cell Type"], circular = FALSE)
+  # Custom layout: even horizontal spacing per layer
+  node_layers <- V(g)$layer
+  unique_layers <- c("Sender Cell Type", "Ligand", "Receptor", "TF")
+
+  layout <- matrix(NA, nrow = length(V(g)), ncol = 2)
+
+  for (i in seq_along(unique_layers)) {
+    layer <- unique_layers[i]
+    nodes_in_layer <- which(node_layers == layer)
+    n <- length(nodes_in_layer)
+    if (n > 0) {
+      x_pad <- 4  # stretch width of layout
+      #x_positions <- seq(from = 0, to = x_pad, length.out = n)
+      #x_positions <- seq(from = 0, to = n * 0.3, length.out = n)
+      x_positions <- seq(from = 0, to = 1, length.out = n + 2)[2:(n + 1)]
+      y_position <- length(unique_layers) - i
+      layout[nodes_in_layer, 1] <- x_positions
+      layout[nodes_in_layer, 2] <- y_position
     }
   }
 
-  # pull out moderate & severe vectors
-  mod_vec <- vec_from(deltas_list$mild[[cell_type]])
-  sev_vec <- vec_from(deltas_list$severe  [[cell_type]])
+  png(output_file, width = 10, height = 6.7, units = "in", res = 400)
+  plot(g,
+       layout = layout,
+       vertex.label = V(g)$name,
+       vertex.label.cex = 0.9,       # Font size
+       vertex.label.font = 2,        # Font weight (2 = bold)
+       vertex.label.color = "black",
+       main = paste(cluster_name, " (", condition_label, ")", sep = " "),
+       edge.arrow.size = 0.5,
+       vertex.frame.color = NA,
+       asp = 0.5)
+  dev.off()
+  message("Saved network plot to: ", output_file)
+}
 
-  # turn into tibbles
-  mod_df <- enframe(mod_vec, name="TF", value="Mild")
-  sev_df <- enframe(sev_vec, name="TF", value="Severe")
+#' Generate and save a Sender→Ligand→Receptor→TF network plot for a cluster/condition
+#'
+#' Orchestrates the full pipeline to build a communication network for a given
+#' `cluster_name` and `condition_label` and writes CSVs and a PNG image to
+#' `output_dir`. The function:
+#' 1. validates inputs (`check_cluster_exists()`),  
+#' 2. selects top regulons (`get_top_regulons()`),  
+#' 3. selects top interactions (`get_top_interactions()`),  
+#' 4. builds Sender→Ligand edges (`build_sender_ligand_edges()`),  
+#' 5. builds Ligand→Receptor edges (`build_ligand_receptor_edges()`),  
+#' 6. builds Receptor→TF edges (`build_receptor_tf_edges()`),  
+#' 7. composes node/edge tables (`build_graph_components()`),  
+#' 8. creates an `igraph` (`create_graph()`),  
+#' 9. assigns edge colours/widths (`assign_edge_colors()`), and  
+#' 10. plots and saves the graph (`plot_graph()`).
+#'
+#' Many helper functions are called and therefore must be present in the
+#' environment: `check_cluster_exists`, `get_top_regulons`,
+#' `get_top_interactions`, `extract_regulon_data`, `plot_tf_tg_network`,
+#' `build_sender_ligand_edges`, `build_ligand_receptor_edges`,
+#' `build_receptor_tf_edges`, `build_graph_components`, `create_graph`,
+#' `assign_edge_colors`, and `plot_graph`. The function has side-effects: it
+#' writes `<label>_<cluster>_edges.csv`, `<label>_<cluster>_nodes.csv` and a PNG
+#' network image into `output_dir`.
+#'
+#' @param condition_label Character scalar. Raw condition key (e.g. `"SevCOVID_Azimuthl2"`, `"MilCOVID_Azimuthl2"`) used to derive a pretty label.
+#' @param cluster_name Character scalar. Cluster key to analyse.
+#' @param decipher_scores Named list of per-cluster decipher score tables.
+#' @param decipher_scores_by_regulon_and_cluster Named list of per-cluster decipher tables broken out by regulon.
+#' @param regulon_deltas_by_cluster Named list of per-cluster regulon delta tables (must contain `class`, `name`, `deltaPagoda`).
+#' @param feature_statistics Data.frame/tibble with per-feature stats containing at least `sum.counts`, `n.cell`, `condition`, `cluster`, `feature`.
+#' @param sender_cts Character vector of cluster names to consider as candidate senders.
+#' @param output_dir Character scalar. Directory where CSVs and PNG will be written (created if missing).
+#' @param top_interactions Optional precomputed interactions table (passed to `get_top_interactions()`); if `NULL` the top interactions are selected automatically.
+#' @param global_deltaPagoda_max Numeric scalar (or a global variable) used to scale TF node colours.
+#' @param global_receptor_tf_col_max Numeric scalar used to scale receptor→TF colour mapping.
+#' @param global_sender_ligand_max Numeric scalar used to scale sender→ligand weights.
+#' @param global_decipher_score_max Numeric scalar used to scale ligand→receptor edge weights.
+#' @param n_top_regulons Integer (default 10). Number of regulons to select per cluster.
+#'
+#' @return Invisibly returns \code{NULL}. Main effects are written files and a saved PNG; the function also prints progress messages.
+#'
+#' @details
+#' - `pretty_label` and `pretty_cluster` are created via a small `switch()` mapping for nicer filenames and titles. Extend those mappings if you have more keys.
+#' - If any helper step fails for the cluster (missing data, empty edges), the function will error out (or the helper will throw); consider wrapping calls if you prefer graceful skipping.
+#' - This function expects `get_n_pubmed_articles_per_gene` (and other domain-specific helpers) to be available in the environment used by the helper functions called inside.
+#'
+#' @examples
+#' \dontrun{
+#' generate_network_plot(
+#'   condition_label = "SevCOVID_Azimuthl2",
+#'   cluster_name = "CD14_Mono",
+#'   decipher_scores = decipher_scores,
+#'   decipher_scores_by_regulon_and_cluster = decipher_scores_by_regulon_and_cluster,
+#'   regulon_deltas_by_cluster = regulon_deltas_by_cluster,
+#'   feature_statistics = feature_statistics,
+#'   sender_cts = c("CD14_Mono","CD16_Mono"),
+#'   output_dir = "figures",
+#'   n_top_regulons = 10
+#' )
+#' }
+#'
+#' @seealso check_cluster_exists, get_top_regulons, get_top_interactions,
+#'   build_sender_ligand_edges, build_ligand_receptor_edges,
+#'   build_receptor_tf_edges, build_graph_components, create_graph,
+#'   assign_edge_colors, plot_graph
+#' @keywords network visualization ligand receptor TF
+#' @export
+generate_network_plot <- function(condition_label, cluster_name, 
+                                  decipher_scores, decipher_scores_by_regulon_and_cluster, 
+                                  regulon_deltas_by_cluster, feature_statistics,
+                                  sender_cts, output_dir,top_interactions = NULL,
+                                  global_deltaPagoda_max = global_deltaPagoda_max,
+                                  global_receptor_tf_col_max = global_receptor_tf_col_max,
+                                  global_sender_ligand_max = global_sender_ligand_max,
+                                  global_decipher_score_max = global_decipher_score_max,
+                                  n_top_regulons = 10) {
+  pretty_label <- switch(condition_label,
+    "SevCOVID_Azimuthl2" = "Severe",
+    "MilCOVID_Azimuthl2" = "Mild",
+    condition_label
+  )
 
-  # join & pivot
-  df_long <- full_join(mod_df, sev_df, by="TF") %>%
-    pivot_longer(c(Mild,Severe),
-                 names_to="Condition",
-                 values_to="Delta")
+  pretty_cluster <- switch(cluster_name,
+    CD14_Mono = "CD14+ Monocytes",
+    CD16_Mono = "CD16+ Monocytes",
+    cluster_name
+  )
+  
+  # 1. Check inputs
+  check_cluster_exists(cluster_name, decipher_scores, decipher_scores_by_regulon_and_cluster, regulon_deltas_by_cluster)
+  
+  # 2. Get top regulons
+  top_regulons_out <- get_top_regulons(cluster_name, regulon_deltas_by_cluster, n = n_top_regulons)
+  top_regulons_df <- top_regulons_out$top_regulons_df
+  top_regulons <- top_regulons_out$top_regulons
+  
+  # 3. Get top interactions
+  top_interactions <- get_top_interactions(cluster_name, decipher_scores, decipher_scores_by_regulon_and_cluster, top_regulons,top_interactions = top_interactions)
+  
+  # 4. Build Sender → Ligand edges
+  sl_out <- build_sender_ligand_edges(top_interactions, feature_statistics, sender_cts,global_sender_ligand_max)
+  sender_ligand <- sl_out$sender_ligand
+  edges_sender_ligand <- sl_out$edges_sender_ligand
+  
+  # 5. Build Ligand → Receptor edges
+  this_decipher_scores <- decipher_scores[[cluster_name]]
+  ligand_receptor_edges <- build_ligand_receptor_edges(this_decipher_scores, sender_ligand, top_interactions,global_decipher_score_max)
+  
+  # 6. Build Receptor → TF edges
+  receptor_tf_edges <- build_receptor_tf_edges(top_interactions,global_receptor_tf_col_max)
+  
+  # 7. Combine edges and build nodes
+  graph_components <- build_graph_components(edges_sender_ligand, ligand_receptor_edges, receptor_tf_edges, top_interactions, sender_ligand, top_regulons_df,global_deltaPagoda_max)
+  all_edges <- graph_components$all_edges
+  nodes <- graph_components$nodes
 
-  # pick top N by |Delta| in sort_cond
-  top_tfs <- df_long %>%
-    filter(Condition == sort_cond, !is.na(Delta)) %>%
-    arrange(desc(abs(Delta))) %>%
-    slice_head(n = top_n) %>%
-    arrange(Delta) %>%
-    pull(TF)
-
-  df_top <- df_long %>%
-    filter(TF %in% top_tfs) %>%
-    mutate(
-      TF        = factor(TF, levels = top_tfs),
-      Condition = factor(Condition, levels = c("Mild","Severe"))
-    )
-
-  # symmetric color limits
-  lim <- max(abs(df_top$Delta), na.rm = TRUE)
-
-  # plot
-  ggplot(df_top, aes(TF, Condition, fill = Delta)) +
-    geom_tile(color = "white") +
-    scale_fill_gradient2(
-      low      = "blue",
-      mid      = "white",
-      high     = "red",
-      midpoint = 0,
-      limits   = c(-global_max, global_max),
-      na.value = "grey80"
-    ) +
-    labs(title = paste0(cell_type, " (sorted by ",sort_by,")"), x = "TF", y = NULL) +
-    theme_minimal(base_size = 14) +
-    theme(
-      plot.title       = element_text(hjust = 0.5),
-      axis.text.x      = element_text(angle = 45, hjust = 1),
-      panel.grid       = element_blank(),
-      legend.position = "bottom"
-    )
+  write.csv(
+    all_edges,
+    file.path(output_dir,
+              paste0(pretty_label, "_", pretty_cluster, "_edges.csv")),
+    row.names = TRUE
+  )
+  write.csv(
+    nodes,
+    file.path(output_dir,
+              paste0(pretty_label, "_", pretty_cluster, "_nodes.csv")),
+    row.names = TRUE
+  )
+  
+  # 8. Create graph
+  g <- create_graph(all_edges, nodes)
+  
+  # 9. Assign edge colors and widths
+  g <- assign_edge_colors(g, all_edges,global_receptor_tf_col_max)
+  
+  # 10. Plot and save the network
+  output_file <- file.path(output_dir, paste0(pretty_label, "_", pretty_cluster, "_network_map.png"))
+  plot_graph(g, output_file, pretty_cluster, pretty_label)
 }

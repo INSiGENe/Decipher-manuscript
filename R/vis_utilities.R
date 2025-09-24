@@ -492,3 +492,38 @@ get_n_pubmed_articles_per_gene <- function(gene) {
     search_result <- entrez_search(db = "pubmed", term = gene)
     return(search_result$count)
   }
+
+# Function to reformat cell type names for plotting
+#' Format cluster names for plotting
+#'
+#' Short, deterministic replacements to make programmatic cluster names human-readable:
+#' `"_minus_" -> "-"`, `"_plus_" -> "+"`, ` "_" -> " "`.
+#'
+#' @param cluster_names Character vector of names to format.
+#' @return Character vector of formatted names (same length/order as input).
+#' @examples
+#' formatCellTypeNamesForPlotting(c("CD8_plus_CM_minus","B_cell"))
+#' @export
+formatCellTypeNamesForPlotting <- function(cluster_names) {
+  formatted <- gsub("_minus_", "-", cluster_names)
+  formatted <- gsub("_plus_", "+", formatted)
+  formatted <- gsub("_", " ", formatted)
+  return(formatted)
+}
+
+#' Abbreviate a string keeping first 4 and last 4 chars
+#'
+#' Return the original string if short (<= 8 chars). Otherwise return an
+#' abbreviated form: first 4 chars, a dot, then the last 4 chars.
+#'
+#' @param x Character scalar. String to abbreviate.
+#' @return Character scalar. If \code{nchar(x) <= 8} returns \code{x}, else
+#'   returns \code{paste0(substr(x,1,4),".",substr(x,nchar(x)-3,nchar(x)))}.
+#' @examples
+get_first_and_last_three <- function(x) {
+  if (nchar(x) <= 8) {
+    return(x)  # If the string is too short, return as is
+  } else {
+    return(paste0(substr(x, 1, 4), ".", substr(x, nchar(x) - 3, nchar(x))))
+  }
+}
