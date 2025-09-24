@@ -105,7 +105,6 @@ for (cell_type in selected_clusters){
 #networks with pubmed prioritization
 selected_clusters <- names(decipher_results)
 
-set.seed(1)
 n_pubmed <- 40
 output_data_filepath
 
@@ -119,11 +118,11 @@ plot_pubmed_tg_heatmaps(
 #network plots
 ##############
 
-# 3. Load Data f
 decipher_scores <- readRDS(file.path(output_data_filepath,"decipher_scores_by_cluster.rds"))
 decipher_scores_by_regulon_and_cluster <- readRDS(file.path(output_data_filepath,"decipher_scores_by_regulon_and_cluster.rds"))
 regulon_deltas_by_cluster <- readRDS(file.path(output_data_filepath,"regulon_deltas_by_cluster.rds"))
 feature_statistics <- readRDS(file.path(output_data_filepath,"feature_statistics.rds"))
+
 
 # 4. Specify Parameters and Generate Networks
 
@@ -134,7 +133,7 @@ sender_cts <- selected_clusters
 #calculate global stats
 # GLOBAL SCALING VALUES
 # TF deltaPagoda
-global_deltaPagoda_max <- sapply(regulon_deltas_by_cluster[target_clusters], function(x) max(x$deltaPagoda, na.rm = TRUE))
+global_deltaPagoda_max <- max(sapply(regulon_deltas_by_cluster[target_clusters], function(x) max(x$deltaPagoda, na.rm = TRUE)))
 
 # Receptor→TF imp.perm * sign(spearman.cor)
 global_receptor_tf_col_max <- max(
@@ -166,9 +165,9 @@ for (cl in target_clusters) {
 
   generate_network_plot("sample_analysis", cl,
                       decipher_scores, 
-                      decipher_scores_by_regulon_and_cluster_severe,
-                      regulon_deltas_by_cluster_severe, 
-                      feature_statistics_severe,
+                      decipher_scores_by_regulon_and_cluster,
+                      regulon_deltas_by_cluster, 
+                      feature_statistics,
                       sender_cts, 
                       figures_folder,
                       top_interactions = NULL,

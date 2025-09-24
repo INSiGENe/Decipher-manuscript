@@ -2747,9 +2747,9 @@ assign_edge_colors <- function(g, all_edges,global_receptor_tf_col_max) {
   edges_rt <- all_edges %>% filter(edge_type == "Receptor_TF")
   max_val <- max(abs(edges_rt$colour), na.rm = TRUE)
   max_value <- max_val + 0.1 * max_val
-  gradient_func <- col_numeric(palette = c("blue", "white", "tomato"),
+  gradient_func <- scales::col_numeric(palette = c("blue", "white", "tomato"),
                                domain = c(-max_value, max_value))
-  gradient_func <- col_numeric(palette = c("blue", "white", "tomato"),
+  gradient_func <- scales::col_numeric(palette = c("blue", "white", "tomato"),
                              domain = c(-global_receptor_tf_col_max, global_receptor_tf_col_max))
 
   

@@ -2283,7 +2283,7 @@ plot_graph <- function(g, output_file, cluster_name, condition_label) {
   #layout <- layout_with_sugiyama(g)$layout
   #layout <- layout_as_tree(g, root = V(g)[V(g)$layer == "Sender Cell Type"], circular = FALSE)
   # Custom layout: even horizontal spacing per layer
-  node_layers <- V(g)$layer
+  node_layers <- igraph::V(g)$layer
   unique_layers <- c("Sender Cell Type", "Ligand", "Receptor", "TF")
 
   layout <- matrix(NA, nrow = length(V(g)), ncol = 2)
