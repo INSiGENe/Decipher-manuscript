@@ -156,6 +156,15 @@ plotLRTFHeatmap(
 )
 ```
 
+And here is what that plot looks like
+```{r}
+#| label: show_png_knitr
+#| echo: false
+#| fig-cap: "My PNG (knitr::include_graphics)"
+knitr::include_graphics("figures/lr_tf_heatmap.png ")
+```
+
+
 5. Sorted TF heatmaps (per cluster)
 This plot plots a heatmap of deltas in TF activity by cluster. Each heatmap is sorted by the selected_cluster parameter, thus allowing us to see whether the stronger patterns we may see in some cell-types align with the TF activity in other cell types. Results are saved to the figures_folder by default.
 
@@ -239,7 +248,7 @@ And here is what that plot looks like
 #| fig-cap: "My PNG (knitr::include_graphics)"
 knitr::include_graphics("figures/sample_analysis_B_cells_network_map.png")
 ```
-
+Notice the four layers, the light blue -> sender CT, green are ligands, orange receptors and red TFs (coloured by change in TF activity)
 Session Info
 
 <details>

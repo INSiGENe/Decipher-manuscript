@@ -1930,7 +1930,7 @@ plotLRTFHeatmap <- function(
   ##visualization ----
   file_name <- paste(output_name,".png",sep="")
   png(file.path(figures_folder,file_name),width = 15, height = 9, units = "cm",res=600)
-  p <- heatmap.2(
+  heatmap.2(
     this_matrix,
     trace="none",
     col = "bluered",
@@ -1948,9 +1948,9 @@ plotLRTFHeatmap <- function(
   dev.off()
   file_name <- paste(output_name,".csv",sep="")
   write.csv(this_matrix,file.path(figures_folder,file_name),row.names=TRUE)
-  return(p)
-
 }
+
+
 
 #' Plot cluster-sorted TF heatmap
 #'
