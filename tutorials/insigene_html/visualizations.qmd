@@ -161,7 +161,7 @@ And here is what that plot looks like
 #| label: show_png_knitr
 #| echo: false
 #| fig-cap: "My PNG (knitr::include_graphics)"
-knitr::include_graphics("figures/lr_tf_heatmap.png ")
+knitr::include_graphics("figures/lr_tf_heatmap.png")
 ```
 
 
