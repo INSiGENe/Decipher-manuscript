@@ -39,6 +39,7 @@ set.seed(123)
 Overview
 
 This vignette shows how to load Decipher results and generate common visualizations: 
+
 * volcano plots
 * the prioritized Decipher map
 * LR→TF heatmaps 
@@ -103,9 +104,10 @@ differentialTFActivityVolcanoPlotByCluster(
 # Output saved under figures_folder
 ```
 
-3. Decipher prioritized map (heatmap of top interactions). Results are saved in the dataset_path (figures folder)
+3. Decipher prioritized map (heatmap of top interactions). 
+Results are saved in the dataset_path (figures folder)
 
-```{r}
+```{r Decipher prioritized map}
 #| eval: true
 plotDecipherPrioritizedMap(
   dataset_path,
@@ -118,9 +120,10 @@ plotDecipherPrioritizedMap(
 # Note: this function may display in-session; save/export as needed.
 ```
 
-4. LR → TF heatmap (TFs tied to upstream LR pairs). Results are saved to the figures_folder by default.
+4. LR → TF heatmap (TFs tied to upstream LR pairs). 
+Results are saved to the figures_folder by default.
 
-```{r}
+```{r LR to TF heatmap}
 #| eval: true
 plotLRTFHeatmap(
   output_data_filepath,
@@ -137,7 +140,7 @@ plotLRTFHeatmap(
 5. Sorted TF heatmaps (per cluster)
 This plot plots a heatmap of deltas in TF activity by cluster. Each heatmap is sorted by the selected_cluster parameter, thus allowing us to see whether the stronger patterns we may see in some cell-types align with the TF activity in other cell types. Results are saved to the figures_folder by default.
 
-```{r}
+```{r sorted TF heatmap}
 #| eval: true
 selected_clusters <- names(decipher_results)
 # load regulon deltas
@@ -174,7 +177,7 @@ print(p)
 6. PubMed target-gene heatmaps
 This plot is a way for us to understand the pruned GRNs we use to calculte TF activity. Because these GRNs may potentially cover many genes, we identify the top n_pubmed number of genes (by number of publications, as a proxy of a gene being understood). The output heatmap is a binary indicator of whether a gene does belong to a particular GRN. Results are saved to the figures_folder by default.
 
-```{r}
+```{r pubmed target genes visualizations}
 #| eval: true
 n_pubmed <- 40
 plot_pubmed_tg_heatmaps(
@@ -187,7 +190,7 @@ plot_pubmed_tg_heatmaps(
 7. Network plots (sender / receiver network visualisations)
 Lastly this function plots four layers of Decipher (sender CT, ligand, receptor, TF). Each plot is specific to a single receiver cell type, hence why we loop over the "target_cluster". Results are saved to the figures_folder by default.
 
-```{r}
+```{r network plots}
 #| eval: true
 selected_clusters <- names(decipher_results)
 # Example: visualize networks for a target receiver cluster (or vector of clusters)
@@ -195,7 +198,7 @@ target_clusters <- selected_clusters[3]
 sender_cts <- selected_clusters
 
 for (cl in target_clusters) {
-  g <- generate_network_plot(
+  generate_network_plot(
     "sample_analysis",
     cl,
     output_data_filepath,
@@ -208,7 +211,14 @@ for (cl in target_clusters) {
   )
 }
 
-plot(g)
+```
+
+And here is what that plot looks like
+```{r}
+#| label: show_png_knitr
+#| echo: false
+#| fig-cap: "My PNG (knitr::include_graphics)"
+knitr::include_graphics("figures/sample_analysis_B_cells_network_map.png")
 ```
 
 Session Info

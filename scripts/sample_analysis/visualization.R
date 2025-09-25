@@ -123,7 +123,7 @@ sender_cts <- selected_clusters
 # Generate network plots for Severe condition
 for (cl in target_clusters) {
 
-  g <- generate_network_plot("sample_analysis", cl,
+  generate_network_plot("sample_analysis", cl,
                       output_data_filepath,
                       sender_cts, 
                       figures_folder,
@@ -134,5 +134,3 @@ for (cl in target_clusters) {
                       scaling_global_decipher_score_max = 1/1.5,
                       n_top_regulons = 10)
   }
-
-plot(g)

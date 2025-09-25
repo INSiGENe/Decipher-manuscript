@@ -1944,7 +1944,7 @@ plotLRTFHeatmap <- function(
     key = FALSE,
     keysize = 0.3,
     Colv=TRUE)
-  print(p)
+  
   dev.off()
   file_name <- paste(output_name,".csv",sep="")
   write.csv(this_matrix,file.path(figures_folder,file_name),row.names=TRUE)
@@ -2320,6 +2320,7 @@ plot_graph <- function(g, output_file, cluster_name, condition_label) {
        asp = 0.5)
   dev.off()
   message("Saved network plot to: ", output_file)
+
 }
 
 #' Generate and save a Sender→Ligand→Receptor→TF network plot for a cluster/condition
@@ -2482,6 +2483,4 @@ generate_network_plot <- function(condition_label, cluster_name,
   # 10. Plot and save the network
   output_file <- file.path(output_dir, paste0(condition_label, "_", cluster_name, "_network_map.png"))
   plot_graph(g, output_file, cluster_name, condition_label)
-
-  return(g)
 }
