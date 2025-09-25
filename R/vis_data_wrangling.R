@@ -2710,8 +2710,8 @@ build_graph_components <- function(edges_sender_ligand, ligand_receptor_edges, r
 #' @importFrom igraph graph_from_data_frame V
 create_graph <- function(all_edges, nodes) {
   g <- graph_from_data_frame(d = all_edges, vertices = nodes, directed = TRUE)
-  V(g)$color <- nodes$color[match(V(g)$name, nodes$name)]
-  V(g)$size <- 15
+  igraph::V(g)$color <- nodes$color[match(igraph::V(g)$name, nodes$name)]
+  igraph::V(g)$size <- 15
   g
 }
 
