@@ -243,7 +243,7 @@ for (cl in target_clusters) {
 
 And here is what that plot looks like
 ```{r}
-#| label: show_png_knitr
+#| label: show_png_lrtf
 #| echo: false
 #| fig-cap: "My PNG (knitr::include_graphics)"
 knitr::include_graphics("figures/sample_analysis_B_cells_network_map.png")
