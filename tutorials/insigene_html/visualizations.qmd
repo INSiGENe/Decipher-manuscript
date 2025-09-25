@@ -25,6 +25,25 @@ execute:
   message: false
 ---
 
+
+# 0. environment
+To run this analysis we use the following docker images
+
+* `ebasto/decipherc2c@sha256:9ec8bbb7eca692856e9fd7c50346c78eac6ae24da8bd2e87b1f36998465bd1b0`
+
+These images contain all the libraries Decipher and CellOracle are dependent on. Please pull them from dockerhub. We don't use CellOracle's default dockerhub image as it contains a bug that makes the analysis not reproducible.
+
+In addition to the docker images, currently the `Decipher` package is available as a development package from `https://github.com/INSiGENe/Decipher`, specifically branch `v2`. Please clone this branch from the repository, and execute the docker containers within it as such:
+
+``` 
+#| eval: false
+#| include: true
+#for Decipher
+docker run --rm -it -v "$(pwd):/home/project" -w /home/project ebasto/decipherc2c@sha256:9ec8bbb7eca692856e9fd7c50346c78eac6ae24da8bd2e87b1f36998465bd1b0 bash
+```
+
+This generates an interactive bash session, within it you can type `R` to start an R session for R-based steps or, in the case of CellOracle, execute a python script.
+
 ```{r load needed packages, libraries and set a seed}
 #| eval: true
 #| include: true
