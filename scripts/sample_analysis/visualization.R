@@ -115,10 +115,6 @@ plot_pubmed_tg_heatmaps(
 ##############
 #network plots
 ##############
-decipher_scores <- readRDS(file.path(output_data_filepath,"decipher_scores_by_cluster.rds"))
-decipher_scores_by_regulon_and_cluster <- readRDS(file.path(output_data_filepath,"decipher_scores_by_regulon_and_cluster.rds"))
-regulon_deltas_by_cluster <- readRDS(file.path(output_data_filepath,"regulon_deltas_by_cluster.rds"))
-feature_statistics <- readRDS(file.path(output_data_filepath,"feature_statistics.rds"))
 
 # Define target receiver clusters and sender cell types
 target_clusters <- selected_clusters[1]
@@ -127,48 +123,21 @@ sender_cts <- selected_clusters
 #calculate global stats
 # GLOBAL SCALING VALUES
 # TF deltaPagoda
-global_deltaPagoda_max <- max(sapply(regulon_deltas_by_cluster[target_clusters], function(x) max(x$deltaPagoda, na.rm = TRUE)))
-
-# Receptor→TF imp.perm * sign(spearman.cor)
-global_receptor_tf_col_max <- max(
-  sapply(c(decipher_scores_by_regulon_and_cluster[target_clusters]), function(cluster_df) {
-    if (!is.null(cluster_df)) {
-      df <- cluster_df %>% mutate(col = imp.perm * sign(spearman.cor))
-      max(abs(df$col), na.rm = TRUE)
-    } else {
-      0
-    }
-  })
-)
-
-# Sender→Ligand frac.normalized.counts
-
-global_sender_ligand_max <- max(
-  feature_statistics %>% filter(cluster %in% target_clusters) %>% pull(sum.counts) / feature_statistics %>% filter(cluster %in% target_clusters) %>% pull(n.cell),
-  na.rm = TRUE
-)
-#global_sender_ligand_max <- 1
 
 
-# Ligand→Receptor decipher_score
-global_decipher_score_max <- max(
-  sapply(decipher_scores[target_clusters], function(x) max(abs(x$decipher_score), na.rm = TRUE)))
 
 # Generate network plots for Severe condition
 for (cl in target_clusters) {
 
   generate_network_plot("sample_analysis", cl,
-                      decipher_scores, 
-                      decipher_scores_by_regulon_and_cluster,
-                      regulon_deltas_by_cluster, 
-                      feature_statistics,
+                      output_data_filepath,
                       sender_cts, 
                       figures_folder,
                       top_interactions = NULL,
-                      global_deltaPagoda_max = global_deltaPagoda_max,
-                      global_receptor_tf_col_max = global_receptor_tf_col_max,
-                      global_sender_ligand_max = global_sender_ligand_max/1.2,
-                      global_decipher_score_max = global_decipher_score_max/1.5,
+                      scaling_global_deltaPagoda_max = 1,
+                      scaling_global_receptor_tf_col_max = 1,
+                      scaling_global_sender_ligand_max = 1/1.2,
+                      scaling_global_decipher_score_max = 1/1.5,
                       n_top_regulons = 10)
 
                         }

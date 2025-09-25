@@ -2387,26 +2387,47 @@ plot_graph <- function(g, output_file, cluster_name, condition_label) {
 #' @keywords network visualization ligand receptor TF
 #' @export
 generate_network_plot <- function(condition_label, cluster_name, 
-                                  decipher_scores, decipher_scores_by_regulon_and_cluster, 
-                                  regulon_deltas_by_cluster, feature_statistics,
+                                  output_data_filepath,
                                   sender_cts, output_dir,top_interactions = NULL,
-                                  global_deltaPagoda_max = global_deltaPagoda_max,
-                                  global_receptor_tf_col_max = global_receptor_tf_col_max,
-                                  global_sender_ligand_max = global_sender_ligand_max,
-                                  global_decipher_score_max = global_decipher_score_max,
+                                  scaling_global_deltaPagoda_max = 1,
+                                  scaling_global_receptor_tf_col_max = 1,
+                                  scaling_global_sender_ligand_max = 1,
+                                  scaling_global_decipher_score_max = 1,
                                   n_top_regulons = 10) {
-  pretty_label <- switch(condition_label,
-    "SevCOVID_Azimuthl2" = "Severe",
-    "MilCOVID_Azimuthl2" = "Mild",
-    condition_label
-  )
 
-  pretty_cluster <- switch(cluster_name,
-    CD14_Mono = "CD14+ Monocytes",
-    CD16_Mono = "CD16+ Monocytes",
-    cluster_name
+  #0. read data and calculate some plot parameters
+  decipher_scores <- readRDS(file.path(output_data_filepath,"decipher_scores_by_cluster.rds"))
+  decipher_scores_by_regulon_and_cluster <- readRDS(file.path(output_data_filepath,"decipher_scores_by_regulon_and_cluster.rds"))
+  regulon_deltas_by_cluster <- readRDS(file.path(output_data_filepath,"regulon_deltas_by_cluster.rds"))
+  feature_statistics <- readRDS(file.path(output_data_filepath,"feature_statistics.rds"))
+
+  global_deltaPagoda_max <- max(sapply(regulon_deltas_by_cluster[target_clusters], function(x) max(x$deltaPagoda, na.rm = TRUE)))
+  global_deltaPagoda_max = global_deltaPagoda_max*scaling_global_deltaPagoda_max
+  # Receptor→TF imp.perm * sign(spearman.cor)
+  global_receptor_tf_col_max <- max(
+    sapply(c(decipher_scores_by_regulon_and_cluster[target_clusters]), function(cluster_df) {
+      if (!is.null(cluster_df)) {
+        df <- cluster_df %>% mutate(col = imp.perm * sign(spearman.cor))
+        max(abs(df$col), na.rm = TRUE)
+      } else {
+        0
+      }
+    })
   )
-  
+  global_receptor_tf_col_max=global_receptor_tf_col_max*scaling_global_receptor_tf_col_max
+  # Sender→Ligand frac.normalized.counts
+
+  global_sender_ligand_max <- max(
+    feature_statistics %>% filter(cluster %in% target_clusters) %>% pull(sum.counts) / feature_statistics %>% filter(cluster %in% target_clusters) %>% pull(n.cell),
+    na.rm = TRUE
+  )
+  global_sender_ligand_max <- 1
+  global_sender_ligand_max=global_sender_ligand_max*scaling_global_sender_ligand_max
+  # Ligand→Receptor decipher_score
+  global_decipher_score_max <- max(
+    sapply(decipher_scores[target_clusters], function(x) max(abs(x$decipher_score), na.rm = TRUE)))
+  global_decipher_score_max=global_decipher_score_max*scaling_global_decipher_score_max
+
   # 1. Check inputs
   check_cluster_exists(cluster_name, decipher_scores, decipher_scores_by_regulon_and_cluster, regulon_deltas_by_cluster)
   
