@@ -62,7 +62,9 @@ plotLRTFHeatmap(
   min_delta_pagoda = 2
 )
 
+#########################
 #sorted TF heatmap
+#########################
 
 # Define the specific cell types (receiver cells) you want to analyze
 selected_clusters <- names(decipher_results)
@@ -121,7 +123,7 @@ sender_cts <- selected_clusters
 # Generate network plots for Severe condition
 for (cl in target_clusters) {
 
-  generate_network_plot("sample_analysis", cl,
+  g <- generate_network_plot("sample_analysis", cl,
                       output_data_filepath,
                       sender_cts, 
                       figures_folder,
@@ -132,3 +134,5 @@ for (cl in target_clusters) {
                       scaling_global_decipher_score_max = 1/1.5,
                       n_top_regulons = 10)
   }
+
+plot(g)

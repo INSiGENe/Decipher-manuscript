@@ -1930,7 +1930,7 @@ plotLRTFHeatmap <- function(
   ##visualization ----
   file_name <- paste(output_name,".png",sep="")
   png(file.path(figures_folder,file_name),width = 15, height = 9, units = "cm",res=600)
-  heatmap.2(
+  p <- heatmap.2(
     this_matrix,
     trace="none",
     col = "bluered",
@@ -1944,9 +1944,11 @@ plotLRTFHeatmap <- function(
     key = FALSE,
     keysize = 0.3,
     Colv=TRUE)
+  print(p)
   dev.off()
   file_name <- paste(output_name,".csv",sep="")
   write.csv(this_matrix,file.path(figures_folder,file_name),row.names=TRUE)
+  return(p)
 
 }
 
@@ -2241,6 +2243,8 @@ plot_pubmed_tg_heatmaps <- function(
       #scale_y_discrete(labels = function(x) ifelse(x %in% top_genes, x, ""))  # Conditional row labels
     filename <- paste0(selected_ct,"_tgs_heatmap_pubmed.png")
     ggsave(file.path(figures_folder,filename),p,width = 12,height = 5.5,units="cm")
+
+    return(p)
   }
 }
 
@@ -2478,4 +2482,6 @@ generate_network_plot <- function(condition_label, cluster_name,
   # 10. Plot and save the network
   output_file <- file.path(output_dir, paste0(condition_label, "_", cluster_name, "_network_map.png"))
   plot_graph(g, output_file, cluster_name, condition_label)
+
+  return(g)
 }

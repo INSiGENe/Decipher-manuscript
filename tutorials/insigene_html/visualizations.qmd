@@ -25,7 +25,7 @@ execute:
   message: false
 ---
 
-```{r}
+```{r load needed packages, libraries and set a seed}
 #| eval: true
 #| include: true
 # Running this in the root of the Decipher repository
@@ -47,21 +47,26 @@ This vignette shows how to load Decipher results and generate common visualizati
 * network plots.
 
 0. Setup / paths
+These are the main paths needed for the visualizations, dataset_path is the path where Decipher was previously run. Most figures (with the exception of the Decipher plot will be saved in the figures folder indicated below)
 
-```{r}
+```{r set up the paths}
 #| eval: true
+#only change these 
 dataset_path <- "results/sample_analysis"
+figures_folder <- "figures"
+
+#automatically populated from the two paths above
 pre_processing_filepath <- file.path(dataset_path, "pre_processing")
 reference_filepath <- file.path("reference_data")
 output_data_filepath <- file.path(dataset_path, "data")
-figures_folder <- "figures"
 output_figures_filepath <- file.path(dataset_path, "figures")
 dir.create(figures_folder, showWarnings = FALSE, recursive = TRUE)
 ```
 
 1. Load Data & Pre-process for plotting
+First we load all data that was produced by the pipeline. This data is pre-processed to be compatible with the plotting we did for the manuscript
 
-```{r}
+```{r load data and pre-process for plotting}
 #| eval: true
 # Load saved Decipher results and run pre-processing helper
 decipher_results <- safe_load(file.path(output_data_filepath, "decipher_scores_by_cluster.rds"))
@@ -82,8 +87,9 @@ results_for_comparison <- add_if_not_null(results_for_comparison, "Decipher", de
 ```
 
 2. Volcano plot of TF activity by cell-type
+Our first plot is very simple, it's the change in TF activity by cell-type. Results are saved to the figures_folder by default.
 
-```{r}
+```{r volcano plots of TF activty by cell-type}
 #| eval: true
 selected_cluster <- names(decipher_results)[1]
 differentialTFActivityVolcanoPlotByCluster(
@@ -97,7 +103,7 @@ differentialTFActivityVolcanoPlotByCluster(
 # Output saved under figures_folder
 ```
 
-3. Decipher prioritized map (heatmap of top interactions)
+3. Decipher prioritized map (heatmap of top interactions). Results are saved in the dataset_path (figures folder)
 
 ```{r}
 #| eval: true
@@ -112,7 +118,7 @@ plotDecipherPrioritizedMap(
 # Note: this function may display in-session; save/export as needed.
 ```
 
-4. LR → TF heatmap (TFs tied to upstream LR pairs)
+4. LR → TF heatmap (TFs tied to upstream LR pairs). Results are saved to the figures_folder by default.
 
 ```{r}
 #| eval: true
@@ -129,6 +135,7 @@ plotLRTFHeatmap(
 ```
 
 5. Sorted TF heatmaps (per cluster)
+This plot plots a heatmap of deltas in TF activity by cluster. Each heatmap is sorted by the selected_cluster parameter, thus allowing us to see whether the stronger patterns we may see in some cell-types align with the TF activity in other cell types. Results are saved to the figures_folder by default.
 
 ```{r}
 #| eval: true
@@ -158,9 +165,14 @@ for (cell_type in selected_clusters) {
   file_name_csv <- paste0("sorted_tf_deltas_", cell_type, "_", top_n, ".csv")
   write.csv(p$data, file.path(figures_folder, file_name_csv), row.names = TRUE)
 }
+
+print(p)
+
 ```
 
+
 6. PubMed target-gene heatmaps
+This plot is a way for us to understand the pruned GRNs we use to calculte TF activity. Because these GRNs may potentially cover many genes, we identify the top n_pubmed number of genes (by number of publications, as a proxy of a gene being understood). The output heatmap is a binary indicator of whether a gene does belong to a particular GRN. Results are saved to the figures_folder by default.
 
 ```{r}
 #| eval: true
@@ -173,6 +185,7 @@ plot_pubmed_tg_heatmaps(
 ```
 
 7. Network plots (sender / receiver network visualisations)
+Lastly this function plots four layers of Decipher (sender CT, ligand, receptor, TF). Each plot is specific to a single receiver cell type, hence why we loop over the "target_cluster". Results are saved to the figures_folder by default.
 
 ```{r}
 #| eval: true
@@ -182,7 +195,7 @@ target_clusters <- selected_clusters[3]
 sender_cts <- selected_clusters
 
 for (cl in target_clusters) {
-  generate_network_plot(
+  g <- generate_network_plot(
     "sample_analysis",
     cl,
     output_data_filepath,
@@ -194,6 +207,8 @@ for (cl in target_clusters) {
     n_top_regulons = 10
   )
 }
+
+plot(g)
 ```
 
 Session Info

@@ -15,6 +15,6 @@ docker run -it --rm \
     bash
 
 #
-
+docker run --rm -it -v "$(pwd):/home/project" -w /home/project ebasto/decipherc2c@sha256:9ec8bbb7eca692856e9fd7c50346c78eac6ae24da8bd2e87b1f36998465bd1b0 bash
 
 
