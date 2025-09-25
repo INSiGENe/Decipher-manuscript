@@ -1,0 +1,210 @@
+---
+title: "Decipher Visualizations Tutorial"
+subtitle: "<i>How to visualize Decipher outputs</i>"
+author: "Edgar Basto"
+title-block-banner: Background.png
+format: 
+  html:
+    code-fold: false
+    code-overflow: scroll
+    code-tools: false
+    toc: true
+    toc-location: left
+    embed-resources: true
+    highlight-style: github
+editor: visual
+date: today
+theme: 
+  light: [flatly, insigene-light.scss]
+  dark: [darkly, insigene-dark.scss]
+bibliography: bibliography.bib
+lightbox: auto
+execute:
+  warning: false
+  error: false
+  message: false
+```
+
+```{r}
+#| eval: true
+#| include: true
+# Running this in the root of the Decipher repository
+renv::restore()   # ensure reproducible library state, say yes if asked to install packages (will install from cache)
+library(devtools)
+load_all()
+library(data.table)
+set.seed(123)
+```
+
+Overview
+
+This vignette shows how to load Decipher results and generate common visualizations: 
+* volcano plots
+* the prioritized Decipher map
+* LR→TF heatmaps 
+* sorted TF heatmaps per cluster 
+* pubmed target-gene heatmaps, and 
+* network plots.
+
+0. Setup / paths
+
+```{r}
+#| eval: true
+dataset_path <- "results/sample_analysis"
+pre_processing_filepath <- file.path(dataset_path, "pre_processing")
+reference_filepath <- file.path("reference_data")
+output_data_filepath <- file.path(dataset_path, "data")
+figures_folder <- "figures"
+output_figures_filepath <- file.path(dataset_path, "figures")
+dir.create(figures_folder, showWarnings = FALSE, recursive = TRUE)
+```
+
+1. Load Data & Pre-process for plotting
+
+```{r}
+#| eval: true
+# Load saved Decipher results and run pre-processing helper
+decipher_results <- safe_load(file.path(output_data_filepath, "decipher_scores_by_cluster.rds"))
+decipher_pre_processed <- preProcessDecipher(decipher_results)
+
+results_preprocessed <- list()
+results_preprocessed <- add_if_not_null(results_preprocessed, "Decipher", decipher_pre_processed)
+
+# Prepare objects used for comparison/correlation plots
+results_for_correlation <- lapply(names(results_preprocessed), function(name) {
+  prepareForCorrelation(name, results_preprocessed[[name]])
+})
+names(results_for_correlation) <- names(results_preprocessed)
+
+decipher_results_for_comparison <- lapply(decipher_results, "renameDecipherScore")
+results_for_comparison <- list()
+results_for_comparison <- add_if_not_null(results_for_comparison, "Decipher", decipher_results_for_comparison)
+```
+
+2. Volcano plot of TF activity by cell-type
+
+```{r}
+#| eval: true
+selected_cluster <- names(decipher_results)[1]
+differentialTFActivityVolcanoPlotByCluster(
+  output_data_filepath,
+  selected_cluster,
+  figures_folder,
+  p_threshold = 0.01,
+  fc_threhsold = 2.883,
+  output_filename = "diff_regulong_act_volcano_plot"
+)
+# Output saved under figures_folder
+```
+
+3. Decipher prioritized map (heatmap of top interactions)
+
+```{r}
+#| eval: true
+plotDecipherPrioritizedMap(
+  dataset_path,
+  top_n = 6,
+  priority_receiver_cells = selected_cluster,
+  dataset_name = "sample_dataset",
+  width = 21,
+  height = 11
+)
+# Note: this function may display in-session; save/export as needed.
+```
+
+4. LR → TF heatmap (TFs tied to upstream LR pairs)
+
+```{r}
+#| eval: true
+plotLRTFHeatmap(
+  output_data_filepath,
+  selected_cluster,
+  figures_folder,
+  p_threshold = 0.01,
+  output_name = "lr_tf_heatmap",
+  n_interactions = 10,
+  min_abs_decipher_score = 0.4,
+  min_delta_pagoda = 2
+)
+```
+
+5. Sorted TF heatmaps (per cluster)
+
+```{r}
+#| eval: true
+selected_clusters <- names(decipher_results)
+# load regulon deltas
+file_path <- file.path(output_data_filepath, "regulon_deltas_by_cluster.rds")
+regulon_deltas_by_cluster <- load_regulon_data(file_path, selected_clusters)
+
+# Calculate a global absolute max for consistent color scales
+absolute_max <- find_absolute_max_simple(regulon_deltas_by_cluster)
+if (is.na(absolute_max) || absolute_max <= 0) {
+  warning("Could not determine a valid absolute max deltaPagoda. Setting scale limit to 1.")
+  absolute_max <- 1
+}
+
+top_n <- 15
+for (cell_type in selected_clusters) {
+  p <- plotClusterSortedTFHeatmap(
+    selected_cluster = cell_type,
+    top_n = top_n,
+    deltas_by_cluster = regulon_deltas_by_cluster,
+    global_max = absolute_max   # optional: fix color scale across multiple plots
+  )
+
+  file_name <- paste0("sorted_tf_deltas_", cell_type, "_", top_n, ".png")
+  ggsave(file.path(figures_folder, file_name), p, width = 8, height = 3)
+  file_name_csv <- paste0("sorted_tf_deltas_", cell_type, "_", top_n, ".csv")
+  write.csv(p$data, file.path(figures_folder, file_name_csv), row.names = TRUE)
+}
+```
+
+6. PubMed target-gene heatmaps
+
+```{r}
+#| eval: true
+n_pubmed <- 40
+plot_pubmed_tg_heatmaps(
+  output_data_filepath,
+  selected_clusters[1],
+  n_pubmed
+)
+```
+
+7. Network plots (sender / receiver network visualisations)
+
+```{r}
+#| eval: true
+selected_clusters <- names(decipher_results)
+# Example: visualize networks for a target receiver cluster (or vector of clusters)
+target_clusters <- selected_clusters[3]
+sender_cts <- selected_clusters
+
+for (cl in target_clusters) {
+  generate_network_plot(
+    "sample_analysis",
+    cl,
+    output_data_filepath,
+    sender_cts,
+    figures_folder,
+    top_interactions = NULL,
+    scaling_global_sender_ligand_max = 1/1.2,
+    scaling_global_decipher_score_max = 1/1.5,
+    n_top_regulons = 10
+  )
+}
+```
+
+Session Info
+
+<details>
+
+<summary>Show Details</summary>
+
+```{r}
+#| eval: true
+sessionInfo()
+````
+
+</details>

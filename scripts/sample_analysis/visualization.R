@@ -17,8 +17,6 @@ output_data_filepath <- file.path(dataset_path,"data")
 figures_folder <- "figures_25_09_25"
 output_figures_filepath <- file.path(dataset_path, "figures")
 
-# Create meta directory if needed
-#dir.create(meta_path, recursive = TRUE, showWarnings = FALSE)
 ## FIGURE 2: Load Data ----
 # Load and pre-process the data
 decipher_results <- safe_load(file.path(output_data_filepath, "decipher_scores_by_cluster.rds"))
@@ -117,14 +115,8 @@ plot_pubmed_tg_heatmaps(
 ##############
 
 # Define target receiver clusters and sender cell types
-target_clusters <- selected_clusters[1]
+target_clusters <- selected_clusters[3]
 sender_cts <- selected_clusters
-
-#calculate global stats
-# GLOBAL SCALING VALUES
-# TF deltaPagoda
-
-
 
 # Generate network plots for Severe condition
 for (cl in target_clusters) {
@@ -134,10 +126,9 @@ for (cl in target_clusters) {
                       sender_cts, 
                       figures_folder,
                       top_interactions = NULL,
-                      scaling_global_deltaPagoda_max = 1,
-                      scaling_global_receptor_tf_col_max = 1,
+                      #scaling_global_deltaPagoda_max = 1,
+                      #scaling_global_receptor_tf_col_max = 1,
                       scaling_global_sender_ligand_max = 1/1.2,
                       scaling_global_decipher_score_max = 1/1.5,
                       n_top_regulons = 10)
-
-                        }
+  }
