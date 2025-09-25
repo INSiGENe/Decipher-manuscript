@@ -2286,7 +2286,7 @@ plot_graph <- function(g, output_file, cluster_name, condition_label) {
   node_layers <- igraph::V(g)$layer
   unique_layers <- c("Sender Cell Type", "Ligand", "Receptor", "TF")
 
-  layout <- matrix(NA, nrow = length(V(g)), ncol = 2)
+  layout <- matrix(NA, nrow = length(igraph::V(g)), ncol = 2)
 
   for (i in seq_along(unique_layers)) {
     layer <- unique_layers[i]
@@ -2306,7 +2306,7 @@ plot_graph <- function(g, output_file, cluster_name, condition_label) {
   png(output_file, width = 10, height = 6.7, units = "in", res = 400)
   plot(g,
        layout = layout,
-       vertex.label = V(g)$name,
+       vertex.label = igraph::V(g)$name,
        vertex.label.cex = 0.9,       # Font size
        vertex.label.font = 2,        # Font weight (2 = bold)
        vertex.label.color = "black",

@@ -2,22 +2,19 @@
 #running this in root of the Decipher folder
 #first we load the necessary librares
 renv::restore()
+#say Y here please
 library(devtools)
 load_all()
 library(data.table)
 
 set.seed(123)
 
-# Define datasets to benchmark/visualize
-# Here it might only be one dataset (depends if you did one or multiple comparisons). 
-# You can all it whatever you want but I tend to use the same folder_name
-
+# set-up
 dataset_path <- "results/sample_analysis"
 pre_processing_filepath <- file.path(dataset_path,"pre_processing")
 reference_filepath <- file.path("reference_data")
 output_data_filepath <- file.path(dataset_path,"data")
 figures_folder <- "figures_25_09_25"
-#meta_path <- "manuscript_analysis/data_for_meta_comparisons" #is this path ok?
 output_figures_filepath <- file.path(dataset_path, "figures")
 
 # Create meta directory if needed
@@ -102,8 +99,9 @@ for (cell_type in selected_clusters){
 }
 
 
-#networks with pubmed prioritization
-selected_clusters <- names(decipher_results)
+##############
+#pubmed plots
+##############selected_clusters <- names(decipher_results)
 
 n_pubmed <- 40
 output_data_filepath
@@ -117,14 +115,10 @@ plot_pubmed_tg_heatmaps(
 ##############
 #network plots
 ##############
-
 decipher_scores <- readRDS(file.path(output_data_filepath,"decipher_scores_by_cluster.rds"))
 decipher_scores_by_regulon_and_cluster <- readRDS(file.path(output_data_filepath,"decipher_scores_by_regulon_and_cluster.rds"))
 regulon_deltas_by_cluster <- readRDS(file.path(output_data_filepath,"regulon_deltas_by_cluster.rds"))
 feature_statistics <- readRDS(file.path(output_data_filepath,"feature_statistics.rds"))
-
-
-# 4. Specify Parameters and Generate Networks
 
 # Define target receiver clusters and sender cell types
 target_clusters <- selected_clusters[1]
