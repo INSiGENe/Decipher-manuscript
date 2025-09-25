@@ -2670,7 +2670,7 @@ build_graph_components <- function(edges_sender_ligand, ligand_receptor_edges, r
   nodes <- nodes %>%
     left_join(top_regulons_df %>% select(name, deltaPagoda), by = "name") %>%
     mutate(color = case_when(
-      layer == "TF" ~ col_numeric(palette = c("white", "tomato"),
+      layer == "TF" ~ scales::col_numeric(palette = c("white", "tomato"),
                                    #domain = c(0, max(top_regulons_df$deltaPagoda, na.rm = TRUE)))(deltaPagoda),
                                    domain = c(0, global_deltaPagoda_max))(deltaPagoda),
       layer == "Sender Cell Type" ~ "cadetblue1",
