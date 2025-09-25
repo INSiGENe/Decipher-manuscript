@@ -2459,13 +2459,13 @@ generate_network_plot <- function(condition_label, cluster_name,
   write.csv(
     all_edges,
     file.path(output_dir,
-              paste0(pretty_label, "_", pretty_cluster, "_edges.csv")),
+              paste0(condition_label, "_", cluster_name, "_edges.csv")),
     row.names = TRUE
   )
   write.csv(
     nodes,
     file.path(output_dir,
-              paste0(pretty_label, "_", pretty_cluster, "_nodes.csv")),
+              paste0(condition_label, "_", cluster_name, "_nodes.csv")),
     row.names = TRUE
   )
   
@@ -2476,6 +2476,6 @@ generate_network_plot <- function(condition_label, cluster_name,
   g <- assign_edge_colors(g, all_edges,global_receptor_tf_col_max)
   
   # 10. Plot and save the network
-  output_file <- file.path(output_dir, paste0(pretty_label, "_", pretty_cluster, "_network_map.png"))
-  plot_graph(g, output_file, pretty_cluster, pretty_label)
+  output_file <- file.path(output_dir, paste0(condition_label, "_", cluster_name, "_network_map.png"))
+  plot_graph(g, output_file, cluster_name, condition_label)
 }
