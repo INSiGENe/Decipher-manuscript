@@ -2774,7 +2774,7 @@ assign_edge_colors <- function(g, all_edges,global_receptor_tf_col_max) {
       )
     )
   
-  E(g)$color <- all_edges$edge_color
-  E(g)$width <- abs(all_edges$weight)
+  igraph::E(g)$color <- all_edges$edge_color
+  igraph::E(g)$width <- abs(all_edges$weight)
   g
 }
