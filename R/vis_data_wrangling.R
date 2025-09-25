@@ -2757,7 +2757,7 @@ assign_edge_colors <- function(g, all_edges,global_receptor_tf_col_max) {
   edges_sl <- all_edges %>% filter(edge_type == "Sender_Ligand")
   max_val_sl <- max(abs(edges_sl$colour), na.rm = TRUE)
   max_value_sl <- max_val_sl + 0.1 * max_val_sl
-  gradient_func_sl <- col_numeric(palette = c("white", "grey"),
+  gradient_func_sl <- scales::col_numeric(palette = c("white", "grey"),
                                   domain = c(0, max_value_sl))
   
   # Assign colors based on edge type
