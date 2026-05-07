@@ -76,5 +76,6 @@ The pipeline is orchestrated using pipeline commands in the **pipeline_commands*
 ## Running the Pipeline
 
 Please step through each bash file within pipeline_commands.
+
 ---
 
