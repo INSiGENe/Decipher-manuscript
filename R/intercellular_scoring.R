@@ -442,7 +442,7 @@ getInteractionPotentialsMatrixThisCluster <- function(seurat_obj,seurat_obj_this
 #' )
 #'
 #' @export
-getInteractionPotentialMatrixForRepresentativeInteractions <- function(data_this_cluster_downsampled_receptors,selected_lr_pairs,interaction_potentials_matrix_this_cluster,cytosig_ligands){
+getInteractionPotentialMatrixForRepresentativeInteractions <- function(data_this_cluster_downsampled_receptors,selected_lr_pairs,interaction_potentials_matrix_this_cluster,cytosig_ligands = NULL){
 
   interaction_mapping_table <-  getInteractionMappingTable(
     receptorMatrix = data_this_cluster_downsampled_receptors,
@@ -634,7 +634,7 @@ filterIntPotByDeltas <- function(interaction_potentials_matrix_all_clusters, int
 #' }
 #'
 #' @export
-getInteractionPotentialMatrixForRepresentativeInteractionsAllClusters <- function(decipher_seurat, L_set_relevant_features_all_clusters, filtered_interaction_potentials_matrix_all_clusters, cytosig_ligands, flag.normalize.non.log) {
+getInteractionPotentialMatrixForRepresentativeInteractionsAllClusters <- function(decipher_seurat, L_set_relevant_features_all_clusters, filtered_interaction_potentials_matrix_all_clusters, cytosig_ligands = NULL, flag.normalize.non.log) {
   interaction_potentials_matrix_clusters_all_clusters <- list()
 
   for(this_cluster in unique(decipher_seurat$cluster)){
@@ -749,7 +749,7 @@ getInteractionPotentialsMatrixAllClustersWParamPairings <- function(decipher_seu
 #' }
 #'
 #' @export
-getInteractionPotentialMatrixForRepresentativeInteractionsAllClustersWParamPairings <- function(decipher_seurat, L_set_relevant_features_all_clusters, filtered_interaction_potentials_matrix_all_clusters, cytosig_ligands, flag.normalize.non.log,paramPairings) {
+getInteractionPotentialMatrixForRepresentativeInteractionsAllClustersWParamPairings <- function(decipher_seurat, L_set_relevant_features_all_clusters, filtered_interaction_potentials_matrix_all_clusters, cytosig_ligands = NULL, flag.normalize.non.log,paramPairings) {
   interaction_potentials_matrix_clusters_all_clusters <- list()
   all_clusters <- unique(decipher_seurat$cluster)
 

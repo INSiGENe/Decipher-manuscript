@@ -32,7 +32,13 @@ seurat_oi <- readRDS(file.path(paths["data"],"seurat_object_oi.rds"))
 
 #load reference data ----
 L.set <- loadLSet(reference_filepath,species)
-cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
+
+# Optional: opt into the CytoSig-priority tiebreaker for cluster-representative
+# selection. This is used in the manuscript benchmarking against CytoSig
+# (Basto et al.) but is OFF by default to avoid biasing analyses where CytoSig
+# is not the ground truth. To enable, uncomment the second line below.
+cytosig_ligands <- NULL
+# cytosig_ligands <- loadCytosigLigands(reference_filepath,species)
 
 #data pre-processing ----
 #moved this functions to generateSampleSeuratFromExperimentHub() but need alternative when user actually starts with seurat object

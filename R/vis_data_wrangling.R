@@ -1061,7 +1061,7 @@ plotROCAndExtractAUC <- function(predictions,responses,output_figures_filepath,d
       binary_responses <- as.numeric(responses[[method]] > this_threshold)
 
       # Calculate ROC curve
-      roc_curve <- roc(binary_responses, predictions[[method]],quiet=TRUE)
+      roc_curve <- roc(binary_responses, predictions[[method]],quiet=TRUE,direction = "<")
 
       # Plot ROC curve
       lines(roc_curve, col=colors[i], lwd=2)
