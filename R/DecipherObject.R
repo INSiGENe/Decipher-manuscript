@@ -115,8 +115,12 @@ DecipherObject <- R6Class(
       # example references
       self$L_set <- loadLSet(self$reference_filepath, self$species)
       self$enrichr_database <- loadEnrichrDatabase(self$reference_filepath, self$species)
-      self$cytosig_ligands  <- loadCytosigLigands(self$reference_filepath, self$species)
-      
+      # Note: cytosig_ligands is intentionally NOT loaded by default. It controls
+      # the CytoSig-priority tiebreaker for cluster-representative selection,
+      # which is opt-in. To enable (e.g. when reproducing the manuscript
+      # benchmarking against CytoSig), call after loadReferences():
+      #   obj$cytosig_ligands <- loadCytosigLigands(obj$reference_filepath, obj$species)
+
       return(invisible(self))
     },
     
