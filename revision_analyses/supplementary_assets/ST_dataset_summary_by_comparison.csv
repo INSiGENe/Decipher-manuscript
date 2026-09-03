@@ -1,0 +1,16 @@
+comparison,dataset_label,k,n_cell_types_analysed,n_cell_types_in_sc_object,donor_column,n_donors_total,n_donors_case,n_donors_control,n_cells_analysed_clusters,n_cells_case,n_cells_control,n_cells_sc_object_total,n_metacells_analysed_clusters,n_metacells_case,n_metacells_control,n_metacells_total,n_lset_pairs_database,total_candidate_lr_pairs,total_lr_pairs_diff_potential,total_retained_tfs,total_predicted_interactions,total_unique_predicted_lr
+5yr_pic,"Poly-IC-stimulated PBMCs, 5-year-olds (Read et al. [45])",1,4,4,Sample,2,2,2,18807,10342,8465,18807,3810,1905,1905,3810,2293,1052,623,419,333,333
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",2,7,15,NA,NA,NA,NA,21471,5964,15507,28916,2466,1233,1233,2466,2293,5772,2238,772,999,999
+cord_pic,Poly-IC-stimulated cord blood mononuclear cells (Read et al. [45]),1,4,4,Sample,2,2,2,16165,8754,7411,16165,3846,1923,1923,3846,2293,1083,581,395,307,307
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",2,11,18,pt_id,6,6,6,58029,27903,30126,59918,9832,5135,4697,9832,2293,3793,1765,567,966,966
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),1,12,31,donor_id,22,3,19,84059,14970,69089,96479,6642,3321,3321,6642,2293,7562,3104,1006,1365,1365
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),1,12,15,donor_id,10,10,7,81101,49997,31104,82055,10966,5483,5483,10966,2293,7079,3180,1278,1231,1231
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),1,8,10,donor_id,24,5,19,68033,22187,45846,69644,8274,4137,4137,8274,2293,4135,1656,657,697,697
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),2,16,25,donor_id,63,37,26,163737,121705,42032,174010,12834,6417,6417,12834,2293,9821,3942,1269,1546,1546
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",1,8,14,donor_id,9,5,4,24863,9629,15234,28107,5030,2515,2515,5030,2293,2014,852,777,462,462
+ERP,"Breast cancer ICB, ER+ (Bassez et al. [46])",1,6,8,patient_id,15,3,12,38846,8755,30091,39288,4770,2385,2385,4770,2293,2879,772,342,339,339
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",2,7,11,donor_id,48,26,22,183777,111796,71981,185888,7826,3913,3913,7826,2293,724,235,482,148,148
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",1,10,30,sample_id,8,3,5,33978,8055,25923,38212,6328,3164,3164,6328,2293,2859,1027,833,538,538
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",3,8,16,donor_id,15,8,7,15413,8104,7309,17353,3126,1563,1563,3126,2293,1785,377,472,229,229
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",1,10,30,sample_id,9,4,5,35392,9498,25894,40087,6942,3471,3471,6942,2293,3100,1273,792,642,642
+TNBC,"Breast cancer ICB, TNBC (Bassez et al. [46])",2,5,8,patient_id,12,5,7,38232,22723,15509,39447,4440,2220,2220,4440,2293,2858,1301,392,559,559

@@ -1,0 +1,27 @@
+stage,parameter,value,methods_section
+Meta-cells,neighbours k,per comparison (Supplementary Table ST.2),"Methods, meta-cells"
+Meta-cells,minimum cells per cell type and condition,> 100 in both conditions,
+Meta-cells,maximum single cells sampled per cell type and condition,"1,200 × (k + 1)",
+Meta-cells,meta-cells per cell type and condition,100 to 600,
+Meta-cells,similarity,"Spearman correlation distance √(1 − ρ) on 2,000 variable features (Seurat FindVariableFeatures defaults)",
+Meta-cells,target depth,"≥ 10,000 summed UMIs per meta-cell (realized: Supplementary Table ST.1)",
+Meta-cells,normalization,"library-size, relative counts scaled to 10⁵ (Seurat NormalizeData, method ""RC"")",
+LR filters,ligand detection,"non-zero in > 10% of meta-cells of at least one cell type, either condition","Methods, LR signalling potential"
+LR filters,receptor detection,"non-zero in > 10% of meta-cells of the cell type, either condition",
+LR filters,differential interactions,Wilcoxon rank-sum on LR signalling potentials (Seurat FindMarkers 4.4.0); Bonferroni-adjusted p < 0.01; |log₂ fold change| > 0.1; detected in ≥ 10% of meta-cells in either condition,
+Correlated LR pairs,distance,1 − |ρ_S| (Spearman),"Methods, reducing cross-correlation"
+Correlated LR pairs,clustering,"complete linkage; ⌊1.15 × R⌋ clusters, R = unique receptors in the subnetwork",
+Correlated LR pairs,representative,random within cluster; CytoSig-covered interaction preferred,
+CellOracle GRN,variable genes / imputation,"3,000 highly variable genes; kNN imputation, k = 2.5% of cells, ≤ 50 principal components","Methods, context-specific GRNs"
+CellOracle GRN,network weighting (get_links),regularization α = 10; bagging number 20,
+CellOracle GRN,cell types not modelled,"< 100 cells, or < 999 genes after variable-gene selection",
+GRN pruning,global,"edge p < 0.01; 20,000 largest |weight|; TFs with < 20 targets removed","Methods, reducing density"
+GRN pruning,local,out-degree ≤ 40 per TF (highest-weight edges),
+TF activity (PAGODA2),settings,"relative-count matrix, log scaling; gam.k = 10; 50 PCs on 3,000 over-dispersed genes; cosine kNN k = 40; pathway over-dispersion correlation-distance threshold 0.2; 5 random gene sets per regulon (default)","Methods, scoring TF activity"
+TF screen,null and cut-off,one size-matched random regulon per TF; activity change outside the 2.5th to 97.5th percentiles of a KDE on random-regulon changes (fixed empirical threshold calibrated against pooled random regulons); no multiple-testing correction,"Methods, TF retention"
+LR-TF models,random forest,"randomForest 4.7-1.1; 100 trees; mtry = ⌊p/3⌋; minimum terminal node size 5; permutation importance type 1, unscaled; sign = Spearman correlation","Methods, aggregation into integrated networks"
+LR-TF models,edge retention,"edges interpreted only from models exceeding their 50-permutation null (all 1,359 did)","Methods, validation"
+Decipher score,aggregation,"mean over differentially active TFs of w_{i,f} · Δ_f","Methods, Decipher score"
+Seeds,global / robustness,seed 123; robustness across seeds 1 to 100 (Kang et al. dataset),"Methods, seeds"
+CytoSig benchmark,labels and collapse,"active if median z-score > 2 (signed); one score per ligand = interaction with largest |score|; pROC direction ""<""","Methods, evaluating against CytoSig"
+In silico perturbation,CellOracle KO,"expression → 0; 3 propagation steps; links p < 0.001, top 2,000 edges per TF; panels: top-10 Decipher TFs vs 8 lowest-ranked significant vs 10 non-prioritized regulators","Methods, in silico perturbation"

@@ -1,0 +1,15 @@
+component,status,source,key_parameters_or_changes
+Ligand-receptor reference (ConnectomeDB2020),adopted,Hou et al. [22],monomeric curated LR pairs only
+Meta-cell aggregation,modified,MetaCell/PISCES guidelines [24; 25],seed+kNN summing; Spearman distance on 2000 HVGs; k per dataset; >100 cells both conditions; <=1200x(k+1) cells; 100-600 meta-cells; RC normalization 1e5
+LR signalling potential p = sqrt(lbar x r),introduced,this work,condition-level mean ligand x per-meta-cell receptor
+Differential-interaction filter,adopted,Seurat FindMarkers (Wilcoxon),Bonferroni p<0.01; |log2FC|>0.1; min.pct 0.1 on potentials
+Correlated-LR clustering + representative selection,introduced,this work,d=1-|rho_S|; complete linkage; floor(1.15xR) clusters; CytoSig-preferred random representative
+Base gene-regulatory network,adopted,CellOracle promoter/ATAC base GRN [23],human base GRN
+Context-specific GRN inference,adopted,CellOracle get_links [23],raw counts; 3000 HVGs; kNN imputation (2.5% cells; <=50 PCs); alpha=10; bagging 20
+GRN pruning,introduced,this work (trimGRN),edge p<0.01; top 20000 by |weight|; >=20 targets per TF; out-degree cap 40
+TF activity scoring,adopted,PAGODA2 [28],log.scale; gam.k 10; 50 PCs/3000 over-dispersed genes; cosine kNN 40; corr-dist 0.2; 5 random gene sets
+Target-anchored score orientation,modified,this work (adjustScoresOrientation),regulon scores oriented to target expression
+TF retention screen,introduced,this work,one size-matched random regulon per TF; pooled KDE 2.5th-97.5th percentile threshold
+LR-TF edge weights,adopted,randomForest permutation importance,100 trees; mtry floor(p/3); nodesize 5; type 1 unscaled; sign from Spearman correlation
+Decipher score,introduced,this work,mean over differentially active TFs of edge weight x change in TF activity
+CytoSig benchmark protocol,introduced,this work (CytoSig as ground truth [26]),ligand-level collapse (max |score|); signed median z>2 labels; pROC direction "<"

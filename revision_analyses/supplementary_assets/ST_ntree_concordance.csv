@@ -1,0 +1,3 @@
+"dataset","n_models","median_rho_100_vs_1000","min_rho_100_vs_1000","median_rho_100_vs_100","pct_same_top1","pct_top5_ge4of5"
+"severity",792,0.931,0.78,0.865,91.2,98.6
+"vaccination",567,0.943,0.795,0.884,90.7,98.2

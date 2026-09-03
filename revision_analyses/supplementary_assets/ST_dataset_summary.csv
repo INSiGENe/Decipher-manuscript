@@ -1,0 +1,257 @@
+comparison,dataset_label,cell_type,condition,donor_column,n_donors,n_cells,n_cells_input_to_metacells,n_metacells,n_candidate_lr_pairs,n_lr_pairs_diff_potential,n_retained_tfs,n_predicted_interactions,n_unique_predicted_lr,k,min_meta_cells,condition_column_sc,expected_metacells_per_arm,metacell_rule_ok
+5yr_pic,"Poly-IC-stimulated PBMCs, 5-year-olds (Read et al. [45])",CD4_T,case,Sample,2,6854,2400,600,208,114,110,66,66,1,100,condition_original,600,TRUE
+5yr_pic,"Poly-IC-stimulated PBMCs, 5-year-olds (Read et al. [45])",CD4_T,control,Sample,2,4620,2400,600,208,114,110,66,66,1,100,condition_original,600,TRUE
+5yr_pic,"Poly-IC-stimulated PBMCs, 5-year-olds (Read et al. [45])",NK,case,Sample,2,504,504,252,229,126,107,68,68,1,100,condition_original,252,TRUE
+5yr_pic,"Poly-IC-stimulated PBMCs, 5-year-olds (Read et al. [45])",NK,control,Sample,2,1123,1123,252,229,126,107,68,68,1,100,condition_original,252,TRUE
+5yr_pic,"Poly-IC-stimulated PBMCs, 5-year-olds (Read et al. [45])",B,case,Sample,2,2077,2077,600,188,88,99,55,55,1,100,condition_original,600,TRUE
+5yr_pic,"Poly-IC-stimulated PBMCs, 5-year-olds (Read et al. [45])",B,control,Sample,2,1800,1800,600,188,88,99,55,55,1,100,condition_original,600,TRUE
+5yr_pic,"Poly-IC-stimulated PBMCs, 5-year-olds (Read et al. [45])",Mono,case,Sample,2,907,907,453,427,295,103,144,144,1,100,condition_original,453,TRUE
+5yr_pic,"Poly-IC-stimulated PBMCs, 5-year-olds (Read et al. [45])",Mono,control,Sample,2,922,922,453,427,295,103,144,144,1,100,condition_original,453,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Fibroblasts,case,NA,NA,387,387,129,834,289,103,145,145,2,100,original_condition,129,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Fibroblasts,control,NA,NA,3692,3600,129,834,289,103,145,145,2,100,original_condition,129,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Ciliated_cells,case,NA,NA,300,300,100,1115,281,124,121,121,2,100,original_condition,100,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Ciliated_cells,control,NA,NA,4157,3600,100,1115,281,124,121,121,2,100,original_condition,100,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Macrophages,case,NA,NA,1528,1528,103,922,377,99,179,179,2,100,original_condition,103,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Macrophages,control,NA,NA,309,309,103,922,377,99,179,179,2,100,original_condition,103,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Pulmonary_alveolar_type_II_cells,case,NA,NA,543,543,181,744,234,70,90,90,2,100,original_condition,181,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Pulmonary_alveolar_type_II_cells,control,NA,NA,1925,1925,181,744,234,70,90,90,2,100,original_condition,181,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Alveolar_macrophages,case,NA,NA,1096,1096,365,1010,584,137,254,254,2,100,original_condition,365,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Alveolar_macrophages,control,NA,NA,4357,3600,365,1010,584,137,254,254,2,100,original_condition,365,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Natural_killer_cells,case,NA,NA,669,669,164,580,195,119,88,88,2,100,original_condition,164,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Natural_killer_cells,control,NA,NA,492,492,164,580,195,119,88,88,2,100,original_condition,164,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Memory_CD4_plus_T_cells,case,NA,NA,1441,1441,191,567,278,120,122,122,2,100,original_condition,191,TRUE
+BCG,"BCG vaccination, mouse lung (Lee et al. [41])",Memory_CD4_plus_T_cells,control,NA,NA,575,575,191,567,278,120,122,122,2,100,original_condition,191,TRUE
+cord_pic,Poly-IC-stimulated cord blood mononuclear cells (Read et al. [45]),NK,case,Sample,2,1303,1303,600,226,141,104,73,73,1,100,condition_original,600,TRUE
+cord_pic,Poly-IC-stimulated cord blood mononuclear cells (Read et al. [45]),NK,control,Sample,2,1249,1249,600,226,141,104,73,73,1,100,condition_original,600,TRUE
+cord_pic,Poly-IC-stimulated cord blood mononuclear cells (Read et al. [45]),CD4_T,case,Sample,2,5544,2400,600,205,99,124,57,57,1,100,condition_original,600,TRUE
+cord_pic,Poly-IC-stimulated cord blood mononuclear cells (Read et al. [45]),CD4_T,control,Sample,2,4548,2400,600,205,99,124,57,57,1,100,condition_original,600,TRUE
+cord_pic,Poly-IC-stimulated cord blood mononuclear cells (Read et al. [45]),Mono,case,Sample,2,969,969,254,422,225,84,107,107,1,100,condition_original,254,TRUE
+cord_pic,Poly-IC-stimulated cord blood mononuclear cells (Read et al. [45]),Mono,control,Sample,2,509,509,254,422,225,84,107,107,1,100,condition_original,254,TRUE
+cord_pic,Poly-IC-stimulated cord blood mononuclear cells (Read et al. [45]),B,case,Sample,2,938,938,469,230,116,83,70,70,1,100,condition_original,469,TRUE
+cord_pic,Poly-IC-stimulated cord blood mononuclear cells (Read et al. [45]),B,control,Sample,2,1105,1105,469,230,116,83,70,70,1,100,condition_original,469,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",B,case,pt_id,6,2373,2373,600,268,79,52,56,56,2,100,condition_original,600,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",B,control,pt_id,6,2901,2901,600,268,79,52,56,56,2,100,condition_original,600,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",CD14_plus_monocytes,case,pt_id,5,1314,1314,438,471,250,81,133,133,2,100,condition_original,438,FALSE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",CD14_plus_monocytes,control,pt_id,6,4241,3600,600,471,250,81,133,133,2,100,condition_original,438,FALSE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",CD16_plus_monocytes,case,pt_id,6,2794,2794,600,416,262,28,138,138,2,100,condition_original,600,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",CD16_plus_monocytes,control,pt_id,6,2358,2358,600,416,262,28,138,138,2,100,condition_original,600,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",CD4_T,case,pt_id,6,4715,3600,600,281,107,47,68,68,2,100,condition_original,600,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",CD4_T,control,pt_id,6,8631,3600,600,281,107,47,68,68,2,100,condition_original,600,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",CD8_T,case,pt_id,6,1476,1476,492,322,104,95,61,61,2,100,condition_original,492,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",CD8_T,control,pt_id,6,2421,2421,492,322,104,95,61,61,2,100,condition_original,492,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",NK,case,pt_id,6,4171,3600,600,282,123,64,72,72,2,100,condition_original,600,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",NK,control,pt_id,6,4787,3600,600,282,123,64,72,72,2,100,condition_original,600,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",Naive_CD8_T,case,pt_id,6,1045,1045,348,334,177,31,93,93,2,100,condition_original,348,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",Naive_CD8_T,control,pt_id,6,1517,1517,348,334,177,31,93,93,2,100,condition_original,348,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",Platelets,case,pt_id,6,2020,2020,269,129,38,34,13,13,2,100,condition_original,269,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",Platelets,control,pt_id,6,807,807,269,129,38,34,13,13,2,100,condition_original,269,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",cDC2,case,pt_id,6,1359,1359,453,448,235,21,125,125,2,100,condition_original,453,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",cDC2,control,pt_id,6,2038,2038,453,448,235,21,125,125,2,100,condition_original,453,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",pDC,case,pt_id,6,538,538,135,378,71,45,47,47,2,100,condition_original,135,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",pDC,control,pt_id,6,405,405,135,378,71,45,47,47,2,100,condition_original,135,TRUE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",CD14_plus_BDCA1_plus_PD_minus_L1_plus_cells,case,pt_id,6,6098,3600,600,464,319,69,160,160,2,100,condition_original,6,FALSE
+covid,"Pfizer-BioNTech vaccination, PBMCs (Arunachalam et al. [42])",CD14_plus_BDCA1_plus_PD_minus_L1_plus_cells,control,pt_id,6,20,20,0,464,319,69,160,160,2,100,condition_original,6,FALSE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),respiratory_tract_suprabasal_cell,case,donor_id,3,586,586,293,806,545,105,238,238,1,100,condition_original,293,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),respiratory_tract_suprabasal_cell,control,donor_id,9,4464,2400,293,806,545,105,238,238,1,100,condition_original,293,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),club_cell,case,donor_id,3,840,840,420,824,428,99,198,198,1,100,condition_original,420,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),club_cell,control,donor_id,18,2541,2400,420,824,428,99,198,198,1,100,condition_original,420,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),basal_cell,case,donor_id,3,458,458,229,887,304,36,162,162,1,100,condition_original,229,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),basal_cell,control,donor_id,19,30514,2400,229,887,304,36,162,162,1,100,condition_original,229,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),CD8_minus_positive_comma_alpha_minus_beta_T_cell,case,donor_id,3,1679,1679,369,288,177,78,67,67,1,100,condition_original,369,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),CD8_minus_positive_comma_alpha_minus_beta_T_cell,control,donor_id,9,739,739,369,288,177,78,67,67,1,100,condition_original,369,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),respiratory_tract_multiciliated_cell,case,donor_id,3,8538,2400,600,838,477,77,188,188,1,100,condition_original,600,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),respiratory_tract_multiciliated_cell,control,donor_id,18,9618,2400,600,838,477,77,188,188,1,100,condition_original,600,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),cytotoxic_T_cell,case,donor_id,3,778,778,389,389,115,51,57,57,1,100,condition_original,389,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),cytotoxic_T_cell,control,donor_id,16,11953,2400,389,389,115,51,57,57,1,100,condition_original,389,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),CD4_minus_positive_helper_T_cell,case,donor_id,3,654,654,327,427,135,86,69,69,1,100,condition_original,327,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),CD4_minus_positive_helper_T_cell,control,donor_id,15,4362,2400,327,427,135,86,69,69,1,100,condition_original,327,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),macrophage,case,donor_id,3,253,253,103,765,199,112,89,89,1,100,condition_original,103,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),macrophage,control,donor_id,14,207,207,103,765,199,112,89,89,1,100,condition_original,103,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),mast_cell,case,donor_id,3,203,203,101,400,58,106,26,26,1,100,condition_original,101,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),mast_cell,control,donor_id,15,658,658,101,400,58,106,26,26,1,100,condition_original,101,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),secretory_cell,case,donor_id,3,428,428,214,748,413,69,162,162,1,100,condition_original,214,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),secretory_cell,control,donor_id,10,544,544,214,748,413,69,162,162,1,100,condition_original,214,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),dendritic_cell_comma_human,case,donor_id,3,240,240,120,601,86,88,39,39,1,100,condition_original,120,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),dendritic_cell_comma_human,control,donor_id,17,2116,2116,120,601,86,88,39,39,1,100,condition_original,120,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),monocyte,case,donor_id,3,313,313,156,589,167,99,70,70,1,100,condition_original,156,TRUE
+cz_cf_bronchial_biopsy,Cystic fibrosis vs healthy bronchial biopsy (Berg et al. [39]),monocyte,control,donor_id,12,1373,1373,156,589,167,99,70,70,1,100,condition_original,156,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),endothelial_cell,case,donor_id,10,915,915,447,843,486,108,193,193,1,100,condition_original,447,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),endothelial_cell,control,donor_id,7,895,895,447,843,486,108,193,193,1,100,condition_original,447,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),B_cell,case,donor_id,10,4756,2400,600,338,159,106,56,56,1,100,condition_original,600,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),B_cell,control,donor_id,7,9919,2400,600,338,159,106,56,56,1,100,condition_original,600,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),epithelial_cell,case,donor_id,10,18061,2400,600,932,444,92,194,194,1,100,condition_original,600,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),epithelial_cell,control,donor_id,7,3233,2400,600,932,444,92,194,194,1,100,condition_original,600,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),CD4_minus_positive_comma_alpha_minus_beta_T_cell,case,donor_id,10,3461,2400,600,371,128,125,46,46,1,100,condition_original,600,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),CD4_minus_positive_comma_alpha_minus_beta_T_cell,control,donor_id,7,6903,2400,600,371,128,125,46,46,1,100,condition_original,600,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),fibroblast,case,donor_id,10,1833,1833,600,1001,687,97,238,238,1,100,condition_original,600,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),fibroblast,control,donor_id,7,1605,1605,600,1001,687,97,238,238,1,100,condition_original,600,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),myeloid_cell,case,donor_id,10,6203,2400,325,776,253,112,115,115,1,100,condition_original,325,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),myeloid_cell,control,donor_id,7,650,650,325,776,253,112,115,115,1,100,condition_original,325,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),natural_killer_cell,case,donor_id,10,1079,1079,159,431,103,118,41,41,1,100,condition_original,159,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),natural_killer_cell,control,donor_id,7,319,319,159,431,103,118,41,41,1,100,condition_original,159,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),CD8_minus_positive_comma_alpha_minus_beta_T_cell,case,donor_id,10,6282,2400,600,373,160,113,68,68,1,100,condition_original,600,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),CD8_minus_positive_comma_alpha_minus_beta_T_cell,control,donor_id,7,2419,2400,600,373,160,113,68,68,1,100,condition_original,600,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),plasma_cell,case,donor_id,10,2935,2400,600,342,101,113,42,42,1,100,condition_original,600,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),plasma_cell,control,donor_id,7,3256,2400,600,342,101,113,42,42,1,100,condition_original,600,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),regulatory_T_cell,case,donor_id,10,3153,2400,457,387,173,121,60,60,1,100,condition_original,457,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),regulatory_T_cell,control,donor_id,7,914,914,457,387,173,121,60,60,1,100,condition_original,457,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),mast_cell,case,donor_id,10,309,309,104,392,25,72,13,13,1,100,condition_original,104,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),mast_cell,control,donor_id,7,208,208,104,392,25,72,13,13,1,100,condition_original,104,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),mural_cell,case,donor_id,10,1010,1010,391,893,461,101,165,165,1,100,condition_original,391,TRUE
+cz_hnscc_hpv,Head and neck squamous cell carcinoma (Jenkins et al. [37]),mural_cell,control,donor_id,7,783,783,391,893,461,101,165,165,1,100,condition_original,391,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),pancreatic_A_cell,case,donor_id,5,1727,1727,600,393,186,109,83,83,1,100,condition_original,600,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),pancreatic_A_cell,control,donor_id,19,9862,2400,600,393,186,109,83,83,1,100,condition_original,600,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),type_B_pancreatic_cell,case,donor_id,4,1071,1071,535,450,229,74,114,114,1,100,condition_original,535,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),type_B_pancreatic_cell,control,donor_id,19,10227,2400,535,450,229,74,114,114,1,100,condition_original,535,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),endothelial_cell,case,donor_id,5,1126,1126,563,552,157,76,63,63,1,100,condition_original,563,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),endothelial_cell,control,donor_id,19,1532,1532,563,552,157,76,63,63,1,100,condition_original,563,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),pancreatic_stellate_cell,case,donor_id,5,1003,1003,501,648,253,69,99,99,1,100,condition_original,501,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),pancreatic_stellate_cell,control,donor_id,19,1160,1160,501,648,253,69,99,99,1,100,condition_original,501,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),pancreatic_ductal_cell,case,donor_id,5,6132,2400,600,617,360,61,142,142,1,100,condition_original,600,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),pancreatic_ductal_cell,control,donor_id,19,5792,2400,600,617,360,61,142,142,1,100,condition_original,600,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),unknown,case,donor_id,5,1385,1385,600,583,220,105,90,90,1,100,condition_original,600,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),unknown,control,donor_id,19,3039,2400,600,583,220,105,90,90,1,100,condition_original,600,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),pancreatic_acinar_cell,case,donor_id,5,9467,2400,600,467,185,99,70,70,1,100,condition_original,600,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),pancreatic_acinar_cell,control,donor_id,19,13749,2400,600,467,185,99,70,70,1,100,condition_original,600,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),PP_cell,case,donor_id,5,276,276,138,425,66,64,36,36,1,100,condition_original,138,TRUE
+cz_hpap_t1d_islets,Type 1 diabetes vs non-diabetic islets (Fasolino et al. [36]),PP_cell,control,donor_id,19,485,485,138,425,66,64,36,36,1,100,condition_original,138,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_collecting_duct_principal_cell,case,donor_id,37,22710,3600,600,727,336,96,140,140,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_collecting_duct_principal_cell,control,donor_id,25,4682,3600,600,727,336,96,140,140,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_interstitial_cell,case,donor_id,37,2607,2607,600,828,471,29,174,174,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_interstitial_cell,control,donor_id,26,2609,2609,600,828,471,29,174,174,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),endothelial_cell,case,donor_id,37,9598,3600,600,654,298,96,117,117,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),endothelial_cell,control,donor_id,26,4801,3600,600,654,298,96,117,117,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),epithelial_cell_of_proximal_tubule,case,donor_id,37,28961,3600,600,689,429,81,134,134,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),epithelial_cell_of_proximal_tubule,control,donor_id,24,9965,3600,600,689,429,81,134,134,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_loop_of_Henle_thick_ascending_limb_epithelial_cell,case,donor_id,37,23818,3600,600,670,298,88,110,110,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_loop_of_Henle_thick_ascending_limb_epithelial_cell,control,donor_id,24,6741,3600,600,670,298,88,110,110,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_loop_of_Henle_thin_ascending_limb_epithelial_cell,case,donor_id,34,3321,3321,109,826,163,86,79,79,2,100,condition_original,109,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_loop_of_Henle_thin_ascending_limb_epithelial_cell,control,donor_id,20,328,328,109,826,163,86,79,79,2,100,condition_original,109,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_collecting_duct_intercalated_cell,case,donor_id,37,9739,3600,600,704,246,61,104,104,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_collecting_duct_intercalated_cell,control,donor_id,23,2988,2988,600,704,246,61,104,104,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),cytotoxic_T_cell,case,donor_id,34,1083,1083,152,327,71,95,30,30,2,100,condition_original,152,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),cytotoxic_T_cell,control,donor_id,22,457,457,152,327,71,95,30,30,2,100,condition_original,152,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),T_cell,case,donor_id,36,6632,3600,600,336,193,48,75,75,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),T_cell,control,donor_id,26,2275,2275,600,336,193,48,75,75,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_interstitial_alternatively_activated_macrophage,case,donor_id,35,952,952,155,721,128,57,43,43,2,100,condition_original,155,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_interstitial_alternatively_activated_macrophage,control,donor_id,26,465,465,155,721,128,57,43,43,2,100,condition_original,155,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),mononuclear_phagocyte,case,donor_id,37,743,743,247,717,328,78,134,134,2,100,condition_original,247,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),mononuclear_phagocyte,control,donor_id,23,1031,1031,247,717,328,78,134,134,2,100,condition_original,247,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),monocyte,case,donor_id,37,1969,1969,153,567,218,98,80,80,2,100,condition_original,153,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),monocyte,control,donor_id,25,459,459,153,567,218,98,80,80,2,100,condition_original,153,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),B_cell,case,donor_id,35,1860,1860,130,265,53,57,28,28,2,100,condition_original,130,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),B_cell,control,donor_id,19,392,392,130,265,53,57,28,28,2,100,condition_original,130,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),natural_killer_cell,case,donor_id,26,698,698,127,424,92,117,41,41,2,100,condition_original,127,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),natural_killer_cell,control,donor_id,24,381,381,127,424,92,117,41,41,2,100,condition_original,127,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_distal_convoluted_tubule_epithelial_cell,case,donor_id,33,5031,3600,600,641,298,102,127,127,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_distal_convoluted_tubule_epithelial_cell,control,donor_id,21,2826,2826,600,641,298,102,127,127,2,100,condition_original,600,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_connecting_tubule_epithelial_cell,case,donor_id,18,1983,1983,544,725,320,80,130,130,2,100,condition_original,544,TRUE
+cz_human_kidney_v1.5,Chronic kidney disease vs healthy kidney (Lake et al. [38]),kidney_connecting_tubule_epithelial_cell,control,donor_id,20,1632,1632,544,725,320,80,130,130,2,100,condition_original,544,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",effector_CD4_minus_positive_comma_alpha_minus_beta_T_cell,case,donor_id,5,383,383,191,232,93,123,51,51,1,100,condition_original,191,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",effector_CD4_minus_positive_comma_alpha_minus_beta_T_cell,control,donor_id,4,1321,1321,191,232,93,123,51,51,1,100,condition_original,191,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",CD8_minus_positive_comma_alpha_minus_beta_T_cell,case,donor_id,5,1452,1452,600,229,151,111,80,80,1,100,condition_original,600,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",CD8_minus_positive_comma_alpha_minus_beta_T_cell,control,donor_id,4,2148,2148,600,229,151,111,80,80,1,100,condition_original,600,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",classical_monocyte,case,donor_id,5,5296,2400,600,309,174,101,95,95,1,100,condition_original,600,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",classical_monocyte,control,donor_id,4,4292,2400,600,309,174,101,95,95,1,100,condition_original,600,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",natural_killer_cell,case,donor_id,5,1449,1449,600,220,106,116,61,61,1,100,condition_original,600,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",natural_killer_cell,control,donor_id,4,3915,2400,600,220,106,116,61,61,1,100,condition_original,600,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",IgG_minus_negative_class_switched_memory_B_cell,case,donor_id,5,322,322,161,149,39,80,19,19,1,100,condition_original,161,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",IgG_minus_negative_class_switched_memory_B_cell,control,donor_id,4,1285,1285,161,149,39,80,19,19,1,100,condition_original,161,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",effector_CD8_minus_positive_comma_alpha_minus_beta_T_cell,case,donor_id,5,300,300,150,240,98,123,54,54,1,100,condition_original,150,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",effector_CD8_minus_positive_comma_alpha_minus_beta_T_cell,control,donor_id,4,1067,1067,150,240,98,123,54,54,1,100,condition_original,150,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",blood_cell,case,donor_id,5,216,216,108,337,84,52,48,48,1,100,condition_original,108,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",blood_cell,control,donor_id,4,309,309,108,337,84,52,48,48,1,100,condition_original,108,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",non_minus_classical_monocyte,case,donor_id,5,211,211,105,298,107,71,54,54,1,100,condition_original,105,TRUE
+cz_influenza,"Influenza vs healthy, PBMCs (Lee et al. [35])",non_minus_classical_monocyte,control,donor_id,4,897,897,105,298,107,71,54,54,1,100,condition_original,105,TRUE
+ERP,"Breast cancer ICB, ER+ (Bassez et al. [46])",Fibroblast,case,patient_id,3,796,796,398,621,181,54,76,76,1,100,condition_original,398,TRUE
+ERP,"Breast cancer ICB, ER+ (Bassez et al. [46])",Fibroblast,control,patient_id,12,8948,2400,398,621,181,54,76,76,1,100,condition_original,398,TRUE
+ERP,"Breast cancer ICB, ER+ (Bassez et al. [46])",T_cell,case,patient_id,3,5183,2400,600,327,77,72,33,33,1,100,condition_original,600,TRUE
+ERP,"Breast cancer ICB, ER+ (Bassez et al. [46])",T_cell,control,patient_id,12,4791,2400,600,327,77,72,33,33,1,100,condition_original,600,TRUE
+ERP,"Breast cancer ICB, ER+ (Bassez et al. [46])",Endothelial_cell,case,patient_id,3,594,594,297,532,137,78,59,59,1,100,condition_original,297,TRUE
+ERP,"Breast cancer ICB, ER+ (Bassez et al. [46])",Endothelial_cell,control,patient_id,12,1278,1278,297,532,137,78,59,59,1,100,condition_original,297,TRUE
+ERP,"Breast cancer ICB, ER+ (Bassez et al. [46])",Cancer_cell,case,patient_id,3,639,639,319,580,157,58,72,72,1,100,condition_original,319,TRUE
+ERP,"Breast cancer ICB, ER+ (Bassez et al. [46])",Cancer_cell,control,patient_id,12,11269,2400,319,580,157,58,72,72,1,100,condition_original,319,TRUE
+ERP,"Breast cancer ICB, ER+ (Bassez et al. [46])",Myeloid_cell,case,patient_id,3,590,590,295,540,114,54,55,55,1,100,condition_original,295,TRUE
+ERP,"Breast cancer ICB, ER+ (Bassez et al. [46])",Myeloid_cell,control,patient_id,12,2542,2400,295,540,114,54,55,55,1,100,condition_original,295,TRUE
+ERP,"Breast cancer ICB, ER+ (Bassez et al. [46])",B_cell,case,patient_id,3,953,953,476,279,106,26,44,44,1,100,condition_original,476,TRUE
+ERP,"Breast cancer ICB, ER+ (Bassez et al. [46])",B_cell,control,patient_id,12,1263,1263,476,279,106,26,44,44,1,100,condition_original,476,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",CD4_minus_positive_comma_alpha_minus_beta_T_cell,case,donor_id,26,32085,3600,600,73,34,60,15,15,2,100,condition_original,600,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",CD4_minus_positive_comma_alpha_minus_beta_T_cell,control,donor_id,22,30919,3600,600,73,34,60,15,15,2,100,condition_original,600,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",classical_monocyte,case,donor_id,26,29990,3600,600,136,44,73,29,29,2,100,condition_original,600,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",classical_monocyte,control,donor_id,22,12510,3600,600,136,44,73,29,29,2,100,condition_original,600,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",natural_killer_cell,case,donor_id,26,7772,3600,600,101,42,70,21,21,2,100,condition_original,600,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",natural_killer_cell,control,donor_id,22,4826,3600,600,101,42,70,21,21,2,100,condition_original,600,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",non_minus_classical_monocyte,case,donor_id,26,4346,3600,600,133,61,111,36,36,2,100,condition_original,600,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",non_minus_classical_monocyte,control,donor_id,22,1869,1869,600,133,61,111,36,36,2,100,condition_original,600,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",CD8_minus_positive_comma_alpha_minus_beta_T_cell,case,donor_id,26,24458,3600,600,73,21,73,17,17,2,100,condition_original,600,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",CD8_minus_positive_comma_alpha_minus_beta_T_cell,control,donor_id,22,12696,3600,600,73,21,73,17,17,2,100,condition_original,600,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",B_cell,case,donor_id,26,11899,3600,600,64,10,51,10,10,2,100,condition_original,600,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",B_cell,control,donor_id,22,8221,3600,600,64,10,51,10,10,2,100,condition_original,600,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",conventional_dendritic_cell,case,donor_id,26,1246,1246,313,144,23,44,20,20,2,100,condition_original,313,TRUE
+lupus,"Systemic lupus erythematosus vs healthy, PBMCs (Perez et al. [40])",conventional_dendritic_cell,control,donor_id,22,940,940,313,144,23,44,20,20,2,100,condition_original,313,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",pDC,case,sample_id,3,392,392,196,280,70,63,41,41,1,100,condition_original,196,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",pDC,control,sample_id,5,1163,1163,196,280,70,63,41,41,1,100,condition_original,196,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",cDC2,case,sample_id,3,641,641,320,373,159,88,88,88,1,100,condition_original,320,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",cDC2,control,sample_id,5,2134,2134,320,373,159,88,88,88,1,100,condition_original,320,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD8_TEM,case,sample_id,3,1347,1347,600,238,89,84,46,46,1,100,condition_original,600,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD8_TEM,control,sample_id,5,2426,2400,600,238,89,84,46,46,1,100,condition_original,600,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD4_TCM,case,sample_id,3,2330,2330,600,193,80,38,40,40,1,100,condition_original,600,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD4_TCM,control,sample_id,5,5438,2400,600,193,80,38,40,40,1,100,condition_original,600,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",NK,case,sample_id,3,861,861,430,250,106,95,57,57,1,100,condition_original,430,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",NK,control,sample_id,5,5071,2400,430,250,106,95,57,57,1,100,condition_original,430,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD4_CTL,case,sample_id,3,223,223,111,242,52,110,24,24,1,100,condition_original,111,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD4_CTL,control,sample_id,5,264,264,111,242,52,110,24,24,1,100,condition_original,111,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD14_Mono,case,sample_id,3,981,981,490,363,190,84,103,103,1,100,condition_original,490,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD14_Mono,control,sample_id,5,5379,2400,490,363,190,84,103,103,1,100,condition_original,490,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",B_naive,case,sample_id,3,758,758,157,288,118,83,58,58,1,100,condition_original,157,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",B_naive,control,sample_id,5,314,314,157,288,118,83,58,58,1,100,condition_original,157,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",B_intermediate,case,sample_id,3,215,215,107,276,50,85,29,29,1,100,condition_original,107,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",B_intermediate,control,sample_id,5,622,622,107,276,50,85,29,29,1,100,condition_original,107,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD16_Mono,case,sample_id,3,307,307,153,356,113,103,52,52,1,100,condition_original,153,TRUE
+MilCOVID_Azimuthl2,"Mild COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD16_Mono,control,sample_id,5,3112,2400,153,356,113,103,52,52,1,100,condition_original,153,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",T_TS1,case,donor_id,8,1603,1603,209,195,53,35,31,31,3,100,condition_original,209,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",T_TS1,control,donor_id,7,838,838,209,195,53,35,31,31,3,100,condition_original,209,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",Mono_MS3,case,donor_id,8,970,970,242,235,94,91,53,53,3,100,condition_original,242,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",Mono_MS3,control,donor_id,7,978,978,242,235,94,91,53,53,3,100,condition_original,242,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",T_TS2,case,donor_id,8,597,597,149,183,22,20,14,14,3,100,condition_original,149,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",T_TS2,control,donor_id,7,652,652,149,183,22,20,14,14,3,100,condition_original,149,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",NK_NS1,case,donor_id,8,460,460,115,239,26,58,17,17,3,100,condition_original,115,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",NK_NS1,control,donor_id,7,651,651,115,239,26,58,17,17,3,100,condition_original,115,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",Mono_MS1,case,donor_id,8,2153,2153,360,239,73,70,43,43,3,100,condition_original,360,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",Mono_MS1,control,donor_id,7,1441,1441,360,239,73,70,43,43,3,100,condition_original,360,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",Mono_MS2,case,donor_id,8,854,854,213,246,55,79,37,37,3,100,condition_original,213,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",Mono_MS2,control,donor_id,7,1223,1223,213,246,55,79,37,37,3,100,condition_original,213,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",Mono_MS4,case,donor_id,8,616,616,154,211,23,65,15,15,3,100,condition_original,154,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",Mono_MS4,control,donor_id,7,1040,1040,154,211,23,65,15,15,3,100,condition_original,154,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",Megakaryocyte_MK,case,donor_id,8,851,851,121,237,31,54,19,19,3,100,condition_original,121,TRUE
+sepsis,"Sepsis vs non-septic ICU, PBMCs (Reyes et al. [44])",Megakaryocyte_MK,control,donor_id,7,486,486,121,237,31,54,19,19,3,100,condition_original,121,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",NK,case,sample_id,4,1133,1133,566,260,145,97,74,74,1,100,condition_original,566,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",NK,control,sample_id,5,5071,2400,566,260,145,97,74,74,1,100,condition_original,566,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",B_naive,case,sample_id,4,735,735,157,286,100,61,50,50,1,100,condition_original,157,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",B_naive,control,sample_id,5,314,314,157,286,100,61,50,50,1,100,condition_original,157,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",cDC2,case,sample_id,4,398,398,199,400,154,80,79,79,1,100,condition_original,199,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",cDC2,control,sample_id,5,2134,2134,199,400,154,80,79,79,1,100,condition_original,199,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",HSPC,case,sample_id,4,334,334,117,369,76,93,38,38,1,100,condition_original,117,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",HSPC,control,sample_id,5,235,235,117,369,76,93,38,38,1,100,condition_original,117,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD4_TCM,case,sample_id,4,1424,1424,600,199,91,19,46,46,1,100,condition_original,600,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD4_TCM,control,sample_id,5,5438,2400,600,199,91,19,46,46,1,100,condition_original,600,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD8_TEM,case,sample_id,4,521,521,260,249,73,81,37,37,1,100,condition_original,260,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD8_TEM,control,sample_id,5,2426,2400,260,249,73,81,37,37,1,100,condition_original,260,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD14_Mono,case,sample_id,4,3009,2400,600,392,248,105,116,116,1,100,condition_original,600,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD14_Mono,control,sample_id,5,5379,2400,600,392,248,105,116,116,1,100,condition_original,600,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",pDC,case,sample_id,4,734,734,367,286,123,98,65,65,1,100,condition_original,367,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",pDC,control,sample_id,5,1163,1163,367,286,123,98,65,65,1,100,condition_original,367,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD16_Mono,case,sample_id,4,760,760,380,374,182,74,88,88,1,100,condition_original,380,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",CD16_Mono,control,sample_id,5,3112,2400,380,374,182,74,88,88,1,100,condition_original,380,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",B_intermediate,case,sample_id,4,450,450,225,285,81,84,49,49,1,100,condition_original,225,TRUE
+SevCOVID_Azimuthl2,"Severe COVID-19 vs healthy, PBMCs (Arunachalam et al. [43])",B_intermediate,control,sample_id,5,622,622,225,285,81,84,49,49,1,100,condition_original,225,TRUE
+TNBC,"Breast cancer ICB, TNBC (Bassez et al. [46])",T_cell,case,patient_id,5,12589,3600,600,448,249,108,106,106,2,100,condition_original,600,TRUE
+TNBC,"Breast cancer ICB, TNBC (Bassez et al. [46])",T_cell,control,patient_id,7,4281,3600,600,448,249,108,106,106,2,100,condition_original,600,TRUE
+TNBC,"Breast cancer ICB, TNBC (Bassez et al. [46])",Myeloid_cell,case,patient_id,5,3598,3598,415,614,311,98,137,137,2,100,condition_original,415,TRUE
+TNBC,"Breast cancer ICB, TNBC (Bassez et al. [46])",Myeloid_cell,control,patient_id,7,1245,1245,415,614,311,98,137,137,2,100,condition_original,415,TRUE
+TNBC,"Breast cancer ICB, TNBC (Bassez et al. [46])",Cancer_cell,case,patient_id,5,3796,3600,600,575,345,75,128,128,2,100,condition_original,600,TRUE
+TNBC,"Breast cancer ICB, TNBC (Bassez et al. [46])",Cancer_cell,control,patient_id,7,7522,3600,600,575,345,75,128,128,2,100,condition_original,600,TRUE
+TNBC,"Breast cancer ICB, TNBC (Bassez et al. [46])",B_cell,case,patient_id,5,2203,2203,426,405,189,34,86,86,2,100,condition_original,426,TRUE
+TNBC,"Breast cancer ICB, TNBC (Bassez et al. [46])",B_cell,control,patient_id,7,1278,1278,426,405,189,34,86,86,2,100,condition_original,426,TRUE
+TNBC,"Breast cancer ICB, TNBC (Bassez et al. [46])",Fibroblast,case,patient_id,5,537,537,179,816,207,77,102,102,2,100,condition_original,179,TRUE
+TNBC,"Breast cancer ICB, TNBC (Bassez et al. [46])",Fibroblast,control,patient_id,7,1183,1183,179,816,207,77,102,102,2,100,condition_original,179,TRUE

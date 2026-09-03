@@ -1,0 +1,4 @@
+"ntree","n_models","median_oob_r2","median_imp_stability"
+100,567,0.789,0.882
+500,567,0.797,0.968
+1000,567,0.798,0.982

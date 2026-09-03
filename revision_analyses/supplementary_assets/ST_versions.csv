@@ -1,0 +1,37 @@
+category,resource,version,source_of_truth,access_or_build_date,notes
+Language runtime,R,4.4.1 (2024-06-14),r-base:4.4.1 base image + renv.lock,pinned,used by all R pipeline stages
+Language runtime,Python (CellOracle env),3.10.13,ebasto/decipher-manuscript-celloracle@sha256:419f15c5…,pinned,GRN inference
+Language runtime,Python (LIANA+ env),3.10.15,ebasto/decipher-manuscript-liana-plus:1.0.0,pinned,
+Language runtime,Python (CytoSig env),3.10.12,ebasto/decipher-manuscript-cytosig@sha256:583a450a…,pinned,
+Language runtime,Python (NATMI env),3.7.8,ebasto/decipher-manuscript-natmi@sha256:1269438f…,pinned,NATMI requires legacy Python
+Decipher pipeline (R),Seurat,4.4.0,renv.lock,pinned,pre-processing image also 4.4.0
+Decipher pipeline (R),SeuratObject,5.0.2,renv.lock,pinned,
+Decipher pipeline (R),pagoda2,1.0.12,renv.lock,pinned,TF-activity scoring
+Decipher pipeline (R),scde,2.32.0,renv.lock,pinned,pagoda2 dependency
+Decipher pipeline (R),randomForest,4.7-1.1,renv.lock,pinned,LR->TF models (ntree=100)
+Decipher pipeline (R),pROC,1.18.5,renv.lock,pinned,benchmark AUROC
+Decipher pipeline (R),igraph,2.0.3,renv.lock,pinned,
+Decipher pipeline (R),zellkonverter,1.14.1,renv.lock,pinned,h5ad export
+Decipher pipeline (R),dplyr,1.1.4,renv.lock,pinned,(renv.lock lists all 267 packages)
+Pre-processing,Azimuth,0.4.6,ebasto/manuscript_pre_processing:1.0.4,pinned,PBMC annotation
+GRN inference,CellOracle,0.19.0,celloracle image (digest above),pinned,
+GRN inference,scanpy,1.10.3,celloracle image,pinned,
+GRN inference,anndata,0.10.8,celloracle image,pinned,
+GRN inference,numpy / pandas,1.26.4 / 1.5.3,celloracle image,pinned,
+Comparison tool,nichenetr,2.2.0,ebasto/decipher-manuscript-nichenetr@sha256:146e5075…,pinned,Seurat 5.1.0 in-image
+Comparison tool,Connectome,1.0.1,ebasto/decipher-manuscript-connectome@sha256:851edafd…,pinned,Seurat 5.1.0 in-image
+Comparison tool,LIANA+ (liana-py),1.4.0,liana-plus image,pinned,
+Comparison tool,CytoSig,0.0.3,cytosig image,pinned,numpy 1.25.2 / pandas 2.1.0 in-image
+Comparison tool,NATMI,commit 8d90f2f (2020-10-16),natmi image,pinned,no versioned releases; cite commit
+Reference database,connectomeDB2020 / Forrest LR set,file connectomedb_forrest_lrc2p.csv,repo reference_data (git),added 2024-05-21,
+Reference database,CytoSig ligand-gene mapping,cytosig_mapping_table_ligands_genes.csv,repo reference_data (git),added 2024-05-21,
+Reference database,NicheNet v2 prior model,ligand_target_matrix_nsga2r_final.rds,NicheNet zenodo model files,repository copy (git),"v2 (""nsga2r final"") model"
+Reference database,Azimuth PBMC reference,pbmc_multimodal.rds,repo reference_data (git),repo-added 2025-08-10,
+Dataset,"GSE244126 (BCG vaccination, Lee et al.)",GEO,GEO,not recorded; version fixed by identifier,
+Dataset,GSE171964 (vaccination),GEO,GEO,not recorded; version fixed by identifier,archived intermediates dated Jul 2024
+Dataset,GSE155673 (COVID severity),GEO,GEO,not recorded; version fixed by identifier,
+Dataset,"GSE232186 (poly-IC PBMCs, Read et al.)",GEO,GEO,not recorded; version fixed by identifier,
+Dataset,SCP548 (sepsis),Broad Single-Cell Portal,SCP,not recorded; version fixed by identifier,
+Dataset,CZ CELLxGENE collections (influenza; HPAP T1D islets; HNSCC-HPV; human kidney v1.5; CF bronchial biopsy),CZ CELLxGENE Discover,cellxgene,not recorded; version fixed by identifier,
+Infrastructure,Docker images (all pipeline stages),digests as listed,Docker Hub (ebasto/*),public,every stage pinned by digest in pipeline scripts
+Infrastructure,Code + reproducible release,github.com/INSiGENe/Decipher-manuscript (main),Zenodo deposit,per Zenodo DOI,renv.lock included
